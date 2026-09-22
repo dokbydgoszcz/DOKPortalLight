@@ -13,6 +13,11 @@ public class AppDbContext : IdentityDbContext<AppUser>
 
     public DbSet<Person> People => Set<Person>();
     public DbSet<Parish> Parishes => Set<Parish>();
+    public DbSet<Candidate> Candidates => Set<Candidate>();
+    public DbSet<CanonicalMission> CanonicalMissions => Set<CanonicalMission>();
+    public DbSet<Formator> Formators => Set<Formator>();
+    public DbSet<ParishNeed> ParishNeeds => Set<ParishNeed>();
+    public DbSet<BudgetEntry> BudgetEntries => Set<BudgetEntry>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -35,6 +40,39 @@ public class AppDbContext : IdentityDbContext<AppUser>
                 .WithMany()
                 .HasForeignKey(p => p.ParishId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<Candidate>(entity =>
+        {
+            entity.HasOne(c => c.Person).WithMany().HasForeignKey(c => c.PersonId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CanonicalMission>(entity =>
+        {
+            entity.Property(m => m.ServicePlace).IsRequired().HasMaxLength(200);
+            entity.Property(m => m.GrantedPlace).HasMaxLength(200);
+            entity.Property(m => m.SupervisionGroup).HasMaxLength(100);
+            entity.HasOne(m => m.Person).WithMany().HasForeignKey(m => m.PersonId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Formator>(entity =>
+        {
+            entity.Property(f => f.Function).IsRequired().HasMaxLength(200);
+            entity.HasOne(f => f.Person).WithMany().HasForeignKey(f => f.PersonId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ParishNeed>(entity =>
+        {
+            entity.Property(n => n.Description).IsRequired().HasMaxLength(500);
+            entity.HasOne(n => n.Parish).WithMany().HasForeignKey(n => n.ParishId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(n => n.AssignedPerson).WithMany().HasForeignKey(n => n.AssignedPersonId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<BudgetEntry>(entity =>
+        {
+            entity.Property(b => b.Description).IsRequired().HasMaxLength(300);
+            entity.Property(b => b.Category).IsRequired().HasMaxLength(100);
+            entity.Property(b => b.Amount).HasColumnType("decimal(18,2)");
         });
     }
 }
