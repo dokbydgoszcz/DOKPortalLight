@@ -1,0 +1,51 @@
+<div class="page-heading">
+  <div><h2>Harmonogram i obecności</h2><p>Spotkania indywidualne i zajęcia grupowe.</p></div>
+  <button class="btn primary" (click)="openAddForm()">＋ Dodaj spotkanie</button>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Data</th><th>Podopieczny / grupa</th><th>Obecność</th><th>Notatki</th></tr></thead>
+      <tbody>
+        @for (meeting of meetings(); track meeting.id) {
+          <tr>
+            <td>{{ meeting.meetingDate }}</td>
+            <td>{{ meeting.caseLabel ?? meeting.groupLabel }}</td>
+            <td>
+              @if (meeting.isAttended === true) {
+                <span class="pill green">obecny</span>
+              } @else if (meeting.isAttended === false) {
+                <span class="pill red">nieobecny</span>
+              }
+            </td>
+            <td>{{ meeting.notes }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="4" class="empty">Brak spotkań.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (isFormOpen()) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Nowe spotkanie</h3>
+        <button class="close" (click)="cancel()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Data</label><input type="date" [(ngModel)]="newMeeting.meetingDate" name="meetingDate" /></div>
+          <div class="field"><label>Grupa / opis</label><input [(ngModel)]="newMeeting.groupLabel" name="groupLabel" /></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="cancel()">Anuluj</button>
+        <button class="btn primary" (click)="createMeeting()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}

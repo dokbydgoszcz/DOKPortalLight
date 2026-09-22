@@ -14,5 +14,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Parafie i giełda', icon: '⌂', path: '/parish-board', roles: ['Administrator', 'DyrektorSKSP'] },
   { label: 'Budżet SKŚP', icon: '◈', path: '/budget/sksp', roles: ['Administrator', 'DyrektorSKSP'] },
   { label: 'Podopieczni DOK', icon: '◍', path: '/dok-cases', roles: ['Administrator', 'DyrektorDOK', 'Superwizor', 'KatechistaProwadzacy', 'Biskup'] },
+  { label: 'Harmonogram i obecności', icon: '▦', path: '/meetings', roles: ['Administrator', 'DyrektorDOK', 'KatechistaProwadzacy'] },
   { label: 'Użytkownicy i role', icon: '⚙', path: '/admin/users', roles: ['Administrator'] }
 ];
