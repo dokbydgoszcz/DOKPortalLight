@@ -2,6 +2,7 @@ using DokPortal.Application.Auth;
 using DokPortal.Infrastructure.Auth;
 using DokPortal.Infrastructure.Identity;
 using DokPortal.Infrastructure.Persistence;
+using DokPortal.Infrastructure.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -62,6 +63,7 @@ if (!app.Environment.IsEnvironment("Testing"))
 {
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+    await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
 
 if (app.Environment.IsDevelopment())
