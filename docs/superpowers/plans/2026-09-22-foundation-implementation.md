@@ -6,7 +6,7 @@
 
 **Architecture:** Layered .NET backend (`Domain` → `Application` → `Infrastructure` → `Api`) using ASP.NET Core Identity for accounts/roles and a plain `Person`/`Parish` domain model as the shared registry later modules build on. Angular frontend with standalone components and signals, a global stylesheet ported 1:1 from the approved HTML prototype, and role-driven navigation (no more manual role switcher — real JWT claims drive it).
 
-**Tech Stack:** .NET 8 (LTS), ASP.NET Core Web API + Identity + JWT Bearer, EF Core 8 (SQL Server / Azure SQL in dev+prod, SQLite/InMemory in tests), xUnit; Angular (latest stable, standalone components, signals), Karma/Jasmine; GitHub Actions.
+**Tech Stack:** .NET 8 (LTS), ASP.NET Core Web API + Identity + JWT Bearer, EF Core 8 (SQL Server / Azure SQL in dev+prod, SQLite/InMemory in tests), xUnit; Angular (latest stable, standalone components, signals), Vitest (the Angular CLI's current default test runner — see Task 11 deviation note; supersedes this plan's original Karma/Jasmine assumption); GitHub Actions.
 
 **Spec:** [docs/superpowers/specs/2026-09-22-foundation-design.md](../specs/2026-09-22-foundation-design.md)
 
@@ -2389,18 +2389,9 @@ Note: this assumes a current Angular CLI (17+) generating standalone components 
 
 - [ ] **Step 2: Set the API base URL in both environment files**
 
-`frontend/src/environments/environment.ts` (used for `ng serve` / development):
+Check `angular.json`'s `fileReplacements` entry to confirm the direction (`ng generate environments` wires `environment.ts` as the file a plain/production build uses, replaced by `environment.development.ts` only under the `development` configuration used by `ng serve`).
 
-```typescript
-export const environment = {
-  production: false,
-  apiBaseUrl: 'https://localhost:5001'
-};
-```
-
-`frontend/src/environments/environment.development.ts`: same content as above (CLI may generate this as a duplicate of `environment.ts` for dev builds — keep both in sync).
-
-Update the production variant (whichever file `fileReplacements` swaps in for `--configuration production`, typically also named `environment.ts` at build time via replacement — check `angular.json`'s `fileReplacements` entry to find the actual production file) to:
+`frontend/src/environments/environment.ts` (production — used by `ng build`/`--configuration production`):
 
 ```typescript
 export const environment = {
@@ -2411,17 +2402,30 @@ export const environment = {
 
 (Task 18's README documents overriding this with the real deployed API URL before the production build.)
 
+`frontend/src/environments/environment.development.ts` (development — used by `ng serve`):
+
+```typescript
+export const environment = {
+  production: false,
+  apiBaseUrl: 'https://localhost:5001'
+};
+```
+
 - [ ] **Step 3: Replace the global stylesheet**
 
 Replace the full contents of `frontend/src/styles.scss` with the design system from the approved prototype (`preview.html` lines 8–232): all `:root` CSS variables, `.app`/`.sidebar`/`.topbar`/`.card`/`.pill`/`.btn`/`.table-wrap`/`table`/`.overlay`/`.modal`/`.grid.stats`/`.list`/`.field`/`.toast`/`.drawer`/`.calendar`/etc. classes and their responsive `@media` rules, verbatim — omitting only the now-unused `.role-select` rule (the manual role switcher is gone per the Global Constraints).
 
+**Deviation found during execution:** the current Angular CLI (v22) scaffolds Vitest + jsdom as the default unit test runner (`@angular/build:unit-test` builder), not Karma/Jasmine — `ng generate environments` and the standalone/signals defaults matched the plan, but the test runner did not. `ng test` runs tests once in Node via jsdom with no browser needed at all (no ChromeHeadless install/flag required); `describe`/`it`/`expect` are available as globals, but `jasmine.createSpy`/`jasmine.createSpyObj` are not — every subsequent task's spec file uses Vitest's `vi.fn()` (imported explicitly from `'vitest'`) instead. The default scaffolded `app.html` is a marketing splash page and `app.spec.ts` asserts on its `<h1>` text — replaced `app.html` with a bare `<router-outlet>` (our own routes own the content) and trimmed `app.spec.ts` to just the "should create" check plus `provideRouter([])` (needed because `App` renders `RouterOutlet`).
+
+Also: `ng generate environments` wires `fileReplacements` the other way round from this plan's original assumption — `environment.ts` is the file used by a plain/production build, and `environment.development.ts` replaces it only under the `development` configuration (`ng serve`). Content assignment below reflects the corrected direction.
+
 - [ ] **Step 4: Verify the app builds and the default test passes**
 
 Run: `cd frontend && npm run build`
-Expected: production build succeeds.
+Expected: production build succeeds (output at `dist/frontend/browser` — confirmed and used as-is by Task 18's `deploy.yml`).
 
-Run: `npm test -- --watch=false --browsers=ChromeHeadless`
-Expected: the CLI-generated `app.component.spec.ts` tests pass.
+Run: `npx ng test`
+Expected: the CLI-generated `app.spec.ts` test passes (runs once via Vitest/jsdom; `--watch` already defaults to `false` outside a TTY, e.g. in CI).
 
 - [ ] **Step 5: Commit**
 
