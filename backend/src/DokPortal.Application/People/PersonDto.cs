@@ -12,4 +12,6 @@ public class PersonDto
     public Guid? ParishId { get; init; }
     public string? ParishName { get; init; }
     public string? Notes { get; init; }
+    public int? NameDayMonth { get; init; }
+    public int? NameDayDay { get; init; }
 }

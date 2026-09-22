@@ -61,6 +61,8 @@ public class PersonService : IPersonService
             BirthDate = request.BirthDate,
             ParishId = request.ParishId,
             Notes = request.Notes,
+            NameDayMonth = request.NameDayMonth,
+            NameDayDay = request.NameDayDay,
             CreatedAtUtc = DateTime.UtcNow,
             UpdatedAtUtc = DateTime.UtcNow
         };
@@ -81,6 +83,8 @@ public class PersonService : IPersonService
         person.BirthDate = request.BirthDate;
         person.ParishId = request.ParishId;
         person.Notes = request.Notes;
+        person.NameDayMonth = request.NameDayMonth;
+        person.NameDayDay = request.NameDayDay;
         person.UpdatedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
@@ -98,6 +102,8 @@ public class PersonService : IPersonService
         BirthDate = p.BirthDate,
         ParishId = p.ParishId,
         ParishName = p.Parish?.Name,
-        Notes = p.Notes
+        Notes = p.Notes,
+        NameDayMonth = p.NameDayMonth,
+        NameDayDay = p.NameDayDay
     };
 }
