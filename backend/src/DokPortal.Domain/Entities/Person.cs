@@ -11,6 +11,8 @@ public class Person
     public Guid? ParishId { get; set; }
     public Parish? Parish { get; set; }
     public string? Notes { get; set; }
+    public int? NameDayMonth { get; set; }
+    public int? NameDayDay { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 

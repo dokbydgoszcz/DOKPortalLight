@@ -23,6 +23,9 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<PastoralNote> PastoralNotes => Set<PastoralNote>();
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<Supervision> Supervisions => Set<Supervision>();
+    public DbSet<GeneratedDocument> GeneratedDocuments => Set<GeneratedDocument>();
+    public DbSet<MailingCampaign> MailingCampaigns => Set<MailingCampaign>();
+    public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -108,6 +111,24 @@ public class AppDbContext : IdentityDbContext<AppUser>
         builder.Entity<Supervision>(entity =>
         {
             entity.Property(s => s.GroupLabel).IsRequired().HasMaxLength(200);
+        });
+
+        builder.Entity<GeneratedDocument>(entity =>
+        {
+            entity.HasOne(d => d.Person).WithMany().HasForeignKey(d => d.PersonId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<MailingCampaign>(entity =>
+        {
+            entity.Property(m => m.Subject).IsRequired().HasMaxLength(200);
+            entity.Property(m => m.Body).IsRequired();
+        });
+
+        builder.Entity<AuditLogEntry>(entity =>
+        {
+            entity.Property(a => a.UserEmail).IsRequired().HasMaxLength(256);
+            entity.Property(a => a.Action).IsRequired().HasMaxLength(100);
+            entity.Property(a => a.ObjectDescription).IsRequired().HasMaxLength(300);
         });
     }
 }
