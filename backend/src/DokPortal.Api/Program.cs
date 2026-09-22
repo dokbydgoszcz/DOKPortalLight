@@ -1,8 +1,10 @@
 using DokPortal.Application.Auth;
+using DokPortal.Application.People;
 using DokPortal.Infrastructure.Auth;
 using DokPortal.Infrastructure.Identity;
 using DokPortal.Infrastructure.Persistence;
 using DokPortal.Infrastructure.Seed;
+using DokPortal.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -31,10 +33,12 @@ var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
     ?? throw new InvalidOperationException("Missing Jwt configuration section.");
 builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+builder.Services.AddScoped<IPersonService, PersonService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,

@@ -971,6 +971,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 ```
 
+**Deviation found during execution (Task 6):** with only `RoleClaimType = "role"` set, `[Authorize(Roles = ...)]` rejected every authenticated user, including ones with the right role. `JwtBearerHandler` maps short inbound claim types (like `"role"`) to their long `ClaimTypes` URIs by default before `RoleClaimType` is even consulted, so the resulting principal never has a claim literally typed `"role"`. Fix: also set `options.MapInboundClaims = false;` right before `options.TokenValidationParameters = ...` in the `AddJwtBearer` call above.
+
 - [ ] **Step 6: Add Jwt config to appsettings**
 
 Add to `backend/src/DokPortal.Api/appsettings.json` (production placeholder — real value comes from an Azure App Service setting):
