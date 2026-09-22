@@ -3,6 +3,7 @@ using DokPortal.Application.Budget;
 using DokPortal.Application.CaseDocuments;
 using DokPortal.Application.Candidates;
 using DokPortal.Application.Dashboard;
+using DokPortal.Application.Meetings;
 using DokPortal.Application.DokCases;
 using DokPortal.Application.Formators;
 using DokPortal.Application.Missions;
@@ -58,6 +59,7 @@ builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<IDokCaseService, DokCaseService>();
 builder.Services.AddScoped<ICaseDocumentService, CaseDocumentService>();
 builder.Services.AddScoped<IPastoralNoteService, PastoralNoteService>();
+builder.Services.AddScoped<IMeetingService, MeetingService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
