@@ -1371,7 +1371,7 @@ public class PastoralNotesController : ControllerBase
 }
 ```
 
-Note: `User.FindFirstValue` is the `System.Security.Claims.ClaimsPrincipal` extension method (already available via `ControllerBase.User`); add `using System.Security.Claims;` if your editor doesn't resolve it automatically via the ASP.NET Core shared framework's implicit usings.
+**Deviation found during execution:** `ClaimsPrincipal.FindFirstValue` lives in `Microsoft.AspNetCore.Authentication`, which is not one of the Web SDK's implicit global usings — rather than add that using for one call site, the controller reads the claim directly via `User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value`, wrapped in a small private `GetCurrentUserId()` helper reused by both actions (`System.Linq`'s `First` is already covered by the implicit usings).
 
 - [ ] **Step 6: Register the service**
 
