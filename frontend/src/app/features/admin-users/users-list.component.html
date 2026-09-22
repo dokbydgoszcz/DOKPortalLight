@@ -1,0 +1,34 @@
+<div class="page-heading">
+  <div><h2>Użytkownicy i role</h2><p>Zarządzanie kontami i przypisaniem ról RBAC.</p></div>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="card-body form-grid">
+    <div class="field"><label>E-mail</label><input [(ngModel)]="newUser.email" name="email" /></div>
+    <div class="field"><label>Hasło</label><input type="password" [(ngModel)]="newUser.password" name="password" /></div>
+    <div class="field full">
+      <button class="btn primary" (click)="createUser()">＋ Utwórz konto</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>E-mail</th>@for (role of allRoles; track role) {<th>{{ role }}</th>}</tr></thead>
+      <tbody>
+        @for (user of users(); track user.id) {
+          <tr>
+            <td>{{ user.email }}</td>
+            @for (role of allRoles; track role) {
+              <td>
+                <input type="checkbox" [checked]="user.roles.includes(role)"
+                       (change)="toggleRole(user, role, $any($event.target).checked)" />
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

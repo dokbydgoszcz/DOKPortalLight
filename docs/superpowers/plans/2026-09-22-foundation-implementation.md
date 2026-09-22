@@ -3870,10 +3870,10 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
-      - run: npm test -- --watch=false --browsers=ChromeHeadless
+      - run: npx ng test
 ```
 
-Verify by running the same commands locally: `cd frontend && npm ci && npm run build && npm test -- --watch=false --browsers=ChromeHeadless`.
+Verify by running the same commands locally: `cd frontend && npm ci && npm run build && npx ng test` (Vitest/jsdom — no browser install needed; see Task 11's deviation note).
 
 - [ ] **Step 8: Commit**
 
