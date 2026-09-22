@@ -1,4 +1,5 @@
 using DokPortal.Application.Auth;
+using DokPortal.Application.Budget;
 using DokPortal.Application.Candidates;
 using DokPortal.Application.Dashboard;
 using DokPortal.Application.Formators;
@@ -17,10 +18,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -48,6 +51,7 @@ builder.Services.AddScoped<ICandidateService, CandidateService>();
 builder.Services.AddScoped<IMissionService, MissionService>();
 builder.Services.AddScoped<IFormatorService, FormatorService>();
 builder.Services.AddScoped<IParishNeedService, ParishNeedService>();
+builder.Services.AddScoped<IBudgetService, BudgetService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

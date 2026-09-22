@@ -2007,6 +2007,24 @@ In `backend/src/DokPortal.Api/Program.cs`, add `using DokPortal.Application.Budg
 builder.Services.AddScoped<IBudgetService, BudgetService>();
 ```
 
+**Deviation found during execution:** `BudgetEntry` is the first entity in the codebase with enum properties (`Fund`, `Type`) exposed directly on a DTO. By default `System.Text.Json` serializes/expects enums as integers, but `BudgetControllerTests` (and the eventual Angular frontend) sends/expects them as strings (`"SKSP"`, `"Expense"`) — posting a string body failed with 400 Bad Request. Fix: register a global `JsonStringEnumConverter` in `Program.cs`, right after `builder.Services.AddControllers()`:
+
+```csharp
+builder.Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+```
+
+(needs `using System.Text.Json.Serialization;`). This only reconfigures ASP.NET Core's own request/response serialization — it does **not** affect a test's own `HttpContent.ReadFromJsonAsync<T>()` calls, which use their own default `JsonSerializerOptions` unless told otherwise. Since `System.Net.Http.Json`'s parameterless overload actually defaults to `JsonSerializerDefaults.Web` (camelCase + case-insensitive) — which is why every earlier controller test's bare `ReadFromJsonAsync<TDto>()` already worked — a test that needs the enum converter too must build its options from that same baseline, not a bare `new JsonSerializerOptions()` (which lacks camelCase/case-insensitivity and breaks `required` property binding). `BudgetControllerTests` does this explicitly:
+
+```csharp
+private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+{
+    Converters = { new JsonStringEnumConverter() }
+};
+```
+
+and passes `JsonOptions` to the one `ReadFromJsonAsync<List<BudgetEntryDto>>(...)` call that deserializes a DTO with enum fields.
+
 - [ ] **Step 7: Run tests to verify they pass**
 
 Run: `dotnet test backend/DokPortal.sln`
