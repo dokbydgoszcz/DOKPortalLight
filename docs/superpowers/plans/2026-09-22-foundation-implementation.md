@@ -259,6 +259,12 @@ dotnet add tests/DokPortal.Api.IntegrationTests package Microsoft.EntityFramewor
 dotnet tool install --global dotnet-ef --version 8.* || dotnet tool update --global dotnet-ef --version 8.*
 ```
 
+**Deviation found during execution:** `dotnet ef` requires the *startup project itself* to directly reference `Microsoft.EntityFrameworkCore.Design` — a transitive reference via `DokPortal.Infrastructure` is not enough. Also add it directly to the Api project:
+
+```bash
+dotnet add src/DokPortal.Api package Microsoft.EntityFrameworkCore.Design --version 8.*
+```
+
 - [ ] **Step 2: Write the failing tests**
 
 `backend/tests/DokPortal.Api.IntegrationTests/CustomWebApplicationFactory.cs`:
