@@ -1,0 +1,22 @@
+<div class="content" style="max-width:420px;margin:80px auto">
+  <div class="card" style="padding:28px">
+    <h2 style="margin:0 0 6px">DOK Portal Light</h2>
+    <p class="small-muted" style="margin:0 0 20px">Zaloguj się, aby kontynuować.</p>
+    <form (ngSubmit)="submit()">
+      <div class="field" style="margin-bottom:12px">
+        <label>E-mail</label>
+        <input name="email" type="email" [(ngModel)]="email" required />
+      </div>
+      <div class="field" style="margin-bottom:16px">
+        <label>Hasło</label>
+        <input name="password" type="password" [(ngModel)]="password" required />
+      </div>
+      @if (errorMessage()) {
+        <div class="note" style="border-color:#f2b8bf;background:#fff0f2;margin-bottom:14px">{{ errorMessage() }}</div>
+      }
+      <button class="btn primary" type="submit" [disabled]="isSubmitting()" style="width:100%;justify-content:center">
+        {{ isSubmitting() ? 'Logowanie…' : 'Zaloguj się' }}
+      </button>
+    </form>
+  </div>
+</div>
