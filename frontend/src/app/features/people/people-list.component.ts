@@ -45,7 +45,9 @@ export class PeopleListComponent implements OnInit {
       lastName: person.lastName,
       email: person.email ?? undefined,
       phone: person.phone ?? undefined,
-      notes: person.notes ?? undefined
+      notes: person.notes ?? undefined,
+      nameDayMonth: person.nameDayMonth ?? undefined,
+      nameDayDay: person.nameDayDay ?? undefined
     };
     this.isFormOpen.set(true);
   }

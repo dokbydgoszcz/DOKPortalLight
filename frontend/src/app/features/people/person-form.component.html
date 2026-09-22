@@ -12,6 +12,8 @@
           <div class="field"><label>E-mail</label><input [(ngModel)]="value.email" name="email" /></div>
           <div class="field"><label>Telefon</label><input [(ngModel)]="value.phone" name="phone" /></div>
           <div class="field full"><label>Uwagi</label><textarea [(ngModel)]="value.notes" name="notes"></textarea></div>
+          <div class="field"><label>Miesiąc imienin</label><input type="number" min="1" max="12" [(ngModel)]="value.nameDayMonth" name="nameDayMonth" /></div>
+          <div class="field"><label>Dzień imienin</label><input type="number" min="1" max="31" [(ngModel)]="value.nameDayDay" name="nameDayDay" /></div>
         </div>
       </div>
       <div class="modal-foot">

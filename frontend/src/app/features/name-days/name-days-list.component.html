@@ -1,0 +1,22 @@
+<div class="page-heading">
+  <div><h2>Kalendarz imienin</h2><p>Najbliższe imieniny osób w bazie (30 dni).</p></div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Osoba</th><th>Data</th><th>Za ile dni</th></tr></thead>
+      <tbody>
+        @for (item of nameDays(); track item.personId) {
+          <tr>
+            <td>{{ item.fullName }}</td>
+            <td>{{ item.nameDayDay }}.{{ item.nameDayMonth }}</td>
+            <td>{{ item.daysUntil === 0 ? 'dziś' : item.daysUntil }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="3" class="empty">Brak zbliżających się imienin.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

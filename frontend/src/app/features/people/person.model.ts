@@ -9,6 +9,8 @@ export interface Person {
   parishId: string | null;
   parishName: string | null;
   notes: string | null;
+  nameDayMonth: number | null;
+  nameDayDay: number | null;
 }
 
 export interface PagedResult<T> {
@@ -26,4 +28,6 @@ export interface PersonFormValue {
   birthDate?: string;
   parishId?: string;
   notes?: string;
+  nameDayMonth?: number;
+  nameDayDay?: number;
 }
