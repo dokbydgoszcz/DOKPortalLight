@@ -1,0 +1,53 @@
+@if (open) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Nowy podopieczny DOK</h3>
+        <button class="close" (click)="cancel.emit()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>Osoba</label>
+            <select [(ngModel)]="value.personId" name="personId">
+              @for (person of people; track person.id) {
+                <option [value]="person.id">{{ person.fullName }}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label>Ścieżka</label>
+            <select [(ngModel)]="value.path" name="path">
+              <option value="BaptismCandidate">Kandydaci do Chrztu</option>
+              <option value="Confirmation">Bierzmowanie</option>
+              <option value="Communion">Stół Pański</option>
+              <option value="Conversion">Konwersja</option>
+              <option value="ReturnToUnity">Powrót do Jedności</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Etap</label>
+            <select [(ngModel)]="value.stage" name="stage">
+              <option value="Application">Zgłoszenie</option>
+              <option value="Formation">Formacja</option>
+              <option value="Sacrament">Sakrament</option>
+              <option value="Graduate">Absolwent</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Katechista prowadzący</label>
+            <select [(ngModel)]="value.catechistPersonId" name="catechistPersonId">
+              @for (person of people; track person.id) {
+                <option [value]="person.id">{{ person.fullName }}</option>
+              }
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="cancel.emit()">Anuluj</button>
+        <button class="btn primary" (click)="submit()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}

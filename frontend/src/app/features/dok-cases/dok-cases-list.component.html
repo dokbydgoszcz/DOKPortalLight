@@ -1,0 +1,39 @@
+<div class="page-heading">
+  <div><h2>Podopieczni DOK</h2><p>Pięć ścieżek formacyjnych i indywidualny obieg dokumentów.</p></div>
+  <button class="btn primary" (click)="openAddForm()">＋ Nowy podopieczny</button>
+</div>
+
+<div class="grid stats">
+  <div class="card stat"><div class="stat-label">Katechumeni</div><div class="stat-value">{{ baptismCount() }}</div></div>
+  <div class="card stat"><div class="stat-label">Bierzmowanie</div><div class="stat-value">{{ confirmationCount() }}</div></div>
+  <div class="card stat"><div class="stat-label">Konwersja / Rekonsyliacja</div><div class="stat-value">{{ conversionCount() }}</div></div>
+  <div class="card stat"><div class="stat-label">Stół Pański</div><div class="stat-value">{{ communionCount() }}</div></div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Podopieczny</th><th>Ścieżka</th><th>Etap</th><th>Katechista</th><th>Parafia</th></tr></thead>
+      <tbody>
+        @for (dokCase of cases(); track dokCase.id) {
+          <tr>
+            <td><b>{{ dokCase.personFullName }}</b></td>
+            <td>{{ pathLabel(dokCase.path) }}</td>
+            <td><span class="pill blue">{{ dokCase.stage }}</span></td>
+            <td>{{ dokCase.catechistFullName }}</td>
+            <td>{{ dokCase.parishName }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5" class="empty">Brak podopiecznych.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<app-dok-case-form
+  [open]="isFormOpen()"
+  [value]="formValue"
+  (save)="onSave($event)"
+  (cancel)="onCancel()">
+</app-dok-case-form>
