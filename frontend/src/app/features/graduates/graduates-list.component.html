@@ -1,0 +1,24 @@
+<div class="page-heading">
+  <div><h2>Absolwenci DOK — „Pragnę Więcej"</h2><p>Osoby, które ukończyły formację.</p></div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Osoba</th><th>Ukończona ścieżka</th><th>Data ukończenia</th><th>Parafia</th><th>Opiekun grupy</th></tr></thead>
+      <tbody>
+        @for (graduate of graduates(); track graduate.id) {
+          <tr>
+            <td><b>{{ graduate.personFullName }}</b></td>
+            <td>{{ graduate.path }}</td>
+            <td>{{ graduate.completedAtUtc }}</td>
+            <td>{{ graduate.parishName }}</td>
+            <td>{{ graduate.mentorFullName }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5" class="empty">Brak absolwentów.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

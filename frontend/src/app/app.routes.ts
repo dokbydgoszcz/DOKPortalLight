@@ -51,6 +51,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/supervisions/supervisions-list.component').then(m => m.SupervisionsListComponent)
       },
       {
+        path: 'graduates',
+        loadComponent: () => import('./features/graduates/graduates-list.component').then(m => m.GraduatesListComponent)
+      },
+      {
         path: 'admin/users',
         loadComponent: () => import('./features/admin-users/users-list.component').then(m => m.UsersListComponent)
       }

@@ -16,5 +16,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Podopieczni DOK', icon: '◍', path: '/dok-cases', roles: ['Administrator', 'DyrektorDOK', 'Superwizor', 'KatechistaProwadzacy', 'Biskup'] },
   { label: 'Harmonogram i obecności', icon: '▦', path: '/meetings', roles: ['Administrator', 'DyrektorDOK', 'KatechistaProwadzacy'] },
   { label: 'Superwizje', icon: '◌', path: '/supervisions', roles: ['Administrator', 'DyrektorDOK', 'DyrektorSKSP', 'Superwizor'] },
+  { label: 'Absolwenci', icon: '✓', path: '/graduates', roles: ['Administrator', 'DyrektorDOK'] },
   { label: 'Użytkownicy i role', icon: '⚙', path: '/admin/users', roles: ['Administrator'] }
 ];
