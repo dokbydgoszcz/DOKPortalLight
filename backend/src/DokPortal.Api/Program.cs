@@ -1,7 +1,12 @@
+using DokPortal.Application.Auth;
+using DokPortal.Infrastructure.Auth;
 using DokPortal.Infrastructure.Identity;
 using DokPortal.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,7 +26,26 @@ builder.Services
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>();
 
-builder.Services.AddAuthentication();
+var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
+    ?? throw new InvalidOperationException("Missing Jwt configuration section.");
+builder.Services.AddSingleton(jwtOptions);
+builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtOptions.Issuer,
+            ValidAudience = jwtOptions.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
+            RoleClaimType = "role"
+        };
+    });
 builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
