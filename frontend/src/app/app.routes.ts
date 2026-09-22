@@ -73,6 +73,10 @@ export const routes: Routes = [
       {
         path: 'admin/users',
         loadComponent: () => import('./features/admin-users/users-list.component').then(m => m.UsersListComponent)
+      },
+      {
+        path: 'audit-log',
+        loadComponent: () => import('./features/audit-log/audit-log.component').then(m => m.AuditLogComponent)
       }
     ]
   },

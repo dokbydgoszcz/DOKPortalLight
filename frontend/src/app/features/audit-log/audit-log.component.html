@@ -1,0 +1,31 @@
+<div class="page-heading">
+  <div><h2>Audit log</h2><p>Dostęp do notatek duszpasterskich i zmiany ról użytkowników.</p></div>
+  <button class="btn ghost" (click)="exportCsv()">Eksportuj CSV</button>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Data</th><th>Użytkownik</th><th>Akcja</th><th>Obiekt</th><th>Wynik</th></tr></thead>
+      <tbody>
+        @for (entry of entries(); track entry.id) {
+          <tr>
+            <td>{{ entry.timestampUtc }}</td>
+            <td>{{ entry.userEmail }}</td>
+            <td>{{ entry.action }}</td>
+            <td>{{ entry.objectDescription }}</td>
+            <td>
+              @if (entry.result === 'Blocked') {
+                <span class="pill red">Zablokowano</span>
+              } @else {
+                <span class="pill green">Dozwolono</span>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5" class="empty">Brak wpisów.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
