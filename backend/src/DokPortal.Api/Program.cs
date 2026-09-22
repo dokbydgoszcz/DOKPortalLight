@@ -5,6 +5,7 @@ using DokPortal.Application.Candidates;
 using DokPortal.Application.Dashboard;
 using DokPortal.Application.Meetings;
 using DokPortal.Application.DokCases;
+using DokPortal.Application.Documents;
 using DokPortal.Application.Formators;
 using DokPortal.Application.Missions;
 using DokPortal.Application.NameDays;
@@ -64,6 +65,7 @@ builder.Services.AddScoped<IPastoralNoteService, PastoralNoteService>();
 builder.Services.AddScoped<IMeetingService, MeetingService>();
 builder.Services.AddScoped<ISupervisionService, SupervisionService>();
 builder.Services.AddScoped<INameDayService, NameDayService>();
+builder.Services.AddScoped<IDocumentService, DocumentService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
