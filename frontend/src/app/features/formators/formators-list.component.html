@@ -1,0 +1,52 @@
+<div class="page-heading">
+  <div><h2>Formatorzy SKŚP</h2><p>Biskup, wikariusz, referent, wykładowcy i moderatorzy.</p></div>
+  <button class="btn primary" (click)="openAddForm()">＋ Dodaj formatora</button>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Osoba</th><th>Funkcja</th><th>E-mail</th><th>Telefon</th></tr></thead>
+      <tbody>
+        @for (formator of formators(); track formator.id) {
+          <tr>
+            <td><b>{{ formator.personFullName }}</b></td>
+            <td>{{ formator.function }}</td>
+            <td>{{ formator.personEmail }}</td>
+            <td>{{ formator.personPhone }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="4" class="empty">Brak formatorów.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (isFormOpen()) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Dodaj formatora</h3>
+        <button class="close" (click)="onCancel()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>Osoba</label>
+            <select [(ngModel)]="formValue.personId" name="personId">
+              @for (person of people; track person.id) {
+                <option [value]="person.id">{{ person.fullName }}</option>
+              }
+            </select>
+          </div>
+          <div class="field"><label>Funkcja</label><input [(ngModel)]="formValue.function" name="function" /></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="onCancel()">Anuluj</button>
+        <button class="btn primary" (click)="onSave()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}
