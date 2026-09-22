@@ -1,0 +1,28 @@
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">SK</div>
+      <div><b>DOK Portal Light</b><span>Diecezja</span></div>
+    </div>
+    <div class="nav-title">Menu</div>
+    @for (item of visibleNavItems(); track item.path) {
+      <a class="nav-item" [routerLink]="item.path" routerLinkActive="active">
+        <span class="nav-ico">{{ item.icon }}</span> {{ item.label }}
+      </a>
+    }
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="top-left"><div class="page-title">DOK Portal Light</div></div>
+      <div class="top-actions">
+        @for (role of auth.roles(); track role) {
+          <span class="pill blue">{{ role }}</span>
+        }
+        <button class="btn ghost small" (click)="logout()">Wyloguj</button>
+      </div>
+    </header>
+    <div class="content">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>
