@@ -1,0 +1,62 @@
+<div class="page-heading">
+  <div><h2>Budżet DOK</h2><p>Dedykowana ewidencja przychodów i wydatków Ośrodka.</p></div>
+  <button class="btn primary" (click)="openAddForm()">＋ Dodaj operację</button>
+</div>
+
+<div class="finance-grid">
+  <div class="card stat"><div class="stat-label">Przychody</div><div class="amount">{{ totalIncome() }} zł</div></div>
+  <div class="card stat"><div class="stat-label">Wydatki</div><div class="amount">{{ totalExpense() }} zł</div></div>
+  <div class="card stat"><div class="stat-label">Saldo</div><div class="amount" [style.color]="balance() >= 0 ? 'var(--success)' : 'var(--danger)'">{{ balance() }} zł</div></div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Data</th><th>Opis</th><th>Kategoria</th><th>Kwota</th></tr></thead>
+      <tbody>
+        @for (entry of entries(); track entry.id) {
+          <tr>
+            <td>{{ entry.entryDate }}</td>
+            <td>{{ entry.description }}</td>
+            <td>{{ entry.category }}</td>
+            <td [style.color]="entry.type === 'Income' ? 'var(--success)' : 'inherit'">
+              {{ entry.type === 'Income' ? '+' : '-' }} {{ entry.amount }} zł
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="4" class="empty">Brak operacji.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (isFormOpen()) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Nowa operacja</h3>
+        <button class="close" (click)="cancel()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Data</label><input type="date" [(ngModel)]="newEntry.entryDate" name="entryDate" /></div>
+          <div class="field">
+            <label>Typ</label>
+            <select [(ngModel)]="newEntry.type" name="type">
+              <option value="Income">Przychód</option>
+              <option value="Expense">Wydatek</option>
+            </select>
+          </div>
+          <div class="field"><label>Opis</label><input [(ngModel)]="newEntry.description" name="description" /></div>
+          <div class="field"><label>Kategoria</label><input [(ngModel)]="newEntry.category" name="category" /></div>
+          <div class="field"><label>Kwota</label><input type="number" [(ngModel)]="newEntry.amount" name="amount" /></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="cancel()">Anuluj</button>
+        <button class="btn primary" (click)="createEntry()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}
