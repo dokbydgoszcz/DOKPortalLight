@@ -35,6 +35,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/parish-board/parish-board.component').then(m => m.ParishBoardComponent)
       },
       {
+        path: 'budget/sksp',
+        loadComponent: () => import('./features/budget/budget.component').then(m => m.BudgetComponent)
+      },
+      {
         path: 'admin/users',
         loadComponent: () => import('./features/admin-users/users-list.component').then(m => m.UsersListComponent)
       }
