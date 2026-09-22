@@ -1,6 +1,7 @@
 using DokPortal.Application.Auth;
 using DokPortal.Application.Candidates;
 using DokPortal.Application.Dashboard;
+using DokPortal.Application.Missions;
 using DokPortal.Application.Parishes;
 using DokPortal.Application.People;
 using DokPortal.Application.Users;
@@ -42,6 +43,7 @@ builder.Services.AddScoped<IParishService, ParishService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ICandidateService, CandidateService>();
+builder.Services.AddScoped<IMissionService, MissionService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
