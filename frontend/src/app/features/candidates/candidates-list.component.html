@@ -1,0 +1,46 @@
+<div class="page-heading">
+  <div><h2>Kandydaci SKŚP</h2><p>Osoby zapisane do Szkoły Katechistów.</p></div>
+  <button class="btn primary" (click)="openAddForm()">＋ Nowy kandydat</button>
+</div>
+
+<div class="grid stats">
+  <div class="card stat"><div class="stat-label">I ROK</div><div class="stat-value">{{ yearOneCount() }}</div></div>
+  <div class="card stat"><div class="stat-label">II ROK</div><div class="stat-value">{{ yearTwoCount() }}</div></div>
+  <div class="card stat"><div class="stat-label">III ROK</div><div class="stat-value">{{ yearThreeCount() }}</div></div>
+  <div class="card stat"><div class="stat-label">Brakujące opinie</div><div class="stat-value">{{ missingOpinionsCount() }}</div></div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Kandydat</th><th>Rok</th><th>Parafia</th><th>Frekwencja</th><th>Opinie</th><th>Rekolekcje</th></tr></thead>
+      <tbody>
+        @for (candidate of candidates(); track candidate.id) {
+          <tr>
+            <td><b>{{ candidate.personFullName }}</b></td>
+            <td><span class="pill blue">{{ candidate.year }} ROK</span></td>
+            <td>{{ candidate.parishName }}</td>
+            <td>{{ candidate.attendancePercentage }}%</td>
+            <td>{{ candidate.opinionsCollected }} / {{ candidate.opinionsRequired }}</td>
+            <td>
+              @if (candidate.isRetreatCompleted) {
+                <span class="pill green">✓ zaliczone</span>
+              } @else {
+                <span class="pill gold">oczekuje</span>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="6" class="empty">Brak kandydatów.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<app-candidate-form
+  [open]="isFormOpen()"
+  [value]="formValue"
+  (save)="onSave($event)"
+  (cancel)="onCancel()">
+</app-candidate-form>

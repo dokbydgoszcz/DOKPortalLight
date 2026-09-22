@@ -1,0 +1,43 @@
+@if (open) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Nowy kandydat SKŚP</h3>
+        <button class="close" (click)="cancel.emit()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>Osoba</label>
+            <select [(ngModel)]="value.personId" name="personId">
+              @for (person of people; track person.id) {
+                <option [value]="person.id">{{ person.fullName }}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label>Rok formacji</label>
+            <select [(ngModel)]="value.year" name="year">
+              <option [ngValue]="1">I ROK</option>
+              <option [ngValue]="2">II ROK</option>
+              <option [ngValue]="3">III ROK</option>
+            </select>
+          </div>
+          <div class="field"><label>Frekwencja (%)</label><input type="number" [(ngModel)]="value.attendancePercentage" name="attendancePercentage" /></div>
+          <div class="field"><label>Liczba opinii</label><input type="number" [(ngModel)]="value.opinionsCollected" name="opinionsCollected" /></div>
+          <div class="field">
+            <label>Rekolekcje</label>
+            <select [(ngModel)]="value.isRetreatCompleted" name="isRetreatCompleted">
+              <option [ngValue]="false">oczekuje</option>
+              <option [ngValue]="true">zaliczone</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="cancel.emit()">Anuluj</button>
+        <button class="btn primary" (click)="submit()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}
