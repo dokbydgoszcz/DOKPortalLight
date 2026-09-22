@@ -1,0 +1,23 @@
+<div class="hero">
+  <div>
+    <h1>Dzień dobry 👋</h1>
+    <p>Wspólne centrum obsługi Szkoły Katechistów św. Pawła i Diecezjalnego Ośrodka Katechumenalnego.</p>
+  </div>
+</div>
+
+<div class="grid stats">
+  <div class="card stat">
+    <div class="stat-label">Osoby w bazie</div>
+    <div class="stat-value">{{ summary()?.peopleCount ?? '—' }}</div>
+  </div>
+  <div class="card stat">
+    <div class="stat-label">Parafie</div>
+    <div class="stat-value">{{ summary()?.parishCount ?? '—' }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body empty">
+    Statystyki SKŚP, DOK oraz sprawy wymagające uwagi pojawią się po wdrożeniu kolejnych faz.
+  </div>
+</div>
