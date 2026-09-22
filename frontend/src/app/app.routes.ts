@@ -31,6 +31,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/formators/formators-list.component').then(m => m.FormatorsListComponent)
       },
       {
+        path: 'parish-board',
+        loadComponent: () => import('./features/parish-board/parish-board.component').then(m => m.ParishBoardComponent)
+      },
+      {
         path: 'admin/users',
         loadComponent: () => import('./features/admin-users/users-list.component').then(m => m.UsersListComponent)
       }

@@ -1,0 +1,79 @@
+<div class="page-heading">
+  <div><h2>Parafie i giełda posługi</h2><p>Potrzeby parafii i ręczne skierowanie katechisty.</p></div>
+  <button class="btn primary" (click)="openAddForm()">＋ Nowe zapotrzebowanie</button>
+</div>
+
+<div class="card">
+  <div class="card-body list">
+    @for (need of needs(); track need.id) {
+      <div class="list-row">
+        <div class="list-main">
+          <div class="list-title">{{ need.parishName }} — {{ need.description }}</div>
+          @if (need.assignedPersonName) {
+            <div class="list-sub">Skierowano: {{ need.assignedPersonName }}</div>
+          }
+        </div>
+        @if (need.status === 'Open') {
+          <button class="btn primary small" (click)="openAssignForm(need)">Skieruj</button>
+        } @else {
+          <span class="pill green">{{ need.status }}</span>
+        }
+      </div>
+    } @empty {
+      <div class="empty">Brak zapotrzebowań.</div>
+    }
+  </div>
+</div>
+
+@if (isAddFormOpen()) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Nowe zapotrzebowanie parafii</h3>
+        <button class="close" (click)="isAddFormOpen.set(false)">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>Parafia</label>
+            <select [(ngModel)]="newNeed.parishId" name="parishId">
+              @for (parish of parishes; track parish.id) {
+                <option [value]="parish.id">{{ parish.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="field full"><label>Opis potrzeby</label><textarea [(ngModel)]="newNeed.description" name="description"></textarea></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="isAddFormOpen.set(false)">Anuluj</button>
+        <button class="btn primary" (click)="createNeed()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (assigningNeedId()) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Skieruj katechistę</h3>
+        <button class="close" (click)="cancelAssign()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>Osoba</label>
+          <select [(ngModel)]="assignPersonId" name="assignPersonId">
+            @for (person of people; track person.id) {
+              <option [value]="person.id">{{ person.fullName }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="cancelAssign()">Anuluj</button>
+        <button class="btn primary" (click)="confirmAssign()">Skieruj</button>
+      </div>
+    </div>
+  </div>
+}
