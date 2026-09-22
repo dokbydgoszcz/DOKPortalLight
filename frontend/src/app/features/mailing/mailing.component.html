@@ -1,0 +1,64 @@
+<div class="page-heading">
+  <div><h2>Mailing</h2><p>Rejestr kampanii do grup odbiorców (bez wysyłki e-mail).</p></div>
+  <button class="btn primary" (click)="openAddForm()">＋ Nowa kampania</button>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Temat</th><th>Grupa</th><th>Odbiorcy</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        @for (campaign of campaigns(); track campaign.id) {
+          <tr>
+            <td>{{ campaign.subject }}</td>
+            <td>{{ groupLabels[campaign.group] }}</td>
+            <td>{{ campaign.recipientCount }}</td>
+            <td>
+              @if (campaign.status === 'Sent') {
+                <span class="pill green">Wysłano</span>
+              } @else {
+                <span class="pill">Szkic</span>
+              }
+            </td>
+            <td>
+              @if (campaign.status === 'Draft') {
+                <button class="btn primary small" (click)="sendCampaign(campaign)">Wyślij</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5" class="empty">Brak kampanii.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (isFormOpen()) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Nowa kampania</h3>
+        <button class="close" (click)="cancel()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Temat</label><input [(ngModel)]="newCampaign.subject" name="subject" /></div>
+          <div class="field">
+            <label>Grupa odbiorców</label>
+            <select [(ngModel)]="newCampaign.group" name="group">
+              @for (group of groups; track group) {
+                <option [value]="group">{{ groupLabels[group] }}</option>
+              }
+            </select>
+          </div>
+          <div class="field full"><label>Treść</label><textarea [(ngModel)]="newCampaign.body" name="body"></textarea></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="cancel()">Anuluj</button>
+        <button class="btn primary" (click)="createCampaign()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}

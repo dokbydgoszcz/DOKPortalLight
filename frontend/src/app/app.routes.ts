@@ -27,6 +27,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/documents/documents.component').then(m => m.DocumentsComponent)
       },
       {
+        path: 'mailing',
+        loadComponent: () => import('./features/mailing/mailing.component').then(m => m.MailingComponent)
+      },
+      {
         path: 'candidates',
         loadComponent: () => import('./features/candidates/candidates-list.component').then(m => m.CandidatesListComponent)
       },

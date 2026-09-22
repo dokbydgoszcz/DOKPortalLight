@@ -10,6 +10,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Baza osób', icon: '◎', path: '/people', roles: [] },
   { label: 'Kalendarz imienin', icon: '✿', path: '/name-days', roles: [] },
   { label: 'Dokumenty i pisma', icon: '✎', path: '/documents', roles: ['Administrator', 'DyrektorSKSP', 'DyrektorDOK'] },
+  { label: 'Mailing', icon: '✉', path: '/mailing', roles: ['Administrator', 'DyrektorSKSP', 'DyrektorDOK'] },
   { label: 'Kandydaci SKŚP', icon: '◉', path: '/candidates', roles: ['Administrator', 'DyrektorSKSP'] },
   { label: 'Katechiści posłani', icon: '✦', path: '/missions', roles: ['Administrator', 'DyrektorSKSP', 'Biskup'] },
   { label: 'Formatorzy', icon: '♙', path: '/formators', roles: ['Administrator', 'DyrektorSKSP'] },
