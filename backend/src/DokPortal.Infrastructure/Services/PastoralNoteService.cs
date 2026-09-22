@@ -35,6 +35,9 @@ public class PastoralNoteService : IPastoralNoteService
         return ToDto(note);
     }
 
+    public Task<bool> HasNotesFromOthersAsync(Guid caseId, string currentUserId, CancellationToken ct) =>
+        _db.PastoralNotes.AnyAsync(n => n.DokCaseId == caseId && n.AuthorUserId != currentUserId, ct);
+
     private static PastoralNoteDto ToDto(PastoralNote n) => new()
     {
         Id = n.Id,

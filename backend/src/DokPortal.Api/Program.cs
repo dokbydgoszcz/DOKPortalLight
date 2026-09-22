@@ -1,4 +1,5 @@
 using DokPortal.Application.Auth;
+using DokPortal.Application.AuditLog;
 using DokPortal.Application.Budget;
 using DokPortal.Application.CaseDocuments;
 using DokPortal.Application.Candidates;
@@ -68,6 +69,7 @@ builder.Services.AddScoped<ISupervisionService, SupervisionService>();
 builder.Services.AddScoped<INameDayService, NameDayService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IMailingService, MailingService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

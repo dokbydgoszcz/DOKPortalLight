@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using DokPortal.Application.AuditLog;
 using DokPortal.Application.Users;
 using DokPortal.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
@@ -11,8 +13,13 @@ namespace DokPortal.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IAuditLogService _auditLogService;
 
-    public UsersController(IUserService userService) => _userService = userService;
+    public UsersController(IUserService userService, IAuditLogService auditLogService)
+    {
+        _userService = userService;
+        _auditLogService = auditLogService;
+    }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<UserDto>>> List(CancellationToken ct)
@@ -29,6 +36,12 @@ public class UsersController : ControllerBase
     public async Task<ActionResult<UserDto>> AssignRoles(string id, AssignRolesRequest request, CancellationToken ct)
     {
         var updated = await _userService.AssignRolesAsync(id, request.Roles, ct);
-        return updated is null ? NotFound() : Ok(updated);
+        if (updated is null) return NotFound();
+
+        var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
+        var currentUserEmail = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Email).Value;
+        await _auditLogService.LogAsync(currentUserId, currentUserEmail, "AssignUserRoles", updated.Email, DokPortal.Domain.Enums.AuditResult.Allowed, ct);
+
+        return Ok(updated);
     }
 }
