@@ -270,8 +270,10 @@ dotnet add src/DokPortal.Api package Microsoft.EntityFrameworkCore.Design --vers
 `backend/tests/DokPortal.Api.IntegrationTests/CustomWebApplicationFactory.cs`:
 
 ```csharp
+using DokPortal.Domain.Constants;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -304,6 +306,15 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
             using var scope = services.BuildServiceProvider().CreateScope();
             scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreated();
+
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+            foreach (var role in AppRoles.All)
+            {
+                if (!roleManager.RoleExistsAsync(role).GetAwaiter().GetResult())
+                {
+                    roleManager.CreateAsync(new IdentityRole(role)).GetAwaiter().GetResult();
+                }
+            }
         });
     }
 
@@ -970,6 +981,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 ```
+
+**Deviation found during execution (Task 8):** `UserService.AssignRolesAsync` calls `UserManager.AddToRolesAsync` with roles that must already exist in the `AspNetRoles` table — true in production because `DbSeeder` always creates all six `AppRoles.All` at real startup, but the Testing environment skips `DbSeeder` entirely, so a test assigning a role no earlier test happened to create (e.g. `"Superwizor"`) throws `InvalidOperationException: Role SUPERWIZOR does not exist`. Fix: `CustomWebApplicationFactory` (Task 3, above) also seeds all `AppRoles.All` right after `EnsureCreated()`, mirroring what `DbSeeder` does in production so every test starts with the full role set already present.
 
 **Deviation found during execution (Task 6):** with only `RoleClaimType = "role"` set, `[Authorize(Roles = ...)]` rejected every authenticated user, including ones with the right role. `JwtBearerHandler` maps short inbound claim types (like `"role"`) to their long `ClaimTypes` URIs by default before `RoleClaimType` is even consulted, so the resulting principal never has a claim literally typed `"role"`. Fix: also set `options.MapInboundClaims = false;` right before `options.TokenValidationParameters = ...` in the `AddJwtBearer` call above.
 
