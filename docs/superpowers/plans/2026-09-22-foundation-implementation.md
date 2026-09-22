@@ -4037,6 +4037,8 @@ git commit -m "Add deploy workflow and setup/deployment README"
 
 ---
 
+**Deviation found during manual verification:** plain `dotnet run --project src/DokPortal.Api` (no `--launch-profile`) uses the *first* profile in the Api project's generated `Properties/launchSettings.json`, which is `"http"` at `http://localhost:5227` — not `https://localhost:5001` as originally assumed. `environment.development.ts` and the README were updated to `http://localhost:5227` to actually match what `dotnet run` starts by default, confirmed by an end-to-end manual smoke test (login → dashboard real counts → add/edit/search a person → admin users list → logout → route guard blocks re-entry) run against both dev servers together.
+
 ## Self-Review Notes
 
 - **Spec coverage:** repo/CI (Tasks 1, 10, 17, 18), Azure SQL + EF Core migrations (Tasks 3, 5), RBAC with multi-role Identity users (Tasks 3–5, 8), shared Person registry (Tasks 2, 6), Angular shell mirroring the prototype minus the manual role switcher (Tasks 11, 14), Dashboard + Baza osób with real data only (Tasks 15, 16), Users admin panel (Task 8, 17), deploy workflow + required-secrets documentation (Task 18) — all Phase 1 goals from the spec map to a task.

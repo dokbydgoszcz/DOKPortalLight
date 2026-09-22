@@ -37,7 +37,7 @@ npm install
 npm start
 ```
 
-Aplikacja domyślnie łączy się z `https://localhost:5001` (patrz
+Aplikacja domyślnie łączy się z `http://localhost:5227` (patrz
 `src/environments/environment.development.ts`) — dopasuj do portu, na
 którym faktycznie działa lokalne API.
 
