@@ -2752,7 +2752,10 @@ export class SupervisionsService {
   constructor(private readonly http: HttpClient) {}
 
   list(institution?: Institution) {
-    const params = institution ? { institution } : {};
+    const params: Record<string, string> = {};
+    if (institution) {
+      params['institution'] = institution;
+    }
     return this.http.get<Supervision[]>(this.baseUrl, { params });
   }
 

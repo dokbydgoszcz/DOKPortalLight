@@ -1,0 +1,49 @@
+<div class="page-heading">
+  <div><h2>Superwizje</h2><p>Frekwencja, tematyka i wnioski — wspólne dla SKŚP i DOK.</p></div>
+  <button class="btn primary" (click)="openAddForm()">＋ Nowa superwizja</button>
+</div>
+
+<div class="card">
+  <div class="card-body list">
+    @for (supervision of supervisions(); track supervision.id) {
+      <div class="list-row">
+        <div class="list-main">
+          <div class="list-title">{{ supervision.groupLabel }} — {{ supervision.supervisionDate }}</div>
+          <div class="list-sub">{{ supervision.institution }} @if (supervision.attendeesCount !== null) { • {{ supervision.attendeesCount }}/{{ supervision.expectedCount }} obecnych }</div>
+        </div>
+      </div>
+    } @empty {
+      <div class="empty">Brak superwizji.</div>
+    }
+  </div>
+</div>
+
+@if (isFormOpen()) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Nowa superwizja</h3>
+        <button class="close" (click)="cancel()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>Instytucja</label>
+            <select [(ngModel)]="newSupervision.institution" name="institution">
+              <option value="DOK">DOK</option>
+              <option value="SKSP">SKŚP</option>
+            </select>
+          </div>
+          <div class="field"><label>Grupa</label><input [(ngModel)]="newSupervision.groupLabel" name="groupLabel" /></div>
+          <div class="field"><label>Data</label><input type="date" [(ngModel)]="newSupervision.supervisionDate" name="supervisionDate" /></div>
+          <div class="field full"><label>Tematyka</label><textarea [(ngModel)]="newSupervision.topic" name="topic"></textarea></div>
+          <div class="field full"><label>Wnioski</label><textarea [(ngModel)]="newSupervision.conclusion" name="conclusion"></textarea></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="cancel()">Anuluj</button>
+        <button class="btn primary" (click)="createSupervision()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}
