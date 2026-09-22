@@ -10,6 +10,7 @@ using DokPortal.Application.Missions;
 using DokPortal.Application.ParishNeeds;
 using DokPortal.Application.Parishes;
 using DokPortal.Application.PastoralNotes;
+using DokPortal.Application.Supervisions;
 using DokPortal.Application.People;
 using DokPortal.Application.Users;
 using DokPortal.Infrastructure.Auth;
@@ -60,6 +61,7 @@ builder.Services.AddScoped<IDokCaseService, DokCaseService>();
 builder.Services.AddScoped<ICaseDocumentService, CaseDocumentService>();
 builder.Services.AddScoped<IPastoralNoteService, PastoralNoteService>();
 builder.Services.AddScoped<IMeetingService, MeetingService>();
+builder.Services.AddScoped<ISupervisionService, SupervisionService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
