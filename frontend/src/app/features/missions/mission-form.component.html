@@ -1,0 +1,32 @@
+@if (open) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Nowa misja kanoniczna</h3>
+        <button class="close" (click)="cancel.emit()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>Katechista</label>
+            <select [(ngModel)]="value.personId" name="personId">
+              @for (person of people; track person.id) {
+                <option [value]="person.id">{{ person.fullName }}</option>
+              }
+            </select>
+          </div>
+          <div class="field"><label>Parafia / miejsce posługi</label><input [(ngModel)]="value.servicePlace" name="servicePlace" /></div>
+          <div class="field"><label>Data od</label><input type="date" [(ngModel)]="value.missionStartDate" name="missionStartDate" /></div>
+          <div class="field"><label>Data do</label><input type="date" [(ngModel)]="value.missionEndDate" name="missionEndDate" /></div>
+          <div class="field"><label>Data udzielenia</label><input type="date" [(ngModel)]="value.grantedDate" name="grantedDate" /></div>
+          <div class="field"><label>Miejsce udzielenia</label><input [(ngModel)]="value.grantedPlace" name="grantedPlace" /></div>
+          <div class="field"><label>Grupa superwizyjna</label><input [(ngModel)]="value.supervisionGroup" name="supervisionGroup" /></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="cancel.emit()">Anuluj</button>
+        <button class="btn primary" (click)="submit()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}

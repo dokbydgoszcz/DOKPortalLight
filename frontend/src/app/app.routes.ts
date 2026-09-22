@@ -23,6 +23,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/candidates/candidates-list.component').then(m => m.CandidatesListComponent)
       },
       {
+        path: 'missions',
+        loadComponent: () => import('./features/missions/missions-list.component').then(m => m.MissionsListComponent)
+      },
+      {
         path: 'admin/users',
         loadComponent: () => import('./features/admin-users/users-list.component').then(m => m.UsersListComponent)
       }
