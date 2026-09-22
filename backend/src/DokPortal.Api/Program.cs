@@ -2,6 +2,7 @@ using DokPortal.Application.Auth;
 using DokPortal.Application.Budget;
 using DokPortal.Application.Candidates;
 using DokPortal.Application.Dashboard;
+using DokPortal.Application.DokCases;
 using DokPortal.Application.Formators;
 using DokPortal.Application.Missions;
 using DokPortal.Application.ParishNeeds;
@@ -52,6 +53,7 @@ builder.Services.AddScoped<IMissionService, MissionService>();
 builder.Services.AddScoped<IFormatorService, FormatorService>();
 builder.Services.AddScoped<IParishNeedService, ParishNeedService>();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
+builder.Services.AddScoped<IDokCaseService, DokCaseService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

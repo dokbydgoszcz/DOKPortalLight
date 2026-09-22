@@ -345,6 +345,8 @@ git commit -m "Add DOK domain entities, enums, and EF Core migration"
 - Create: `backend/src/DokPortal.Infrastructure/Services/DokCaseService.cs`
 - Create: `backend/src/DokPortal.Api/Controllers/DokCasesController.cs`
 - Modify: `backend/src/DokPortal.Api/Program.cs`
+- Modify: `backend/tests/DokPortal.Api.IntegrationTests/IntegrationTestBase.cs` (adds the shared `EnumJsonOptions` helper — see deviation note after Step 6)
+- Modify: `backend/tests/DokPortal.Api.IntegrationTests/BudgetControllerTests.cs` (drops its now-redundant local copy in favor of the shared one)
 - Test: `backend/tests/DokPortal.Infrastructure.Tests/Services/DokCaseServiceTests.cs`
 - Test: `backend/tests/DokPortal.Api.IntegrationTests/DokCasesControllerTests.cs`
 
@@ -461,7 +463,7 @@ public class DokCasesControllerTests : IntegrationTestBase
         });
 
         createResponse.EnsureSuccessStatusCode();
-        var created = await createResponse.Content.ReadFromJsonAsync<DokCaseDto>();
+        var created = await createResponse.Content.ReadFromJsonAsync<DokCaseDto>(EnumJsonOptions);
         Assert.NotNull(created);
         Assert.Equal("Jan Kowalski", created!.PersonFullName);
 
@@ -480,7 +482,7 @@ public class DokCasesControllerTests : IntegrationTestBase
         var response = await admin.GetAsync("/api/dok-cases?path=BaptismCandidate");
 
         response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<PagedResult<DokCaseDto>>();
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<DokCaseDto>>(EnumJsonOptions);
         Assert.NotNull(result);
         Assert.Contains(result!.Items, c => c.PersonFullName == "Karolina Szymanska");
     }
@@ -755,6 +757,8 @@ In `backend/src/DokPortal.Api/Program.cs`, add `using DokPortal.Application.DokC
 builder.Services.AddScoped<IDokCaseService, DokCaseService>();
 ```
 
+**Deviation found during execution:** `DokCaseDto.Path`/`.Stage` are the first enum-typed DTO properties read back by an integration *test* (Faza 2's `BudgetControllerTests` had the same shape but worked around it locally) — `HttpContent.ReadFromJsonAsync<T>()`'s own default options don't include a `JsonStringEnumConverter` even though the *server* has one registered globally (Faza 2 Task 6), so deserializing the create/search responses failed with `JsonException: The JSON value could not be converted to DokPortal.Domain.Enums.DokPath`. Fix: added a shared `protected static readonly JsonSerializerOptions EnumJsonOptions` to `IntegrationTestBase` (built from `JsonSerializerDefaults.Web` + `JsonStringEnumConverter`, matching Faza 2's local pattern) and pass it to every `ReadFromJsonAsync` call whose target DTO has an enum property. `BudgetControllerTests` was simplified to reuse this shared field instead of its own local copy.
+
 - [ ] **Step 7: Run tests to verify they pass**
 
 Run: `dotnet test backend/DokPortal.sln`
@@ -882,7 +886,7 @@ public class CaseDocumentsControllerTests : IntegrationTestBase
         {
             PersonId = person!.Id, Path = "Confirmation", Stage = "Formation", CatechistPersonId = catechist!.Id
         });
-        var dokCase = await caseResponse.Content.ReadFromJsonAsync<DokCaseDto>();
+        var dokCase = await caseResponse.Content.ReadFromJsonAsync<DokCaseDto>(EnumJsonOptions);
 
         var createResponse = await admin.PostAsJsonAsync($"/api/dok-cases/{dokCase!.Id}/documents", new { Name = "Metryka chrztu" });
         createResponse.EnsureSuccessStatusCode();
@@ -1185,7 +1189,7 @@ public class PastoralNotesControllerTests : IntegrationTestBase
         {
             PersonId = person!.Id, Path = "Confirmation", Stage = "Formation", CatechistPersonId = catechist!.Id
         });
-        var dokCase = await caseResponse.Content.ReadFromJsonAsync<DokCaseDto>();
+        var dokCase = await caseResponse.Content.ReadFromJsonAsync<DokCaseDto>(EnumJsonOptions);
         return dokCase!.Id;
     }
 
@@ -1761,7 +1765,7 @@ public class SupervisionsControllerTests : IntegrationTestBase
 
         var getResponse = await admin.GetAsync("/api/supervisions?institution=DOK");
         getResponse.EnsureSuccessStatusCode();
-        var supervisions = await getResponse.Content.ReadFromJsonAsync<List<SupervisionDto>>();
+        var supervisions = await getResponse.Content.ReadFromJsonAsync<List<SupervisionDto>>(EnumJsonOptions);
         Assert.Contains(supervisions!, s => s.GroupLabel == "Grupa A");
     }
 }

@@ -1,5 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using DokPortal.Application.Auth;
 using DokPortal.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -10,6 +12,17 @@ namespace DokPortal.Api.IntegrationTests;
 
 public abstract class IntegrationTestBase : IClassFixture<CustomWebApplicationFactory>, IAsyncLifetime
 {
+    /// <summary>
+    /// The server serializes enum-typed DTO properties as strings (global JsonStringEnumConverter
+    /// in Program.cs), but HttpContent.ReadFromJsonAsync's own default options do not include that
+    /// converter even under JsonSerializerDefaults.Web. Any test deserializing a DTO with an enum
+    /// property (DokCaseDto.Path, SupervisionDto.Institution, ...) must pass this explicitly.
+    /// </summary>
+    protected static readonly JsonSerializerOptions EnumJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     protected readonly CustomWebApplicationFactory Factory;
     protected HttpClient Client = null!;
 

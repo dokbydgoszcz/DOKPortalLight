@@ -1,6 +1,4 @@
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using DokPortal.Application.Budget;
 using Xunit;
 
@@ -8,11 +6,6 @@ namespace DokPortal.Api.IntegrationTests;
 
 public class BudgetControllerTests : IntegrationTestBase
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
-
     public BudgetControllerTests(CustomWebApplicationFactory factory) : base(factory)
     {
     }
@@ -31,7 +24,7 @@ public class BudgetControllerTests : IntegrationTestBase
 
         var getResponse = await admin.GetAsync("/api/budget?fund=SKSP");
         getResponse.EnsureSuccessStatusCode();
-        var entries = await getResponse.Content.ReadFromJsonAsync<List<BudgetEntryDto>>(JsonOptions);
+        var entries = await getResponse.Content.ReadFromJsonAsync<List<BudgetEntryDto>>(EnumJsonOptions);
         Assert.Contains(entries!, e => e.Description == "Materiały formacyjne");
     }
 }
