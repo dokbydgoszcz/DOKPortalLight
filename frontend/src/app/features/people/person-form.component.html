@@ -1,0 +1,23 @@
+@if (open) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Dodaj / edytuj osobę</h3>
+        <button class="close" (click)="cancel.emit()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Imię</label><input [(ngModel)]="value.firstName" name="firstName" /></div>
+          <div class="field"><label>Nazwisko</label><input [(ngModel)]="value.lastName" name="lastName" /></div>
+          <div class="field"><label>E-mail</label><input [(ngModel)]="value.email" name="email" /></div>
+          <div class="field"><label>Telefon</label><input [(ngModel)]="value.phone" name="phone" /></div>
+          <div class="field full"><label>Uwagi</label><textarea [(ngModel)]="value.notes" name="notes"></textarea></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="cancel.emit()">Anuluj</button>
+        <button class="btn primary" (click)="submit()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}

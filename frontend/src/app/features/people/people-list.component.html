@@ -1,0 +1,36 @@
+<div class="page-heading">
+  <div><h2>Baza osób</h2><p>Jeden profil osoby, wiele ról i powiązań.</p></div>
+  <button class="btn primary" (click)="openAddForm()">＋ Dodaj osobę</button>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div class="search">
+      <input placeholder="Szukaj…" [value]="query()" (input)="onSearch($any($event.target).value)" />
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Osoba</th><th>Kontakt</th><th>Parafia</th><th></th></tr></thead>
+      <tbody>
+        @for (person of people(); track person.id) {
+          <tr>
+            <td><b>{{ person.fullName }}</b></td>
+            <td>{{ person.email }}<br /><span class="small-muted">{{ person.phone }}</span></td>
+            <td>{{ person.parishName }}</td>
+            <td><span class="link" (click)="openEditForm(person)">Edytuj</span></td>
+          </tr>
+        } @empty {
+          <tr><td colspan="4" class="empty">Brak wyników.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<app-person-form
+  [open]="isFormOpen()"
+  [value]="formValue"
+  (save)="onSave($event)"
+  (cancel)="onCancel()">
+</app-person-form>
