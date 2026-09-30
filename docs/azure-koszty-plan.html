@@ -1,0 +1,452 @@
+<title>Koszty Azure — DOK Portal Light</title>
+<style>
+  /* Layout: single-column report — hero context, 3 key-fact tiles, two-plan comparison table, upgrade triggers, total cost summary */
+  :root {
+    --bg: #eef2f1;
+    --surface: #ffffff;
+    --surface-2: #e4e9e8;
+    --fg: #1c2b2e;
+    --muted: #55696d;
+    --border: #d3dcda;
+    --accent: #2a6e73;
+    --accent-fg: #ffffff;
+    --good: #2f7d52;
+    --good-bg: #e3f1e9;
+    --warn: #a8681f;
+    --warn-bg: #f6ead6;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12191b;
+      --surface: #1b2528;
+      --surface-2: #22302f;
+      --fg: #e7eeec;
+      --muted: #a2b3b1;
+      --border: #2e3d3c;
+      --accent: #5fb3ae;
+      --accent-fg: #0d1a1a;
+      --good: #7fd6a3;
+      --good-bg: #1d3327;
+      --warn: #e0ab5f;
+      --warn-bg: #3a2c17;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12191b;
+    --surface: #1b2528;
+    --surface-2: #22302f;
+    --fg: #e7eeec;
+    --muted: #a2b3b1;
+    --border: #2e3d3c;
+    --accent: #5fb3ae;
+    --accent-fg: #0d1a1a;
+    --good: #7fd6a3;
+    --good-bg: #1d3327;
+    --warn: #e0ab5f;
+    --warn-bg: #3a2c17;
+    color-scheme: dark;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Public Sans', -apple-system, 'Segoe UI', sans-serif;
+    line-height: 1.55;
+  }
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: clamp(24px, 5vw, 56px) 20px 64px;
+  }
+  h1, h2, h3 { font-family: 'Lora', Georgia, serif; text-wrap: balance; margin: 0; }
+  .eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  header.page {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  h1 { font-size: clamp(1.5rem, 4vw, 2.1rem); font-weight: 700; }
+  .lede { color: var(--muted); font-size: 1rem; max-width: 62ch; }
+  .lede strong { color: var(--fg); }
+
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+  .tile.full { border-color: var(--warn); }
+  .tile.full .value { color: var(--warn); }
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 16px;
+    min-width: 0;
+  }
+  .tile .label { font-size: 0.78rem; color: var(--muted); margin-bottom: 6px; }
+  .tile .value {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(1.15rem, 3vw, 1.5rem);
+    font-weight: 600;
+  }
+  .tile .sub { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+
+  section { margin-bottom: 40px; }
+  section > h2 {
+    font-size: 1.25rem;
+    margin-bottom: 4px;
+  }
+  section > .section-sub {
+    color: var(--muted);
+    font-size: 0.92rem;
+    margin-bottom: 18px;
+    max-width: 68ch;
+  }
+
+  .plan-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  @media (max-width: 900px) {
+    .plan-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 620px) {
+    .tiles { grid-template-columns: 1fr; }
+  }
+  .plan-card.full { border-color: var(--warn); }
+  .plan-card.full .plan-total { color: var(--warn); }
+  .plan-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .plan-card.paid { border-color: var(--accent); }
+  .plan-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .plan-head h3 { font-size: 1.05rem; }
+  .plan-total {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--accent);
+  }
+  .plan-rows { display: flex; flex-direction: column; gap: 10px; }
+  .plan-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    min-width: 0;
+  }
+  .plan-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .plan-row .name { font-weight: 500; font-size: 0.92rem; }
+  .plan-row .note { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+  .plan-row .amount {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.92rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .badge.good { background: var(--good-bg); color: var(--good); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); }
+
+  .triggers {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .trigger {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .trigger .num {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    color: var(--accent);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .trigger p { margin: 0; font-size: 0.92rem; }
+  .trigger .t-title { font-weight: 600; display: block; margin-bottom: 2px; }
+
+  .callout {
+    background: var(--surface-2);
+    border-radius: 14px;
+    padding: 18px 20px;
+    font-size: 0.92rem;
+    color: var(--fg);
+  }
+  .callout .t-title { display: block; font-weight: 600; margin-bottom: 6px; }
+
+  footer.notes {
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  footer.notes ol { padding-left: 18px; margin: 8px 0 0; }
+  footer.notes li { margin-bottom: 4px; }
+  footer.notes a { color: var(--accent); }
+</style>
+
+<div class="wrap">
+
+  <header class="page">
+    <span class="eyebrow">DOK Portal Light · Plan kosztów hostingu</span>
+    <h1>Ile będzie kosztować utrzymanie portalu na Azure</h1>
+    <p class="lede">Podsumowanie dla osób niezajmujących się na co dzień IT. Aplikacja startuje <strong>bez żadnych opłat</strong> na darmowych planach Azure, a rozrasta się do najtańszych planów płatnych dopiero wtedy, gdy liczba osób korzystających z portalu realnie na to wskaże.</p>
+  </header>
+
+  <div class="tiles">
+    <div class="tile">
+      <div class="label">Start — plan darmowy</div>
+      <div class="value">0,00 zł</div>
+      <div class="sub">miesięcznie, bez limitu czasowego</div>
+    </div>
+    <div class="tile">
+      <div class="label">Po rozroście — najtańszy plan płatny</div>
+      <div class="value">~105 zł</div>
+      <div class="sub">miesięcznie za wszystkie 3 usługi</div>
+    </div>
+    <div class="tile">
+      <div class="label">Roczny koszt planu płatnego</div>
+      <div class="value">~1 260 zł</div>
+      <div class="sub">rocznie, orientacyjnie</div>
+    </div>
+    <div class="tile full">
+      <div class="label">Wariant produkcyjny</div>
+      <div class="value">~816 zł</div>
+      <div class="sub">miesięcznie, z pełnym wsparciem Microsoftu</div>
+    </div>
+    <div class="tile full">
+      <div class="label">Wariant produkcyjny — rocznie</div>
+      <div class="value">~9 800 zł</div>
+      <div class="sub">rocznie, orientacyjnie</div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Z czego składa się aplikacja</h2>
+    <p class="section-sub">Portal potrzebuje trzech osobnych usług w Azure — każda ma swój własny plan cenowy, darmowy i płatny.</p>
+    <div class="callout">
+      <span class="t-title">Trzy usługi, trzy osobne rachunki</span>
+      1. <strong>Serwer aplikacji</strong> (Azure App Service) — obsługuje logikę portalu i bazę danych w tle.<br>
+      2. <strong>Strona internetowa</strong> (Azure Static Web Apps) — to, co widzą użytkownicy w przeglądarce.<br>
+      3. <strong>Baza danych</strong> (Azure SQL Database) — przechowuje dane osób, spraw i wpisy o wygenerowanych dokumentach.<br>
+      4. <strong>Archiwum plików</strong> (Azure Blob Storage) — przechowuje same pliki PDF wygenerowanych dokumentów, żeby można było je później ponownie pobrać.
+    </div>
+  </section>
+
+  <section>
+    <h2>Porównanie trzech wariantów</h2>
+    <p class="section-sub">Wszystkie kolumny pokazują realne stawki Azure na wrzesień 2026 — źródła na dole strony. Trzecia kolumna to solidne środowisko produkcyjne z pełnym wsparciem technicznym Microsoftu.</p>
+    <div class="plan-grid">
+      <div class="plan-card">
+        <div class="plan-head">
+          <h3>Plan darmowy</h3>
+          <span class="badge good">0 zł / mies.</span>
+        </div>
+        <div class="plan-rows">
+          <div class="plan-row">
+            <div>
+              <div class="name">Serwer aplikacji — poziom F1</div>
+              <div class="note">60 minut pracy procesora dziennie; aplikacja „zasypia" po bezczynności i wolniej się wtedy uruchamia</div>
+            </div>
+            <div class="amount">0,00 zł</div>
+          </div>
+          <div class="plan-row">
+            <div>
+              <div class="name">Strona internetowa — poziom darmowy</div>
+              <div class="note">100 GB ruchu miesięcznie, własna domena z bezpiecznym certyfikatem — w zupełności wystarczy na start</div>
+            </div>
+            <div class="amount">0,00 zł</div>
+          </div>
+          <div class="plan-row">
+            <div>
+              <div class="name">Baza danych — oferta darmowa</div>
+              <div class="note">32 GB danych i limit mocy obliczeniowej miesięcznie, na stałe za darmo; po przekroczeniu limitu baza się grzecznie wstrzymuje do 1. dnia kolejnego miesiąca zamiast naliczać opłatę</div>
+            </div>
+            <div class="amount">0,00 zł</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="plan-card paid">
+        <div class="plan-head">
+          <h3>Najtańszy plan płatny</h3>
+          <span class="plan-total">~27 USD / mies.</span>
+        </div>
+        <div class="plan-rows">
+          <div class="plan-row">
+            <div>
+              <div class="name">Serwer aplikacji — poziom B1</div>
+              <div class="note">Działa non-stop, bez usypiania; można podpiąć własną domenę, np. portal.diecezja.pl</div>
+            </div>
+            <div class="amount">~13,1 USD</div>
+          </div>
+          <div class="plan-row">
+            <div>
+              <div class="name">Strona internetowa — poziom Standard</div>
+              <div class="note">Wsparcie produkcyjne (gwarancja dostępności), więcej ruchu w cenie</div>
+            </div>
+            <div class="amount">~9,0 USD</div>
+          </div>
+          <div class="plan-row">
+            <div>
+              <div class="name">Baza danych — płatność za nadwyżkę</div>
+              <div class="note">Zostajecie na ofercie darmowej i płacicie tylko za zużycie ponad darmowy limit — zwykle taniej niż sztywny plan bazowy przy niewielkiej skali</div>
+            </div>
+            <div class="amount">~5,0 USD*</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="plan-card full">
+        <div class="plan-head">
+          <h3>Wariant produkcyjny</h3>
+          <span class="plan-total">~211 USD / mies.</span>
+        </div>
+        <div class="plan-rows">
+          <div class="plan-row">
+            <div>
+              <div class="name">Serwer aplikacji — poziom S1</div>
+              <div class="note">Auto-skalowanie, codzienne kopie zapasowe, osobne środowisko testowe przed wdrożeniem zmian</div>
+            </div>
+            <div class="amount">~73,0 USD</div>
+          </div>
+          <div class="plan-row">
+            <div>
+              <div class="name">Strona internetowa — poziom Standard</div>
+              <div class="note">To samo, co w wariancie „najtańszy płatny"</div>
+            </div>
+            <div class="amount">~9,0 USD</div>
+          </div>
+          <div class="plan-row">
+            <div>
+              <div class="name">Baza danych — poziom Standard S1</div>
+              <div class="note">250 GB pojemności, wyraźnie wyższa wydajność niż w tańszych wariantach</div>
+            </div>
+            <div class="amount">~29,4 USD</div>
+          </div>
+          <div class="plan-row">
+            <div>
+              <div class="name">Wsparcie techniczne Microsoftu — plan Standard</div>
+              <div class="note">Telefon i e-mail 24/7, reakcja w 1 godzinę przy poważnej awarii — realny support, nie tylko dokumentacja</div>
+            </div>
+            <div class="amount">~100,0 USD</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="section-sub" style="margin-top: 14px; margin-bottom: 0;">~211 USD ≈ <strong>~816 zł ≈ ~187 EUR</strong> miesięcznie. Niższy plan wsparcia technicznego (Developer, ~29 USD zamiast 100 USD) obniża ten wariant do ok. ~140 USD (~540 zł, ~124 EUR).</p>
+  </section>
+
+  <section>
+    <h2>Kiedy warto przejść na plan płatny</h2>
+    <p class="section-sub">Nie trzeba przechodzić na płatny plan „z góry" — poniższe sygnały pokażą, kiedy to naprawdę ma sens.</p>
+    <div class="triggers">
+      <div class="trigger">
+        <span class="num">01</span>
+        <p><span class="t-title">Baza danych zaczyna się wstrzymywać w trakcie miesiąca</span>Oznacza to, że regularna praca w portalu przekracza darmowy limit — to najbardziej wiarygodny sygnał, że liczba użytkowników realnie się zwiększyła.</p>
+      </div>
+      <div class="trigger">
+        <span class="num">02</span>
+        <p><span class="t-title">Portal zauważalnie wolno się uruchamia po przerwie</span>To efekt „usypiania" darmowego serwera aplikacji — uciążliwe, gdy z portalu korzysta kilka osób w ciągu dnia, a nie tylko sporadycznie.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Archiwum dokumentów (Blob Storage)</h2>
+    <p class="section-sub">Wygenerowane pisma PDF są przechowywane do ponownego pobrania w <strong>Azure Blob Storage</strong> — to znacznie tańszy sposób trzymania plików niż trzymanie ich w bazie danych.</p>
+    <div class="callout">
+      <span class="t-title">Płatność dosłownie za gigabajty, bez progów i planów</span>
+      W przeciwieństwie do pozostałych usług Blob Storage nie ma podziału na „darmowy / płatny plan" — płaci się od pierwszego gigabajta, ale stawka jest tak niska, że dla archiwum dokumentów diecezji to praktycznie grosze:
+    </div>
+    <div class="plan-grid">
+      <div class="plan-card">
+        <div class="plan-head"><h3>1 GB archiwum</h3><span class="plan-total">~0,07 zł</span></div>
+        <div class="plan-rows"><div class="plan-row"><div><div class="name">To ok. kilka tysięcy pism PDF</div><div class="note">Wystarczy na pierwsze lata działania</div></div></div></div>
+      </div>
+      <div class="plan-card">
+        <div class="plan-head"><h3>10 GB archiwum</h3><span class="plan-total">~0,70 zł</span></div>
+        <div class="plan-rows"><div class="plan-row"><div><div class="name">Kilkadziesiąt tysięcy pism</div><div class="note">Realistyczny rozmiar po kilku latach</div></div></div></div>
+      </div>
+      <div class="plan-card">
+        <div class="plan-head"><h3>50 GB archiwum</h3><span class="plan-total">~3,50 zł</span></div>
+        <div class="plan-rows"><div class="plan-row"><div><div class="name">Duże, wieloletnie archiwum</div><div class="note">Nadal poniżej progu zauważalnego kosztu</div></div></div></div>
+      </div>
+    </div>
+    <p class="section-sub" style="margin-top: 14px; margin-bottom: 0;">Kwoty miesięczne, poziom „Hot" (dokumenty dostępne od razu, bez opłat za pobranie). Dla czystego archiwum, do którego sięga się rzadko, jest jeszcze tańszy poziom „Cool" — ale przy tak małych kwotach różnica nie ma praktycznego znaczenia.</p>
+  </section>
+
+  <section>
+    <h2>Koszty poza Azure — domena internetowa</h2>
+    <p class="section-sub">Nie trzeba decydować się na to od razu — adres portalu można w każdej chwili zmienić bez utraty danych.</p>
+    <div class="triggers">
+      <div class="trigger">
+        <span class="num">A</span>
+        <p><span class="t-title">Na start — adres techniczny Azure</span>Zero dodatkowych kosztów: portal działa od razu pod domyślnym adresem nadanym przez Azure (np. <em>dokportal.azurewebsites.net</em>). W zupełności wystarczy do testów i pierwszych miesięcy działania.</p>
+      </div>
+      <div class="trigger">
+        <span class="num">B</span>
+        <p><span class="t-title">Własna, dedykowana domena</span><em>dokportal.eu</em> — <strong>~40 zł/rok</strong>. Wygodny, łatwy do zapamiętania adres niezależny od innych stron diecezji.</p>
+      </div>
+      <div class="trigger">
+        <span class="num">C</span>
+        <p><span class="t-title">Poddomena istniejącej strony — 0 zł</span>Jeśli diecezja ma już domenę (np. <em>bydgoskateologia.pl</em>), można bezpłatnie dodać do niej poddomenę, np. <em>dok.bydgoskateologia.pl</em> — to tylko wpis DNS, bez żadnej nowej opłaty rocznej.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="notes">
+    Kwoty w PLN są orientacyjne — Azure rozlicza się w USD, przeliczenie po kursie z 30.09.2026 (~3,86 zł/USD). Ceny mogą się różnić w zależności od regionu centrum danych i bieżących promocji Microsoftu; ostateczny koszt warto zweryfikować w oficjalnym <a href="https://azure.microsoft.com/pl-pl/pricing/calculator/" target="_blank" rel="noopener">kalkulatorze cen Azure</a> przed uruchomieniem produkcyjnym.
+    <br><br>
+    * Stawka za nadwyżkę zużycia bazy danych zależy od realnego ruchu w aplikacji i jest tu podana orientacyjnie, na podstawie stawek serwerless Ogólnego Przeznaczenia.
+    <ol>
+      <li><a href="https://azure.microsoft.com/en-us/pricing/details/app-service/windows/" target="_blank" rel="noopener">Azure App Service — cennik</a></li>
+      <li><a href="https://azure.microsoft.com/en-us/pricing/details/app-service/static/" target="_blank" rel="noopener">Azure Static Web Apps — cennik</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer?view=azuresql" target="_blank" rel="noopener">Azure SQL Database — oferta darmowa</a></li>
+      <li><a href="https://azure.microsoft.com/en-us/support/plans" target="_blank" rel="noopener">Azure — plany wsparcia technicznego</a></li>
+      <li><a href="https://azure.microsoft.com/en-us/pricing/details/storage/blobs/" target="_blank" rel="noopener">Azure Blob Storage — cennik</a></li>
+    </ol>
+  </footer>
+
+</div>
