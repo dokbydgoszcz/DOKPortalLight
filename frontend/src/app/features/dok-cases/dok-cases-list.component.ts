@@ -6,6 +6,8 @@ import { DokCase, DokCaseFormValue } from './dok-case.model';
 import { DokCaseFormComponent } from './dok-case-form.component';
 import { PastoralNotesService } from './pastoral-notes.service';
 import { PastoralNote } from './pastoral-note.model';
+import { CaseDocumentsService } from './case-documents.service';
+import { CaseDocument } from './case-document.model';
 import { ToastService } from '../../core/notifications/toast.service';
 import { PaginationComponent } from '../../shared/pagination.component';
 
@@ -43,9 +45,14 @@ export class DokCasesListComponent implements OnInit {
   readonly notes = signal<PastoralNote[]>([]);
   newNoteContent = '';
 
+  readonly documentsCase = signal<DokCase | null>(null);
+  readonly documents = signal<CaseDocument[]>([]);
+  newDocumentName = '';
+
   constructor(
     private readonly dokCasesService: DokCasesService,
     private readonly pastoralNotesService: PastoralNotesService,
+    private readonly caseDocumentsService: CaseDocumentsService,
     private readonly toast: ToastService
   ) {}
 
@@ -145,5 +152,78 @@ export class DokCasesListComponent implements OnInit {
       },
       error: () => this.toast.error('Nie udało się dodać notatki — sprawdź, czy masz uprawnienia.')
     });
+  }
+
+  openDocuments(dokCase: DokCase): void {
+    this.documentsCase.set(dokCase);
+    this.newDocumentName = '';
+    this.loadDocuments(dokCase.id);
+  }
+
+  closeDocuments(): void {
+    this.documentsCase.set(null);
+    this.documents.set([]);
+  }
+
+  private loadDocuments(caseId: string): void {
+    this.caseDocumentsService.list(caseId).subscribe({
+      next: documents => this.documents.set(documents),
+      error: () => this.toast.error('Nie udało się wczytać listy dokumentów.')
+    });
+  }
+
+  addDocument(): void {
+    const dokCase = this.documentsCase();
+    if (!dokCase || !this.newDocumentName.trim()) return;
+    this.caseDocumentsService.create(dokCase.id, this.newDocumentName.trim()).subscribe({
+      next: () => {
+        this.newDocumentName = '';
+        this.toast.success('Dodano pozycję na liście dokumentów.');
+        this.loadDocuments(dokCase.id);
+      },
+      error: () => this.toast.error('Nie udało się dodać dokumentu.')
+    });
+  }
+
+  onFileSelected(document: CaseDocument, event: Event): void {
+    const dokCase = this.documentsCase();
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!dokCase || !file) return;
+    this.caseDocumentsService.upload(dokCase.id, document.id, file).subscribe({
+      next: () => {
+        this.toast.success('Plik przesłany.');
+        input.value = '';
+        this.loadDocuments(dokCase.id);
+      },
+      error: () => this.toast.error('Nie udało się przesłać pliku.')
+    });
+  }
+
+  downloadDocument(caseDocument: CaseDocument): void {
+    const dokCase = this.documentsCase();
+    if (!dokCase) return;
+    this.caseDocumentsService.download(dokCase.id, caseDocument.id).subscribe({
+      next: response => {
+        const blob = response.body;
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = caseDocument.originalFileName ?? caseDocument.name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.toast.error('Nie udało się pobrać pliku.')
+    });
+  }
+
+  formatFileSize(bytes: number | null): string {
+    if (bytes === null) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 }

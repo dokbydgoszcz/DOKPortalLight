@@ -25,6 +25,8 @@
             <td>
               <span class="link" (click)="openNotes(dokCase)">Notatki</span>
               &nbsp;·&nbsp;
+              <span class="link" (click)="openDocuments(dokCase)">Dokumenty</span>
+              &nbsp;·&nbsp;
               <span class="link" style="color:var(--danger)" (click)="deleteCase(dokCase)">Usuń</span>
             </td>
           </tr>
@@ -75,6 +77,54 @@
       <div class="modal-foot">
         <button class="btn ghost" (click)="closeNotes()">Zamknij</button>
         <button class="btn primary" (click)="addNote()">Dodaj notatkę</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (documentsCase(); as dokCase) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Dokumenty — {{ dokCase.personFullName }}</h3>
+        <button class="close" (click)="closeDocuments()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="list" style="margin-bottom:16px">
+          @for (document of documents(); track document.id) {
+            <div class="list-row" style="align-items:flex-start">
+              <div class="list-main">
+                <div class="list-title">{{ document.name }}</div>
+                @if (document.hasFile) {
+                  <div class="list-sub">
+                    {{ document.originalFileName }} ({{ formatFileSize(document.fileSizeBytes) }}) · {{ document.uploadedAtUtc | date:'short' }}
+                  </div>
+                } @else {
+                  <div class="list-sub">Brak przesłanego pliku.</div>
+                }
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                @if (document.hasFile) {
+                  <span class="link" (click)="downloadDocument(document)">Pobierz</span>
+                }
+                <label class="btn ghost" style="cursor:pointer">
+                  {{ document.hasFile ? 'Zamień plik' : 'Prześlij plik' }}
+                  <input type="file" style="display:none" (change)="onFileSelected(document, $event)">
+                </label>
+              </div>
+            </div>
+          } @empty {
+            <div class="empty">Brak pozycji na liście dokumentów.</div>
+          }
+        </div>
+        <div class="field full">
+          <label>Nowa pozycja (nazwa dokumentu)</label>
+          <input type="text" [(ngModel)]="newDocumentName" name="newDocumentName" placeholder="np. Metryka chrztu">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="closeDocuments()">Zamknij</button>
+        <button class="btn primary" (click)="addDocument()">Dodaj pozycję</button>
       </div>
     </div>
   </div>

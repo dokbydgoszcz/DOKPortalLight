@@ -8,4 +8,10 @@ public class CaseDocument
     public required string Name { get; set; }
     public bool IsProvided { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+
+    public string? BlobPath { get; set; }
+    public string? OriginalFileName { get; set; }
+    public string? ContentType { get; set; }
+    public long? FileSizeBytes { get; set; }
+    public DateTime? UploadedAtUtc { get; set; }
 }

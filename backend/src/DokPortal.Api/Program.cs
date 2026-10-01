@@ -1,6 +1,7 @@
 using DokPortal.Application.Auth;
 using DokPortal.Application.AuditLog;
 using DokPortal.Application.Budget;
+using DokPortal.Application.Common;
 using DokPortal.Application.CaseDocuments;
 using DokPortal.Application.Candidates;
 using DokPortal.Application.Dashboard;
@@ -79,6 +80,18 @@ builder.Services.AddScoped<INameDayService, NameDayService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IMailingService, MailingService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+
+var blobConnectionString = builder.Configuration["BlobStorage:ConnectionString"];
+var blobContainerName = builder.Configuration["BlobStorage:ContainerName"] ?? "case-documents";
+if (!string.IsNullOrWhiteSpace(blobConnectionString))
+{
+    builder.Services.AddSingleton<IFileStorageService>(
+        new AzureBlobStorageService(blobConnectionString, blobContainerName));
+}
+else
+{
+    builder.Services.AddSingleton<IFileStorageService, NullFileStorageService>();
+}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

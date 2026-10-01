@@ -33,7 +33,7 @@ public class CaseDocumentServiceTests
     {
         await using var db = CreateContext(Guid.NewGuid().ToString());
         var caseId = await SeedCaseAsync(db);
-        var service = new CaseDocumentService(db);
+        var service = new CaseDocumentService(db, new NullFileStorageService());
 
         var created = await service.CreateAsync(caseId, new CreateCaseDocumentRequest { Name = "Metryka chrztu" }, default);
         var updated = await service.SetProvidedAsync(caseId, created.Id, true, default);
@@ -48,7 +48,7 @@ public class CaseDocumentServiceTests
         await using var db = CreateContext(Guid.NewGuid().ToString());
         var caseId = await SeedCaseAsync(db);
         var otherCaseId = await SeedCaseAsync(db);
-        var service = new CaseDocumentService(db);
+        var service = new CaseDocumentService(db, new NullFileStorageService());
         await service.CreateAsync(caseId, new CreateCaseDocumentRequest { Name = "Metryka chrztu" }, default);
         await service.CreateAsync(otherCaseId, new CreateCaseDocumentRequest { Name = "Inny dokument" }, default);
 

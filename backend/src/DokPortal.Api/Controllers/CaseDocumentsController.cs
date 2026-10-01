@@ -33,4 +33,27 @@ public class CaseDocumentsController : ControllerBase
         var updated = await _caseDocumentService.SetProvidedAsync(caseId, id, request.IsProvided, ct);
         return updated is null ? NotFound() : Ok(updated);
     }
+
+    [HttpPost("{id:guid}/upload")]
+    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.KatechistaProwadzacy}")]
+    [RequestSizeLimit(20_000_000)]
+    public async Task<ActionResult<CaseDocumentDto>> UploadFile(Guid caseId, Guid id, IFormFile file, CancellationToken ct)
+    {
+        if (file.Length == 0) return BadRequest(new { message = "Plik jest pusty." });
+
+        await using var stream = file.OpenReadStream();
+        var updated = await _caseDocumentService.UploadFileAsync(
+            caseId, id, stream, file.FileName, file.ContentType, file.Length, ct);
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
+    [HttpGet("{id:guid}/download")]
+    public async Task<IActionResult> DownloadFile(Guid caseId, Guid id, CancellationToken ct)
+    {
+        var result = await _caseDocumentService.DownloadFileAsync(caseId, id, ct);
+        if (result is null) return NotFound();
+
+        var (file, fileName) = result.Value;
+        return File(file.Content, file.ContentType, fileName);
+    }
 }
