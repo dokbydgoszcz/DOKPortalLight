@@ -8,4 +8,5 @@ public interface ICandidateService
     Task<CandidateDto?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<CandidateDto> CreateAsync(CreateCandidateRequest request, CancellationToken ct);
     Task<CandidateDto?> UpdateAsync(Guid id, UpdateCandidateRequest request, CancellationToken ct);
+    Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct);
 }

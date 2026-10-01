@@ -58,6 +58,17 @@ public class ParishNeedService : IParishNeedService
         return ToDto(saved);
     }
 
+    public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
+    {
+        var need = await _db.ParishNeeds.FirstOrDefaultAsync(n => n.Id == id, ct);
+        if (need is null) return false;
+
+        need.DeletedAtUtc = DateTime.UtcNow;
+        need.DeletedBy = deletedBy;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     private static ParishNeedDto ToDto(ParishNeed n) => new()
     {
         Id = n.Id,

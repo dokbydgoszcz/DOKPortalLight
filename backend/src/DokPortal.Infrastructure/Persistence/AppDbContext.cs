@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+using System.Reflection;
 using DokPortal.Domain.Entities;
 using DokPortal.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -130,5 +132,24 @@ public class AppDbContext : IdentityDbContext<AppUser>
             entity.Property(a => a.Action).IsRequired().HasMaxLength(100);
             entity.Property(a => a.ObjectDescription).IsRequired().HasMaxLength(300);
         });
+
+        foreach (var entityType in builder.Model.GetEntityTypes())
+        {
+            if (!typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType)) continue;
+
+            var method = SetSoftDeleteFilterMethod.MakeGenericMethod(entityType.ClrType);
+            method.Invoke(null, new object[] { builder });
+        }
     }
+
+    private static readonly MethodInfo SetSoftDeleteFilterMethod =
+        typeof(AppDbContext).GetMethod(nameof(SetSoftDeleteFilter), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private static void SetSoftDeleteFilter<TEntity>(ModelBuilder builder) where TEntity : class, ISoftDeletable
+    {
+        builder.Entity<TEntity>().HasQueryFilter(BuildNotDeletedExpression<TEntity>());
+    }
+
+    private static Expression<Func<TEntity, bool>> BuildNotDeletedExpression<TEntity>() where TEntity : class, ISoftDeletable
+        => entity => entity.DeletedAtUtc == null;
 }

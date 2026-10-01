@@ -24,4 +24,15 @@ public class ParishService : IParishService
         await _db.SaveChangesAsync(ct);
         return new ParishDto { Id = parish.Id, Name = parish.Name, City = parish.City };
     }
+
+    public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
+    {
+        var parish = await _db.Parishes.FirstOrDefaultAsync(p => p.Id == id, ct);
+        if (parish is null) return false;
+
+        parish.DeletedAtUtc = DateTime.UtcNow;
+        parish.DeletedBy = deletedBy;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
 }

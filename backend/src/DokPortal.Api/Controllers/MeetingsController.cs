@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Meetings;
 using DokPortal.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
@@ -24,5 +25,14 @@ public class MeetingsController : ControllerBase
     {
         var created = await _meetingService.CreateAsync(request, ct);
         return CreatedAtAction(nameof(GetAll), created);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.KatechistaProwadzacy}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
+        var deleted = await _meetingService.DeleteAsync(id, currentUserId, ct);
+        return deleted ? NoContent() : NotFound();
     }
 }

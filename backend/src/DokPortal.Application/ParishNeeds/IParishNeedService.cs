@@ -5,4 +5,5 @@ public interface IParishNeedService
     Task<IReadOnlyList<ParishNeedDto>> GetAllAsync(CancellationToken ct);
     Task<ParishNeedDto> CreateAsync(CreateParishNeedRequest request, CancellationToken ct);
     Task<ParishNeedDto?> AssignAsync(Guid id, Guid personId, CancellationToken ct);
+    Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct);
 }

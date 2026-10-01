@@ -6,4 +6,5 @@ public interface IBudgetService
 {
     Task<IReadOnlyList<BudgetEntryDto>> GetEntriesAsync(BudgetFund fund, CancellationToken ct);
     Task<BudgetEntryDto> CreateAsync(CreateBudgetEntryRequest request, CancellationToken ct);
+    Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct);
 }

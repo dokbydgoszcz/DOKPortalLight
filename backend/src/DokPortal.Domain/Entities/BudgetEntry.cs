@@ -2,7 +2,7 @@ using DokPortal.Domain.Enums;
 
 namespace DokPortal.Domain.Entities;
 
-public class BudgetEntry
+public class BudgetEntry : ISoftDeletable
 {
     public Guid Id { get; set; }
     public BudgetFund Fund { get; set; }
@@ -12,4 +12,6 @@ public class BudgetEntry
     public BudgetEntryType Type { get; set; }
     public decimal Amount { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
+    public string? DeletedBy { get; set; }
 }

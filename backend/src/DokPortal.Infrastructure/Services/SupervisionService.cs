@@ -43,6 +43,17 @@ public class SupervisionService : ISupervisionService
         return ToDto(supervision);
     }
 
+    public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
+    {
+        var supervision = await _db.Supervisions.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (supervision is null) return false;
+
+        supervision.DeletedAtUtc = DateTime.UtcNow;
+        supervision.DeletedBy = deletedBy;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     private static SupervisionDto ToDto(Supervision s) => new()
     {
         Id = s.Id,

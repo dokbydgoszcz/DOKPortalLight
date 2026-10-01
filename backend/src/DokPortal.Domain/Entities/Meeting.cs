@@ -1,6 +1,6 @@
 namespace DokPortal.Domain.Entities;
 
-public class Meeting
+public class Meeting : ISoftDeletable
 {
     public Guid Id { get; set; }
     public Guid? DokCaseId { get; set; }
@@ -10,4 +10,6 @@ public class Meeting
     public bool? IsAttended { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
+    public string? DeletedBy { get; set; }
 }

@@ -1,6 +1,6 @@
 namespace DokPortal.Domain.Entities;
 
-public class Person
+public class Person : ISoftDeletable
 {
     public Guid Id { get; set; }
     public required string FirstName { get; set; }
@@ -15,6 +15,8 @@ public class Person
     public int? NameDayDay { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
+    public string? DeletedBy { get; set; }
 
     public string FullName => $"{FirstName} {LastName}";
 }

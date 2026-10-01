@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Supervisions;
 using DokPortal.Domain.Constants;
 using DokPortal.Domain.Enums;
@@ -25,5 +26,14 @@ public class SupervisionsController : ControllerBase
     {
         var created = await _supervisionService.CreateAsync(request, ct);
         return CreatedAtAction(nameof(GetAll), created);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.DyrektorSKSP},{AppRoles.Superwizor}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
+        var deleted = await _supervisionService.DeleteAsync(id, currentUserId, ct);
+        return deleted ? NoContent() : NotFound();
     }
 }

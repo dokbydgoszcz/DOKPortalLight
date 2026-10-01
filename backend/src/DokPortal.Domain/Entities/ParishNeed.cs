@@ -2,7 +2,7 @@ using DokPortal.Domain.Enums;
 
 namespace DokPortal.Domain.Entities;
 
-public class ParishNeed
+public class ParishNeed : ISoftDeletable
 {
     public Guid Id { get; set; }
     public Guid ParishId { get; set; }
@@ -13,4 +13,6 @@ public class ParishNeed
     public Person? AssignedPerson { get; set; }
     public DateTime? AssignedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
+    public string? DeletedBy { get; set; }
 }

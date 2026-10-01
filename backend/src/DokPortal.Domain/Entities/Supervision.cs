@@ -2,7 +2,7 @@ using DokPortal.Domain.Enums;
 
 namespace DokPortal.Domain.Entities;
 
-public class Supervision
+public class Supervision : ISoftDeletable
 {
     public Guid Id { get; set; }
     public Institution Institution { get; set; }
@@ -13,4 +13,6 @@ public class Supervision
     public string? Topic { get; set; }
     public string? Conclusion { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
+    public string? DeletedBy { get; set; }
 }

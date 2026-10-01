@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.ParishNeeds;
 using DokPortal.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
@@ -32,5 +33,14 @@ public class ParishNeedsController : ControllerBase
     {
         var updated = await _parishNeedService.AssignAsync(id, request.PersonId, ct);
         return updated is null ? NotFound() : Ok(updated);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
+        var deleted = await _parishNeedService.DeleteAsync(id, currentUserId, ct);
+        return deleted ? NoContent() : NotFound();
     }
 }

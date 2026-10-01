@@ -91,6 +91,17 @@ public class PersonService : IPersonService
         return await GetByIdAsync(id, ct);
     }
 
+    public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
+    {
+        var person = await _db.People.FirstOrDefaultAsync(p => p.Id == id, ct);
+        if (person is null) return false;
+
+        person.DeletedAtUtc = DateTime.UtcNow;
+        person.DeletedBy = deletedBy;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     private static PersonDto ToDto(Person p) => new()
     {
         Id = p.Id,

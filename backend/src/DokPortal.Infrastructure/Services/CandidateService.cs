@@ -78,6 +78,17 @@ public class CandidateService : ICandidateService
         return await GetByIdAsync(id, ct);
     }
 
+    public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
+    {
+        var candidate = await _db.Candidates.FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (candidate is null) return false;
+
+        candidate.DeletedAtUtc = DateTime.UtcNow;
+        candidate.DeletedBy = deletedBy;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     private static CandidateDto ToDto(Candidate c) => new()
     {
         Id = c.Id,

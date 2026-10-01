@@ -8,4 +8,5 @@ public interface IPersonService
     Task<PersonDto?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<PersonDto> CreateAsync(CreatePersonRequest request, CancellationToken ct);
     Task<PersonDto?> UpdateAsync(Guid id, UpdatePersonRequest request, CancellationToken ct);
+    Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct);
 }

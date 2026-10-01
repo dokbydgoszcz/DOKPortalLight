@@ -4,4 +4,5 @@ public interface IFormatorService
 {
     Task<IReadOnlyList<FormatorDto>> GetAllAsync(CancellationToken ct);
     Task<FormatorDto> CreateAsync(CreateFormatorRequest request, CancellationToken ct);
+    Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct);
 }

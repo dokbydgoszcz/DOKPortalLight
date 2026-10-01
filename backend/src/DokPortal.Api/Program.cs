@@ -17,11 +17,14 @@ using DokPortal.Application.PastoralNotes;
 using DokPortal.Application.Supervisions;
 using DokPortal.Application.People;
 using DokPortal.Application.Users;
+using DokPortal.Api.ErrorHandling;
+using DokPortal.Api.Filters;
 using DokPortal.Infrastructure.Auth;
 using DokPortal.Infrastructure.Identity;
 using DokPortal.Infrastructure.Persistence;
 using DokPortal.Infrastructure.Seed;
 using DokPortal.Infrastructure.Services;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -31,8 +34,11 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(options => options.Filters.Add<ValidationActionFilter>())
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddValidatorsFromAssemblyContaining<DokPortal.Application.Auth.LoginRequestValidator>();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -44,6 +50,9 @@ builder.Services
     {
         options.Password.RequiredLength = 8;
         options.User.RequireUniqueEmail = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        options.Lockout.AllowedForNewUsers = true;
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>();
@@ -112,6 +121,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseExceptionHandler();
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();

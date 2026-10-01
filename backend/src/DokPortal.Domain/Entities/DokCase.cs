@@ -2,7 +2,7 @@ using DokPortal.Domain.Enums;
 
 namespace DokPortal.Domain.Entities;
 
-public class DokCase
+public class DokCase : ISoftDeletable
 {
     public Guid Id { get; set; }
     public Guid PersonId { get; set; }
@@ -17,4 +17,6 @@ public class DokCase
     public DateTime? CompletedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
+    public string? DeletedBy { get; set; }
 }

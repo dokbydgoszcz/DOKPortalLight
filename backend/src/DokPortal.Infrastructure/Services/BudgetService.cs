@@ -39,6 +39,17 @@ public class BudgetService : IBudgetService
         return ToDto(entry);
     }
 
+    public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
+    {
+        var entry = await _db.BudgetEntries.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (entry is null) return false;
+
+        entry.DeletedAtUtc = DateTime.UtcNow;
+        entry.DeletedBy = deletedBy;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     private static BudgetEntryDto ToDto(BudgetEntry e) => new()
     {
         Id = e.Id,

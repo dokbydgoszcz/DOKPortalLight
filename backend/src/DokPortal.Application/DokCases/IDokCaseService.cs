@@ -9,4 +9,5 @@ public interface IDokCaseService
     Task<DokCaseDto?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<DokCaseDto> CreateAsync(CreateDokCaseRequest request, CancellationToken ct);
     Task<DokCaseDto?> UpdateAsync(Guid id, UpdateDokCaseRequest request, CancellationToken ct);
+    Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct);
 }

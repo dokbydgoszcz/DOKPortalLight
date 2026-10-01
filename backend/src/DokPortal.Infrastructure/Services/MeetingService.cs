@@ -39,6 +39,17 @@ public class MeetingService : IMeetingService
         return ToDto(saved);
     }
 
+    public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
+    {
+        var meeting = await _db.Meetings.FirstOrDefaultAsync(m => m.Id == id, ct);
+        if (meeting is null) return false;
+
+        meeting.DeletedAtUtc = DateTime.UtcNow;
+        meeting.DeletedBy = deletedBy;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     private static MeetingDto ToDto(Meeting m) => new()
     {
         Id = m.Id,

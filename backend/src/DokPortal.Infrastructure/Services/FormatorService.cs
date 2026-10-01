@@ -29,6 +29,17 @@ public class FormatorService : IFormatorService
         return ToDto(saved);
     }
 
+    public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
+    {
+        var formator = await _db.Formators.FirstOrDefaultAsync(f => f.Id == id, ct);
+        if (formator is null) return false;
+
+        formator.DeletedAtUtc = DateTime.UtcNow;
+        formator.DeletedBy = deletedBy;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     private static FormatorDto ToDto(Formator f) => new()
     {
         Id = f.Id,

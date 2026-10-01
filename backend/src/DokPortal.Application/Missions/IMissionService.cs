@@ -8,4 +8,5 @@ public interface IMissionService
     Task<MissionDto?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<MissionDto> CreateAsync(CreateMissionRequest request, CancellationToken ct);
     Task<MissionDto?> UpdateAsync(Guid id, UpdateMissionRequest request, CancellationToken ct);
+    Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct);
 }

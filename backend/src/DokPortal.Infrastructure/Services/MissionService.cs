@@ -86,6 +86,17 @@ public class MissionService : IMissionService
         return await GetByIdAsync(id, ct);
     }
 
+    public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
+    {
+        var mission = await _db.CanonicalMissions.FirstOrDefaultAsync(m => m.Id == id, ct);
+        if (mission is null) return false;
+
+        mission.DeletedAtUtc = DateTime.UtcNow;
+        mission.DeletedBy = deletedBy;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     private static MissionDto ToDto(CanonicalMission m) => new()
     {
         Id = m.Id,

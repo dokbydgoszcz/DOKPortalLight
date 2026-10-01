@@ -94,6 +94,17 @@ public class DokCaseService : IDokCaseService
         return await GetByIdAsync(id, ct);
     }
 
+    public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
+    {
+        var dokCase = await _db.DokCases.FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (dokCase is null) return false;
+
+        dokCase.DeletedAtUtc = DateTime.UtcNow;
+        dokCase.DeletedBy = deletedBy;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     private static DokCaseDto ToDto(DokCase c) => new()
     {
         Id = c.Id,

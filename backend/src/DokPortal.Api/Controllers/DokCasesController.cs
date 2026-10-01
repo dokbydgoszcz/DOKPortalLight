@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Common;
 using DokPortal.Application.DokCases;
 using DokPortal.Domain.Constants;
@@ -42,5 +43,14 @@ public class DokCasesController : ControllerBase
     {
         var updated = await _dokCaseService.UpdateAsync(id, request, ct);
         return updated is null ? NotFound() : Ok(updated);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
+        var deleted = await _dokCaseService.DeleteAsync(id, currentUserId, ct);
+        return deleted ? NoContent() : NotFound();
     }
 }

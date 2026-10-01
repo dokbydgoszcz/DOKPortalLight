@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Budget;
 using DokPortal.Domain.Constants;
 using DokPortal.Domain.Enums;
@@ -25,5 +26,14 @@ public class BudgetController : ControllerBase
     {
         var created = await _budgetService.CreateAsync(request, ct);
         return CreatedAtAction(nameof(GetEntries), new { fund = created.Fund }, created);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
+        var deleted = await _budgetService.DeleteAsync(id, currentUserId, ct);
+        return deleted ? NoContent() : NotFound();
     }
 }

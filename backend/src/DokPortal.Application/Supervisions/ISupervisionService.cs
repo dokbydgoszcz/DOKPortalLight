@@ -6,4 +6,5 @@ public interface ISupervisionService
 {
     Task<IReadOnlyList<SupervisionDto>> GetAllAsync(Institution? institution, CancellationToken ct);
     Task<SupervisionDto> CreateAsync(CreateSupervisionRequest request, CancellationToken ct);
+    Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct);
 }
