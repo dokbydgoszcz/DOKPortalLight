@@ -53,9 +53,9 @@
     </div>
 
     <div class="form-grid">
-      <div class="field"><label>E-mail</label><input [(ngModel)]="newUser.email" name="email" /></div>
-      <div class="field"><label>Hasło</label><input type="password" [(ngModel)]="newUser.password" name="password" /></div>
-      <div class="field"><label>Powtórz hasło</label><input type="password" [(ngModel)]="confirmPassword" name="confirmPassword" /></div>
+      <div class="field full"><label>E-mail</label><input [(ngModel)]="newUser.email" name="email" /></div>
+      <div class="field full"><label>Hasło</label><input type="password" [(ngModel)]="newUser.password" name="password" /></div>
+      <div class="field full"><label>Powtórz hasło</label><input type="password" [(ngModel)]="confirmPassword" name="confirmPassword" /></div>
       @if (createError()) {
         <div class="field full"><div class="note" style="border-color:#f2b8bf;background:#fff0f2">{{ createError() }}</div></div>
       }
