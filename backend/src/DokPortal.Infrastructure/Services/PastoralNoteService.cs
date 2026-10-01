@@ -21,7 +21,12 @@ public class PastoralNoteService : IPastoralNoteService
         }
 
         var notes = await q.OrderByDescending(n => n.CreatedAtUtc).ToListAsync(ct);
-        return notes.Select(ToDto).ToList();
+        var authorIds = notes.Select(n => n.AuthorUserId).Distinct().ToList();
+        var authorEmails = await _db.Users
+            .Where(u => authorIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Email, ct);
+
+        return notes.Select(n => ToDto(n, authorEmails.GetValueOrDefault(n.AuthorUserId))).ToList();
     }
 
     public async Task<PastoralNoteDto> CreateAsync(Guid caseId, string authorUserId, CreatePastoralNoteRequest request, CancellationToken ct)
@@ -32,17 +37,20 @@ public class PastoralNoteService : IPastoralNoteService
         };
         _db.PastoralNotes.Add(note);
         await _db.SaveChangesAsync(ct);
-        return ToDto(note);
+
+        var authorEmail = await _db.Users.Where(u => u.Id == authorUserId).Select(u => u.Email).FirstOrDefaultAsync(ct);
+        return ToDto(note, authorEmail);
     }
 
     public Task<bool> HasNotesFromOthersAsync(Guid caseId, string currentUserId, CancellationToken ct) =>
         _db.PastoralNotes.AnyAsync(n => n.DokCaseId == caseId && n.AuthorUserId != currentUserId, ct);
 
-    private static PastoralNoteDto ToDto(PastoralNote n) => new()
+    private static PastoralNoteDto ToDto(PastoralNote n, string? authorEmail) => new()
     {
         Id = n.Id,
         DokCaseId = n.DokCaseId,
         AuthorUserId = n.AuthorUserId,
+        AuthorEmail = authorEmail,
         Content = n.Content,
         CreatedAtUtc = n.CreatedAtUtc
     };

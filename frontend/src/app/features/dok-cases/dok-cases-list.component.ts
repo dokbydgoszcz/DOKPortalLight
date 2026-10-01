@@ -1,7 +1,11 @@
 import { Component, OnInit, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DokCasesService } from './dok-cases.service';
 import { DokCase, DokCaseFormValue } from './dok-case.model';
 import { DokCaseFormComponent } from './dok-case-form.component';
+import { PastoralNotesService } from './pastoral-notes.service';
+import { PastoralNote } from './pastoral-note.model';
 import { ToastService } from '../../core/notifications/toast.service';
 import { PaginationComponent } from '../../shared/pagination.component';
 
@@ -18,7 +22,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-dok-cases-list',
   standalone: true,
-  imports: [DokCaseFormComponent, PaginationComponent],
+  imports: [DokCaseFormComponent, PaginationComponent, FormsModule, DatePipe],
   templateUrl: './dok-cases-list.component.html',
   styleUrl: './dok-cases-list.component.scss'
 })
@@ -35,8 +39,13 @@ export class DokCasesListComponent implements OnInit {
   readonly conversionCount = signal(0);
   readonly communionCount = signal(0);
 
+  readonly notesCase = signal<DokCase | null>(null);
+  readonly notes = signal<PastoralNote[]>([]);
+  newNoteContent = '';
+
   constructor(
     private readonly dokCasesService: DokCasesService,
+    private readonly pastoralNotesService: PastoralNotesService,
     private readonly toast: ToastService
   ) {}
 
@@ -104,6 +113,37 @@ export class DokCasesListComponent implements OnInit {
         this.loadStats();
       },
       error: () => this.toast.error('Nie udało się usunąć podopiecznego.')
+    });
+  }
+
+  openNotes(dokCase: DokCase): void {
+    this.notesCase.set(dokCase);
+    this.newNoteContent = '';
+    this.loadNotes(dokCase.id);
+  }
+
+  closeNotes(): void {
+    this.notesCase.set(null);
+    this.notes.set([]);
+  }
+
+  private loadNotes(caseId: string): void {
+    this.pastoralNotesService.list(caseId).subscribe({
+      next: notes => this.notes.set(notes),
+      error: () => this.toast.error('Nie udało się wczytać notatek.')
+    });
+  }
+
+  addNote(): void {
+    const dokCase = this.notesCase();
+    if (!dokCase || !this.newNoteContent.trim()) return;
+    this.pastoralNotesService.create(dokCase.id, this.newNoteContent.trim()).subscribe({
+      next: () => {
+        this.newNoteContent = '';
+        this.toast.success('Dodano notatkę.');
+        this.loadNotes(dokCase.id);
+      },
+      error: () => this.toast.error('Nie udało się dodać notatki — sprawdź, czy masz uprawnienia.')
     });
   }
 }
