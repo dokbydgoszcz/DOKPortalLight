@@ -1,0 +1,23 @@
+name: Missing Documents Reminder
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+jobs:
+  run-reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wywołaj endpoint przypomnień
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "X-Reminders-Key: ${{ secrets.REMINDERS_API_KEY }}" \
+            https://dokportal-api.azurewebsites.net/api/reminders/missing-documents/run)
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          echo "Odpowiedź: $body"
+          if [ "$http_code" -ne 200 ]; then
+            echo "Endpoint zwrócił kod $http_code"
+            exit 1
+          fi
