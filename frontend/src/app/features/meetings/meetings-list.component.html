@@ -45,6 +45,15 @@
         <div class="form-grid">
           <div class="field"><label>Data</label><input type="date" [(ngModel)]="newMeeting.meetingDate" name="meetingDate" /></div>
           <div class="field"><label>Grupa / opis</label><input [(ngModel)]="newMeeting.groupLabel" name="groupLabel" /></div>
+          <div class="field">
+            <label>Podopieczny DOK (opcjonalnie)</label>
+            <select [ngModel]="newMeeting.dokCaseId ?? ''" (ngModelChange)="onDokCaseChange($event)" name="dokCaseId">
+              <option value="">— spotkanie grupowe —</option>
+              @for (dokCase of dokCases(); track dokCase.id) {
+                <option [value]="dokCase.id">{{ dokCase.personFullName }}</option>
+              }
+            </select>
+          </div>
         </div>
       </div>
       <div class="modal-foot">

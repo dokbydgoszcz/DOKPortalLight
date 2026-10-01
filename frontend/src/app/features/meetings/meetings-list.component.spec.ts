@@ -22,6 +22,8 @@ describe('MeetingsListComponent', () => {
     fixture.detectChanges();
     const req = httpMock.expectOne(r => r.url === `${environment.apiBaseUrl}/api/meetings`);
     req.flush([{ id: '1', dokCaseId: null, caseLabel: null, groupLabel: 'DOK grupa', meetingDate: '2026-09-24', isAttended: null, notes: null }]);
+    const casesReq = httpMock.expectOne(r => r.url === `${environment.apiBaseUrl}/api/dok-cases`);
+    casesReq.flush({ items: [], totalCount: 0, page: 1, pageSize: 1000 });
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent as string;

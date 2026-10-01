@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { MeetingsService } from './meetings.service';
 import { CreateMeetingValue, Meeting } from './meeting.model';
 import { ToastService } from '../../core/notifications/toast.service';
+import { DokCasesService } from '../dok-cases/dok-cases.service';
+import { DokCase } from '../dok-cases/dok-case.model';
 
 @Component({
   selector: 'app-meetings-list',
@@ -13,17 +15,31 @@ import { ToastService } from '../../core/notifications/toast.service';
 })
 export class MeetingsListComponent implements OnInit {
   readonly meetings = signal<Meeting[]>([]);
+  readonly dokCases = signal<DokCase[]>([]);
   readonly isFormOpen = signal(false);
   readonly editingId = signal<string | null>(null);
   newMeeting: CreateMeetingValue = { groupLabel: '', meetingDate: '' };
 
   constructor(
     private readonly meetingsService: MeetingsService,
+    private readonly dokCasesService: DokCasesService,
     private readonly toast: ToastService
   ) {}
 
   ngOnInit(): void {
     this.load();
+    this.loadDokCases();
+  }
+
+  private loadDokCases(): void {
+    this.dokCasesService.search(undefined, 1, 1000).subscribe({
+      next: result => this.dokCases.set(result.items),
+      error: () => this.toast.error('Nie udało się wczytać listy spraw DOK.')
+    });
+  }
+
+  onDokCaseChange(value: string): void {
+    this.newMeeting.dokCaseId = value || undefined;
   }
 
   load(): void {

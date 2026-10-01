@@ -12,6 +12,7 @@ export class DashboardComponent implements OnInit {
   readonly summary = signal<DashboardSummary | null>(null);
 
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-02', text: 'Harmonogram spotkań — formularz dodawania/edycji spotkania pozwala teraz wybrać konkretnego podopiecznego DOK, zamiast tylko opisu grupy.' },
     { date: '2026-10-01', text: 'Automatyczne przypomnienia o brakujących dokumentach — raz w tygodniu katechista i Dyrektor DOK dostają e-mail o niedostarczonych dokumentach w swoich sprawach DOK.' },
     { date: '2026-10-01', text: 'Mailing wysyła teraz prawdziwe e-maile do wybranej grupy odbiorców (po skonfigurowaniu serwera SMTP przez administratora).' },
     { date: '2026-10-01', text: 'Dokumenty podopiecznego DOK — nowy przycisk „Dokumenty" pozwala przesłać prawdziwy plik (np. skan metryki) do każdej pozycji na liście i pobrać go później.' },
