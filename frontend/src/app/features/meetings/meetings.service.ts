@@ -17,6 +17,10 @@ export class MeetingsService {
     return this.http.post<Meeting>(this.baseUrl, value);
   }
 
+  update(id: string, value: CreateMeetingValue) {
+    return this.http.put<Meeting>(`${this.baseUrl}/${id}`, value);
+  }
+
   delete(id: string) {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }

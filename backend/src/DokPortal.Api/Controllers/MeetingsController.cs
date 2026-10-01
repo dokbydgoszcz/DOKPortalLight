@@ -19,12 +19,27 @@ public class MeetingsController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<MeetingDto>>> GetAll(CancellationToken ct)
         => Ok(await _meetingService.GetAllAsync(ct));
 
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<MeetingDto>> GetById(Guid id, CancellationToken ct)
+    {
+        var meeting = await _meetingService.GetByIdAsync(id, ct);
+        return meeting is null ? NotFound() : Ok(meeting);
+    }
+
     [HttpPost]
     [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.KatechistaProwadzacy}")]
     public async Task<ActionResult<MeetingDto>> Create(CreateMeetingRequest request, CancellationToken ct)
     {
         var created = await _meetingService.CreateAsync(request, ct);
         return CreatedAtAction(nameof(GetAll), created);
+    }
+
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.KatechistaProwadzacy}")]
+    public async Task<ActionResult<MeetingDto>> Update(Guid id, CreateMeetingRequest request, CancellationToken ct)
+    {
+        var updated = await _meetingService.UpdateAsync(id, request, ct);
+        return updated is null ? NotFound() : Ok(updated);
     }
 
     [HttpDelete("{id:guid}")]

@@ -17,6 +17,10 @@ export class FormatorsService {
     return this.http.post<Formator>(this.baseUrl, value);
   }
 
+  update(id: string, value: FormatorFormValue) {
+    return this.http.put<Formator>(`${this.baseUrl}/${id}`, value);
+  }
+
   delete(id: string) {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }

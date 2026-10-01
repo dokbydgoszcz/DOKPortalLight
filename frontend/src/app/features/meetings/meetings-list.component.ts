@@ -14,6 +14,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 export class MeetingsListComponent implements OnInit {
   readonly meetings = signal<Meeting[]>([]);
   readonly isFormOpen = signal(false);
+  readonly editingId = signal<string | null>(null);
   newMeeting: CreateMeetingValue = { groupLabel: '', meetingDate: '' };
 
   constructor(
@@ -33,18 +34,33 @@ export class MeetingsListComponent implements OnInit {
   }
 
   openAddForm(): void {
+    this.editingId.set(null);
     this.newMeeting = { groupLabel: '', meetingDate: '' };
     this.isFormOpen.set(true);
   }
 
+  openEditForm(meeting: Meeting): void {
+    this.editingId.set(meeting.id);
+    this.newMeeting = {
+      dokCaseId: meeting.dokCaseId ?? undefined,
+      groupLabel: meeting.groupLabel ?? undefined,
+      meetingDate: meeting.meetingDate,
+      isAttended: meeting.isAttended ?? undefined,
+      notes: meeting.notes ?? undefined
+    };
+    this.isFormOpen.set(true);
+  }
+
   createMeeting(): void {
-    this.meetingsService.create(this.newMeeting).subscribe({
+    const id = this.editingId();
+    const request$ = id ? this.meetingsService.update(id, this.newMeeting) : this.meetingsService.create(this.newMeeting);
+    request$.subscribe({
       next: () => {
         this.isFormOpen.set(false);
-        this.toast.success('Dodano spotkanie.');
+        this.toast.success(id ? 'Zapisano zmiany.' : 'Dodano spotkanie.');
         this.load();
       },
-      error: () => this.toast.error('Nie udało się dodać spotkania.')
+      error: () => this.toast.error(id ? 'Nie udało się zapisać zmian.' : 'Nie udało się dodać spotkania.')
     });
   }
 

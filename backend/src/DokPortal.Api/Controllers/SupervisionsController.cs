@@ -20,12 +20,27 @@ public class SupervisionsController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<SupervisionDto>>> GetAll([FromQuery] Institution? institution, CancellationToken ct)
         => Ok(await _supervisionService.GetAllAsync(institution, ct));
 
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<SupervisionDto>> GetById(Guid id, CancellationToken ct)
+    {
+        var supervision = await _supervisionService.GetByIdAsync(id, ct);
+        return supervision is null ? NotFound() : Ok(supervision);
+    }
+
     [HttpPost]
     [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.DyrektorSKSP},{AppRoles.Superwizor}")]
     public async Task<ActionResult<SupervisionDto>> Create(CreateSupervisionRequest request, CancellationToken ct)
     {
         var created = await _supervisionService.CreateAsync(request, ct);
         return CreatedAtAction(nameof(GetAll), created);
+    }
+
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.DyrektorSKSP},{AppRoles.Superwizor}")]
+    public async Task<ActionResult<SupervisionDto>> Update(Guid id, CreateSupervisionRequest request, CancellationToken ct)
+    {
+        var updated = await _supervisionService.UpdateAsync(id, request, ct);
+        return updated is null ? NotFound() : Ok(updated);
     }
 
     [HttpDelete("{id:guid}")]

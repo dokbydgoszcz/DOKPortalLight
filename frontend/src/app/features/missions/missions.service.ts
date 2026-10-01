@@ -10,8 +10,8 @@ export class MissionsService {
 
   constructor(private readonly http: HttpClient) {}
 
-  search(query = '') {
-    return this.http.get<PagedResult<Mission>>(this.baseUrl, { params: { query, pageSize: 100 } });
+  search(query = '', page = 1, pageSize = 20) {
+    return this.http.get<PagedResult<Mission>>(this.baseUrl, { params: { query, page, pageSize } });
   }
 
   create(value: MissionFormValue) {

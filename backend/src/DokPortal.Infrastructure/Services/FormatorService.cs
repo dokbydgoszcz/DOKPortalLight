@@ -19,6 +19,13 @@ public class FormatorService : IFormatorService
         return formators.Select(ToDto).ToList();
     }
 
+    public async Task<FormatorDto?> GetByIdAsync(Guid id, CancellationToken ct)
+    {
+        var formator = await _db.Formators.Include(f => f.Person).AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == id, ct);
+        return formator is null ? null : ToDto(formator);
+    }
+
     public async Task<FormatorDto> CreateAsync(CreateFormatorRequest request, CancellationToken ct)
     {
         var formator = new Formator { Id = Guid.NewGuid(), PersonId = request.PersonId, Function = request.Function };
@@ -27,6 +34,18 @@ public class FormatorService : IFormatorService
 
         var saved = await _db.Formators.Include(f => f.Person).AsNoTracking().FirstAsync(f => f.Id == formator.Id, ct);
         return ToDto(saved);
+    }
+
+    public async Task<FormatorDto?> UpdateAsync(Guid id, CreateFormatorRequest request, CancellationToken ct)
+    {
+        var formator = await _db.Formators.FirstOrDefaultAsync(f => f.Id == id, ct);
+        if (formator is null) return null;
+
+        formator.PersonId = request.PersonId;
+        formator.Function = request.Function;
+        await _db.SaveChangesAsync(ct);
+
+        return await GetByIdAsync(id, ct);
     }
 
     public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)

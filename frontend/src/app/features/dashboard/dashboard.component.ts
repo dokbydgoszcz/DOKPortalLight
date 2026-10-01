@@ -12,6 +12,8 @@ export class DashboardComponent implements OnInit {
   readonly summary = signal<DashboardSummary | null>(null);
 
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-01', text: 'Paginacja na listach Osób, Kandydatów, Katechistów posłanych i Podopiecznych DOK — szybsze wczytywanie przy dużej liczbie rekordów.' },
+    { date: '2026-10-01', text: 'Edycja Formatorów, Superwizji i Spotkań (wcześniej można było je tylko dodawać).' },
     { date: '2026-10-01', text: 'Pełny rejestr 150 parafii Diecezji Bydgoskiej — nowy ekran „Rejestr parafii" z możliwością dodawania kolejnych.' },
     { date: '2026-10-01', text: 'Powiadomienia (dymki) o powodzeniu lub błędzie przy zapisie, edycji i usuwaniu — widoczne w prawym dolnym rogu.' },
     { date: '2026-10-01', text: 'Czytelne komunikaty błędów zamiast technicznych awarii serwera.' },

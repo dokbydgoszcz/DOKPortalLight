@@ -3,16 +3,22 @@ import { MissionsService } from './missions.service';
 import { Mission, MissionFormValue } from './mission.model';
 import { MissionFormComponent } from './mission-form.component';
 import { ToastService } from '../../core/notifications/toast.service';
+import { PaginationComponent } from '../../shared/pagination.component';
+
+const PAGE_SIZE = 20;
 
 @Component({
   selector: 'app-missions-list',
   standalone: true,
-  imports: [MissionFormComponent],
+  imports: [MissionFormComponent, PaginationComponent],
   templateUrl: './missions-list.component.html',
   styleUrl: './missions-list.component.scss'
 })
 export class MissionsListComponent implements OnInit {
   readonly missions = signal<Mission[]>([]);
+  readonly page = signal(1);
+  readonly totalCount = signal(0);
+  readonly pageSize = PAGE_SIZE;
   readonly isFormOpen = signal(false);
   formValue: MissionFormValue = { personId: '', servicePlace: '', missionStartDate: '', missionEndDate: '' };
 
@@ -26,10 +32,18 @@ export class MissionsListComponent implements OnInit {
   }
 
   load(): void {
-    this.missionsService.search().subscribe({
-      next: result => this.missions.set(result.items),
+    this.missionsService.search('', this.page(), this.pageSize).subscribe({
+      next: result => {
+        this.missions.set(result.items);
+        this.totalCount.set(result.totalCount);
+      },
       error: () => this.toast.error('Nie udało się wczytać listy misji.')
     });
+  }
+
+  onPageChange(page: number): void {
+    this.page.set(page);
+    this.load();
   }
 
   openAddForm(): void {

@@ -19,6 +19,13 @@ public class MeetingService : IMeetingService
         return meetings.Select(ToDto).ToList();
     }
 
+    public async Task<MeetingDto?> GetByIdAsync(Guid id, CancellationToken ct)
+    {
+        var meeting = await _db.Meetings.Include(m => m.DokCase).ThenInclude(c => c!.Person).AsNoTracking()
+            .FirstOrDefaultAsync(m => m.Id == id, ct);
+        return meeting is null ? null : ToDto(meeting);
+    }
+
     public async Task<MeetingDto> CreateAsync(CreateMeetingRequest request, CancellationToken ct)
     {
         var meeting = new Meeting
@@ -37,6 +44,21 @@ public class MeetingService : IMeetingService
         var saved = await _db.Meetings.Include(m => m.DokCase).ThenInclude(c => c!.Person).AsNoTracking()
             .FirstAsync(m => m.Id == meeting.Id, ct);
         return ToDto(saved);
+    }
+
+    public async Task<MeetingDto?> UpdateAsync(Guid id, CreateMeetingRequest request, CancellationToken ct)
+    {
+        var meeting = await _db.Meetings.FirstOrDefaultAsync(m => m.Id == id, ct);
+        if (meeting is null) return null;
+
+        meeting.DokCaseId = request.DokCaseId;
+        meeting.GroupLabel = request.GroupLabel;
+        meeting.MeetingDate = request.MeetingDate;
+        meeting.IsAttended = request.IsAttended;
+        meeting.Notes = request.Notes;
+        await _db.SaveChangesAsync(ct);
+
+        return await GetByIdAsync(id, ct);
     }
 
     public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)

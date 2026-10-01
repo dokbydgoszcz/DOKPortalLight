@@ -10,8 +10,8 @@ export class DokCasesService {
 
   constructor(private readonly http: HttpClient) {}
 
-  search(path?: DokPath) {
-    const params: Record<string, string> = { pageSize: '100' };
+  search(path?: DokPath, page = 1, pageSize = 20) {
+    const params: Record<string, string> = { page: String(page), pageSize: String(pageSize) };
     if (path) {
       params['path'] = path;
     }

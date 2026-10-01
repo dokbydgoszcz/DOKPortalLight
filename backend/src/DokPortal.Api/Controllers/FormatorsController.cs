@@ -19,12 +19,27 @@ public class FormatorsController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<FormatorDto>>> GetAll(CancellationToken ct)
         => Ok(await _formatorService.GetAllAsync(ct));
 
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<FormatorDto>> GetById(Guid id, CancellationToken ct)
+    {
+        var formator = await _formatorService.GetByIdAsync(id, ct);
+        return formator is null ? NotFound() : Ok(formator);
+    }
+
     [HttpPost]
     [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
     public async Task<ActionResult<FormatorDto>> Create(CreateFormatorRequest request, CancellationToken ct)
     {
         var created = await _formatorService.CreateAsync(request, ct);
         return CreatedAtAction(nameof(GetAll), created);
+    }
+
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    public async Task<ActionResult<FormatorDto>> Update(Guid id, CreateFormatorRequest request, CancellationToken ct)
+    {
+        var updated = await _formatorService.UpdateAsync(id, request, ct);
+        return updated is null ? NotFound() : Ok(updated);
     }
 
     [HttpDelete("{id:guid}")]

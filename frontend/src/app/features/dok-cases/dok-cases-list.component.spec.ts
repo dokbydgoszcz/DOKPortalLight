@@ -20,14 +20,15 @@ describe('DokCasesListComponent', () => {
 
   it('shows the per-path count computed from the fetched list', () => {
     fixture.detectChanges();
-    const casesReq = httpMock.expectOne(r => r.url === `${environment.apiBaseUrl}/api/dok-cases`);
-    casesReq.flush({
-      items: [
-        { id: '1', personId: 'p1', personFullName: 'Jan Kowalski', parishName: null, path: 'Confirmation', stage: 'Formation', catechistPersonId: 'c1', catechistFullName: 'Anna Maj', mentorPersonId: null, mentorFullName: null, lastMeetingDate: null, completedAtUtc: null },
-        { id: '2', personId: 'p2', personFullName: 'Piotr Malinowski', parishName: null, path: 'Conversion', stage: 'Sacrament', catechistPersonId: 'c2', catechistFullName: 'Maria Kaczmarek', mentorPersonId: null, mentorFullName: null, lastMeetingDate: null, completedAtUtc: null }
-      ],
-      totalCount: 2, page: 1, pageSize: 100
-    });
+    const casesReqs = httpMock.match(r => r.url === `${environment.apiBaseUrl}/api/dok-cases`);
+    expect(casesReqs.length).toBe(2);
+    const items = [
+      { id: '1', personId: 'p1', personFullName: 'Jan Kowalski', parishName: null, path: 'Confirmation', stage: 'Formation', catechistPersonId: 'c1', catechistFullName: 'Anna Maj', mentorPersonId: null, mentorFullName: null, lastMeetingDate: null, completedAtUtc: null },
+      { id: '2', personId: 'p2', personFullName: 'Piotr Malinowski', parishName: null, path: 'Conversion', stage: 'Sacrament', catechistPersonId: 'c2', catechistFullName: 'Maria Kaczmarek', mentorPersonId: null, mentorFullName: null, lastMeetingDate: null, completedAtUtc: null }
+    ];
+    for (const req of casesReqs) {
+      req.flush({ items, totalCount: 2, page: 1, pageSize: 20 });
+    }
     httpMock.expectOne(r => r.url === `${environment.apiBaseUrl}/api/people`).flush({ items: [], totalCount: 0, page: 1, pageSize: 200 });
     fixture.detectChanges();
 

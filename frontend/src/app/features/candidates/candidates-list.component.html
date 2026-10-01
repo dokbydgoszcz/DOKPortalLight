@@ -37,6 +37,7 @@
       </tbody>
     </table>
   </div>
+  <app-pagination [page]="page()" [pageSize]="pageSize" [totalCount]="totalCount()" (pageChange)="onPageChange($event)"></app-pagination>
 </div>
 
 <app-candidate-form

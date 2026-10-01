@@ -21,6 +21,10 @@ export class SupervisionsService {
     return this.http.post<Supervision>(this.baseUrl, value);
   }
 
+  update(id: string, value: CreateSupervisionValue) {
+    return this.http.put<Supervision>(`${this.baseUrl}/${id}`, value);
+  }
+
   delete(id: string) {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }

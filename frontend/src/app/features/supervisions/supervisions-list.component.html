@@ -11,6 +11,8 @@
           <div class="list-title">{{ supervision.groupLabel }} — {{ supervision.supervisionDate }}</div>
           <div class="list-sub">{{ supervision.institution }} @if (supervision.attendeesCount !== null) { • {{ supervision.attendeesCount }}/{{ supervision.expectedCount }} obecnych }</div>
         </div>
+        <span class="link" (click)="openEditForm(supervision)">Edytuj</span>
+        &nbsp;·&nbsp;
         <span class="link" style="color:var(--danger)" (click)="deleteSupervision(supervision)">Usuń</span>
       </div>
     } @empty {
@@ -23,7 +25,7 @@
   <div class="overlay show">
     <div class="modal">
       <div class="modal-head">
-        <h3>Nowa superwizja</h3>
+        <h3>{{ editingId() ? 'Edytuj superwizję' : 'Nowa superwizja' }}</h3>
         <button class="close" (click)="cancel()">×</button>
       </div>
       <div class="modal-body">

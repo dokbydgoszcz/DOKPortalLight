@@ -24,6 +24,12 @@ public class SupervisionService : ISupervisionService
         return supervisions.Select(ToDto).ToList();
     }
 
+    public async Task<SupervisionDto?> GetByIdAsync(Guid id, CancellationToken ct)
+    {
+        var supervision = await _db.Supervisions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id, ct);
+        return supervision is null ? null : ToDto(supervision);
+    }
+
     public async Task<SupervisionDto> CreateAsync(CreateSupervisionRequest request, CancellationToken ct)
     {
         var supervision = new Supervision
@@ -40,6 +46,23 @@ public class SupervisionService : ISupervisionService
         };
         _db.Supervisions.Add(supervision);
         await _db.SaveChangesAsync(ct);
+        return ToDto(supervision);
+    }
+
+    public async Task<SupervisionDto?> UpdateAsync(Guid id, CreateSupervisionRequest request, CancellationToken ct)
+    {
+        var supervision = await _db.Supervisions.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (supervision is null) return null;
+
+        supervision.Institution = request.Institution;
+        supervision.GroupLabel = request.GroupLabel;
+        supervision.SupervisionDate = request.SupervisionDate;
+        supervision.AttendeesCount = request.AttendeesCount;
+        supervision.ExpectedCount = request.ExpectedCount;
+        supervision.Topic = request.Topic;
+        supervision.Conclusion = request.Conclusion;
+        await _db.SaveChangesAsync(ct);
+
         return ToDto(supervision);
     }
 

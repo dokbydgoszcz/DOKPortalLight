@@ -20,7 +20,11 @@
               }
             </td>
             <td>{{ meeting.notes }}</td>
-            <td><span class="link" style="color:var(--danger)" (click)="deleteMeeting(meeting)">Usuń</span></td>
+            <td>
+              <span class="link" (click)="openEditForm(meeting)">Edytuj</span>
+              &nbsp;·&nbsp;
+              <span class="link" style="color:var(--danger)" (click)="deleteMeeting(meeting)">Usuń</span>
+            </td>
           </tr>
         } @empty {
           <tr><td colspan="5" class="empty">Brak spotkań.</td></tr>
@@ -34,7 +38,7 @@
   <div class="overlay show">
     <div class="modal">
       <div class="modal-head">
-        <h3>Nowe spotkanie</h3>
+        <h3>{{ editingId() ? 'Edytuj spotkanie' : 'Nowe spotkanie' }}</h3>
         <button class="close" (click)="cancel()">×</button>
       </div>
       <div class="modal-body">

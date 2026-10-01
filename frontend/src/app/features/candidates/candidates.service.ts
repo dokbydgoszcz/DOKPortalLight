@@ -10,8 +10,8 @@ export class CandidatesService {
 
   constructor(private readonly http: HttpClient) {}
 
-  search(year?: number) {
-    const params: Record<string, string> = { pageSize: '100' };
+  search(year?: number, page = 1, pageSize = 20) {
+    const params: Record<string, string> = { page: String(page), pageSize: String(pageSize) };
     if (year) {
       params['year'] = String(year);
     }

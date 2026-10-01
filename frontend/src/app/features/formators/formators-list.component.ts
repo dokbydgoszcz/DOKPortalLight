@@ -16,6 +16,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 export class FormatorsListComponent implements OnInit {
   readonly formators = signal<Formator[]>([]);
   readonly isFormOpen = signal(false);
+  readonly editingId = signal<string | null>(null);
   people: Person[] = [];
   formValue: FormatorFormValue = { personId: '', function: '' };
 
@@ -41,18 +42,27 @@ export class FormatorsListComponent implements OnInit {
   }
 
   openAddForm(): void {
+    this.editingId.set(null);
     this.formValue = { personId: '', function: '' };
     this.isFormOpen.set(true);
   }
 
+  openEditForm(formator: Formator): void {
+    this.editingId.set(formator.id);
+    this.formValue = { personId: formator.personId, function: formator.function };
+    this.isFormOpen.set(true);
+  }
+
   onSave(): void {
-    this.formatorsService.create(this.formValue).subscribe({
+    const id = this.editingId();
+    const request$ = id ? this.formatorsService.update(id, this.formValue) : this.formatorsService.create(this.formValue);
+    request$.subscribe({
       next: () => {
         this.isFormOpen.set(false);
-        this.toast.success('Dodano formatora.');
+        this.toast.success(id ? 'Zapisano zmiany.' : 'Dodano formatora.');
         this.load();
       },
-      error: () => this.toast.error('Nie udało się dodać formatora.')
+      error: () => this.toast.error(id ? 'Nie udało się zapisać zmian.' : 'Nie udało się dodać formatora.')
     });
   }
 
