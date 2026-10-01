@@ -14,4 +14,6 @@ public class CaseDocument
     public string? ContentType { get; set; }
     public long? FileSizeBytes { get; set; }
     public DateTime? UploadedAtUtc { get; set; }
+
+    public DateTime? LastReminderSentAtUtc { get; set; }
 }
