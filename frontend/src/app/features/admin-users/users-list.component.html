@@ -45,9 +45,14 @@
             }
           </div>
         }
-        <div style="margin-top:8px">
-          <span class="small-muted">Nie znaleziono osoby? </span>
-          <button class="link" type="button" style="border:0;background:transparent;padding:0" (click)="startAddingNewPerson()">Dodaj nową osobę</button>
+        <div class="small-muted" style="margin-top:8px">
+          Nie znaleziono osoby?
+          <button
+            class="link"
+            type="button"
+            style="border:0;background:transparent;padding:0;font:inherit;font-weight:700;text-decoration:underline"
+            (click)="startAddingNewPerson()"
+          >Dodaj nową osobę</button>
         </div>
       }
     </div>
