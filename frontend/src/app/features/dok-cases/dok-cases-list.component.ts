@@ -57,4 +57,9 @@ export class DokCasesListComponent implements OnInit {
   pathLabel(path: string): string {
     return PATH_LABELS[path] ?? path;
   }
+
+  deleteCase(dokCase: DokCase): void {
+    if (!confirm(`Usunąć podopiecznego „${dokCase.personFullName}”?`)) return;
+    this.dokCasesService.delete(dokCase.id).subscribe(() => this.load());
+  }
 }

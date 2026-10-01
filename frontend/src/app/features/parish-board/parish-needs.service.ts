@@ -20,4 +20,8 @@ export class ParishNeedsService {
   assign(id: string, personId: string) {
     return this.http.put<ParishNeed>(`${this.baseUrl}/${id}/assign`, { personId });
   }
+
+  delete(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

@@ -16,4 +16,8 @@ export class MeetingsService {
   create(value: CreateMeetingValue) {
     return this.http.post<Meeting>(this.baseUrl, value);
   }
+
+  delete(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

@@ -67,4 +67,9 @@ export class ParishBoardComponent implements OnInit {
   cancelAssign(): void {
     this.assigningNeedId.set(null);
   }
+
+  deleteNeed(need: ParishNeed): void {
+    if (!confirm(`Usunąć zapotrzebowanie „${need.description}”?`)) return;
+    this.parishNeedsService.delete(need.id).subscribe(() => this.load());
+  }
 }

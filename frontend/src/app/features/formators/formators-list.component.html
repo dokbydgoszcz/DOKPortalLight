@@ -6,7 +6,7 @@
 <div class="card">
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Osoba</th><th>Funkcja</th><th>E-mail</th><th>Telefon</th></tr></thead>
+      <thead><tr><th>Osoba</th><th>Funkcja</th><th>E-mail</th><th>Telefon</th><th></th></tr></thead>
       <tbody>
         @for (formator of formators(); track formator.id) {
           <tr>
@@ -14,9 +14,10 @@
             <td>{{ formator.function }}</td>
             <td>{{ formator.personEmail }}</td>
             <td>{{ formator.personPhone }}</td>
+            <td><span class="link" style="color:var(--danger)" (click)="deleteFormator(formator)">Usuń</span></td>
           </tr>
         } @empty {
-          <tr><td colspan="4" class="empty">Brak formatorów.</td></tr>
+          <tr><td colspan="5" class="empty">Brak formatorów.</td></tr>
         }
       </tbody>
     </table>

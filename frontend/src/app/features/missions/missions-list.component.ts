@@ -41,6 +41,11 @@ export class MissionsListComponent implements OnInit {
     this.isFormOpen.set(false);
   }
 
+  deleteMission(mission: Mission): void {
+    if (!confirm(`Usunąć misję „${mission.personFullName}”?`)) return;
+    this.missionsService.delete(mission.id).subscribe(() => this.load());
+  }
+
   statusPillClass(status: string): string {
     if (status === 'wygasła') return 'pill red';
     if (status === 'wygasa') return 'pill red';

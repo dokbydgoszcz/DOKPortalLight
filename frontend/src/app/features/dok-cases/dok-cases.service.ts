@@ -21,4 +21,8 @@ export class DokCasesService {
   create(value: DokCaseFormValue) {
     return this.http.post<DokCase>(this.baseUrl, value);
   }
+
+  delete(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

@@ -45,4 +45,9 @@ export class CandidatesListComponent implements OnInit {
   onCancel(): void {
     this.isFormOpen.set(false);
   }
+
+  deleteCandidate(candidate: Candidate): void {
+    if (!confirm(`Usunąć kandydata „${candidate.personFullName}”?`)) return;
+    this.candidatesService.delete(candidate.id).subscribe(() => this.load());
+  }
 }

@@ -16,4 +16,8 @@ export class BudgetService {
   create(value: CreateBudgetEntryValue) {
     return this.http.post<BudgetEntry>(this.baseUrl, value);
   }
+
+  delete(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

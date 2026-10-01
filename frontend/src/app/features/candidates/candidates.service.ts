@@ -21,4 +21,8 @@ export class CandidatesService {
   create(value: CandidateFormValue) {
     return this.http.post<Candidate>(this.baseUrl, value);
   }
+
+  delete(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

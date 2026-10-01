@@ -17,4 +17,8 @@ export class MissionsService {
   create(value: MissionFormValue) {
     return this.http.post<Mission>(this.baseUrl, value);
   }
+
+  delete(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

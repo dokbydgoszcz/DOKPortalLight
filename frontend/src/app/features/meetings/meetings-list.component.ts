@@ -40,4 +40,9 @@ export class MeetingsListComponent implements OnInit {
   cancel(): void {
     this.isFormOpen.set(false);
   }
+
+  deleteMeeting(meeting: Meeting): void {
+    if (!confirm(`Usunąć spotkanie „${meeting.caseLabel ?? meeting.groupLabel}” z dnia ${meeting.meetingDate}?`)) return;
+    this.meetingsService.delete(meeting.id).subscribe(() => this.load());
+  }
 }

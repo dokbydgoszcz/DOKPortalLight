@@ -18,6 +18,7 @@
         } @else {
           <span class="pill green">{{ need.status }}</span>
         }
+        <span class="link" style="color:var(--danger)" (click)="deleteNeed(need)">Usuń</span>
       </div>
     } @empty {
       <div class="empty">Brak zapotrzebowań.</div>

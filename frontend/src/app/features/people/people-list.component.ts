@@ -64,4 +64,9 @@ export class PeopleListComponent implements OnInit {
   onCancel(): void {
     this.isFormOpen.set(false);
   }
+
+  deletePerson(person: Person): void {
+    if (!confirm(`Usunąć osobę „${person.fullName}”?`)) return;
+    this.peopleService.delete(person.id).subscribe(() => this.load());
+  }
 }

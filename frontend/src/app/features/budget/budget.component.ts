@@ -57,4 +57,9 @@ export class BudgetComponent implements OnInit {
   cancel(): void {
     this.isFormOpen.set(false);
   }
+
+  deleteEntry(entry: BudgetEntry): void {
+    if (!confirm(`Usunąć operację „${entry.description}”?`)) return;
+    this.budgetService.delete(entry.id).subscribe(() => this.load());
+  }
 }

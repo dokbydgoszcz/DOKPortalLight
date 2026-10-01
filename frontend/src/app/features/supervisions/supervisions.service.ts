@@ -20,4 +20,8 @@ export class SupervisionsService {
   create(value: CreateSupervisionValue) {
     return this.http.post<Supervision>(this.baseUrl, value);
   }
+
+  delete(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

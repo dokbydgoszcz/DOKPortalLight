@@ -24,4 +24,8 @@ export class PeopleService {
   update(id: string, value: PersonFormValue) {
     return this.http.put<Person>(`${this.baseUrl}/${id}`, value);
   }
+
+  delete(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

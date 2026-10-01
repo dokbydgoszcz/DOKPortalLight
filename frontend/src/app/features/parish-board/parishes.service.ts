@@ -10,4 +10,8 @@ export class ParishesService {
   list() {
     return this.http.get<Parish[]>(`${environment.apiBaseUrl}/api/parishes`);
   }
+
+  delete(id: string) {
+    return this.http.delete<void>(`${environment.apiBaseUrl}/api/parishes/${id}`);
+  }
 }

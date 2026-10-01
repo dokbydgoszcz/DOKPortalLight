@@ -13,7 +13,7 @@
 <div class="card">
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Podopieczny</th><th>Ścieżka</th><th>Etap</th><th>Katechista</th><th>Parafia</th></tr></thead>
+      <thead><tr><th>Podopieczny</th><th>Ścieżka</th><th>Etap</th><th>Katechista</th><th>Parafia</th><th></th></tr></thead>
       <tbody>
         @for (dokCase of cases(); track dokCase.id) {
           <tr>
@@ -22,9 +22,10 @@
             <td><span class="pill blue">{{ dokCase.stage }}</span></td>
             <td>{{ dokCase.catechistFullName }}</td>
             <td>{{ dokCase.parishName }}</td>
+            <td><span class="link" style="color:var(--danger)" (click)="deleteCase(dokCase)">Usuń</span></td>
           </tr>
         } @empty {
-          <tr><td colspan="5" class="empty">Brak podopiecznych.</td></tr>
+          <tr><td colspan="6" class="empty">Brak podopiecznych.</td></tr>
         }
       </tbody>
     </table>

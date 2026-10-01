@@ -47,4 +47,9 @@ export class FormatorsListComponent implements OnInit {
   onCancel(): void {
     this.isFormOpen.set(false);
   }
+
+  deleteFormator(formator: Formator): void {
+    if (!confirm(`Usunąć formatora „${formator.personFullName}”?`)) return;
+    this.formatorsService.delete(formator.id).subscribe(() => this.load());
+  }
 }

@@ -40,4 +40,9 @@ export class SupervisionsListComponent implements OnInit {
   cancel(): void {
     this.isFormOpen.set(false);
   }
+
+  deleteSupervision(supervision: Supervision): void {
+    if (!confirm(`Usunąć superwizję „${supervision.groupLabel}”?`)) return;
+    this.supervisionsService.delete(supervision.id).subscribe(() => this.load());
+  }
 }
