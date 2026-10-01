@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SupervisionsService } from './supervisions.service';
 import { CreateSupervisionValue, Supervision } from './supervision.model';
+import { ToastService } from '../../core/notifications/toast.service';
 
 @Component({
   selector: 'app-supervisions-list',
@@ -15,14 +16,20 @@ export class SupervisionsListComponent implements OnInit {
   readonly isFormOpen = signal(false);
   newSupervision: CreateSupervisionValue = { institution: 'DOK', groupLabel: '', supervisionDate: '' };
 
-  constructor(private readonly supervisionsService: SupervisionsService) {}
+  constructor(
+    private readonly supervisionsService: SupervisionsService,
+    private readonly toast: ToastService
+  ) {}
 
   ngOnInit(): void {
     this.load();
   }
 
   load(): void {
-    this.supervisionsService.list().subscribe(supervisions => this.supervisions.set(supervisions));
+    this.supervisionsService.list().subscribe({
+      next: supervisions => this.supervisions.set(supervisions),
+      error: () => this.toast.error('Nie udało się wczytać listy superwizji.')
+    });
   }
 
   openAddForm(): void {
@@ -31,9 +38,13 @@ export class SupervisionsListComponent implements OnInit {
   }
 
   createSupervision(): void {
-    this.supervisionsService.create(this.newSupervision).subscribe(() => {
-      this.isFormOpen.set(false);
-      this.load();
+    this.supervisionsService.create(this.newSupervision).subscribe({
+      next: () => {
+        this.isFormOpen.set(false);
+        this.toast.success('Dodano superwizję.');
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się dodać superwizji.')
     });
   }
 
@@ -43,6 +54,12 @@ export class SupervisionsListComponent implements OnInit {
 
   deleteSupervision(supervision: Supervision): void {
     if (!confirm(`Usunąć superwizję „${supervision.groupLabel}”?`)) return;
-    this.supervisionsService.delete(supervision.id).subscribe(() => this.load());
+    this.supervisionsService.delete(supervision.id).subscribe({
+      next: () => {
+        this.toast.success('Superwizja usunięta.');
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się usunąć superwizji.')
+    });
   }
 }

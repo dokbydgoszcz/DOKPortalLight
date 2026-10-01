@@ -4,6 +4,7 @@ import { UsersService } from './users.service';
 import { ALL_ROLES, AppUserAccount, CreateUserValue } from './user.model';
 import { PeopleService } from '../people/people.service';
 import { Person } from '../people/person.model';
+import { ToastService } from '../../core/notifications/toast.service';
 
 @Component({
   selector: 'app-users-list',
@@ -35,7 +36,8 @@ export class UsersListComponent implements OnInit {
 
   constructor(
     private readonly usersService: UsersService,
-    private readonly peopleService: PeopleService
+    private readonly peopleService: PeopleService,
+    private readonly toast: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -43,7 +45,10 @@ export class UsersListComponent implements OnInit {
   }
 
   load(): void {
-    this.usersService.list().subscribe(users => this.users.set(users));
+    this.usersService.list().subscribe({
+      next: users => this.users.set(users),
+      error: () => this.toast.error('Nie udało się wczytać listy użytkowników.')
+    });
   }
 
   onPersonQueryChange(): void {
@@ -56,7 +61,10 @@ export class UsersListComponent implements OnInit {
       return;
     }
     this.personSearchTimer = setTimeout(() => {
-      this.peopleService.search(query).subscribe(result => this.personResults.set(result.items));
+      this.peopleService.search(query).subscribe({
+        next: result => this.personResults.set(result.items),
+        error: () => this.toast.error('Nie udało się wyszukać osób.')
+      });
     }, 300);
   }
 
@@ -118,6 +126,7 @@ export class UsersListComponent implements OnInit {
         this.addingNewPerson.set(false);
         this.newPersonFirstName = '';
         this.newPersonLastName = '';
+        this.toast.success('Konto użytkownika utworzone.');
         this.load();
       },
       error: () => this.createError.set('Nie udało się utworzyć konta użytkownika.')
@@ -126,7 +135,10 @@ export class UsersListComponent implements OnInit {
 
   toggleRole(user: AppUserAccount, role: string, checked: boolean): void {
     const roles = checked ? [...user.roles, role] : user.roles.filter(r => r !== role);
-    this.usersService.assignRoles(user.id, roles).subscribe(() => this.load());
+    this.usersService.assignRoles(user.id, roles).subscribe({
+      next: () => this.load(),
+      error: () => this.toast.error('Nie udało się zaktualizować ról.')
+    });
   }
 
   startResetPassword(userId: string): void {
@@ -147,7 +159,10 @@ export class UsersListComponent implements OnInit {
       return;
     }
     this.usersService.resetPassword(userId, this.resetPasswordValue).subscribe({
-      next: () => this.resettingUserId.set(null),
+      next: () => {
+        this.resettingUserId.set(null);
+        this.toast.success('Hasło zresetowane.');
+      },
       error: () => this.resetError.set('Nie udało się zresetować hasła.')
     });
   }

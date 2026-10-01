@@ -33,7 +33,7 @@ public class DbSeederTests
     }
 
     [Fact]
-    public async Task SeedAsync_CreatesRolesAdminUserAndParishes()
+    public async Task SeedAsync_CreatesRolesAndAdminUser()
     {
         var provider = BuildServices(Guid.NewGuid().ToString());
 
@@ -47,9 +47,6 @@ public class DbSeederTests
         var admin = await userManager.FindByEmailAsync("admin@dokportal.local");
         Assert.NotNull(admin);
         Assert.True(await userManager.IsInRoleAsync(admin!, "Administrator"));
-
-        var db = provider.GetRequiredService<AppDbContext>();
-        Assert.True(await db.Parishes.AnyAsync());
     }
 
     [Fact]
@@ -60,7 +57,8 @@ public class DbSeederTests
         await DbSeeder.SeedAsync(provider);
         await DbSeeder.SeedAsync(provider);
 
-        var db = provider.GetRequiredService<AppDbContext>();
-        Assert.Equal(3, await db.Parishes.CountAsync());
+        var userManager = provider.GetRequiredService<UserManager<AppUser>>();
+        var admins = await userManager.GetUsersInRoleAsync("Administrator");
+        Assert.Single(admins);
     }
 }

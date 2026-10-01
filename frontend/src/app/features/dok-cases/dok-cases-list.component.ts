@@ -2,6 +2,7 @@ import { Component, OnInit, computed, signal } from '@angular/core';
 import { DokCasesService } from './dok-cases.service';
 import { DokCase, DokCaseFormValue } from './dok-case.model';
 import { DokCaseFormComponent } from './dok-case-form.component';
+import { ToastService } from '../../core/notifications/toast.service';
 
 const PATH_LABELS: Record<string, string> = {
   BaptismCandidate: 'Chrzest',
@@ -28,14 +29,20 @@ export class DokCasesListComponent implements OnInit {
   readonly conversionCount = computed(() => this.cases().filter(c => c.path === 'Conversion' || c.path === 'ReturnToUnity').length);
   readonly communionCount = computed(() => this.cases().filter(c => c.path === 'Communion').length);
 
-  constructor(private readonly dokCasesService: DokCasesService) {}
+  constructor(
+    private readonly dokCasesService: DokCasesService,
+    private readonly toast: ToastService
+  ) {}
 
   ngOnInit(): void {
     this.load();
   }
 
   load(): void {
-    this.dokCasesService.search().subscribe(result => this.cases.set(result.items));
+    this.dokCasesService.search().subscribe({
+      next: result => this.cases.set(result.items),
+      error: () => this.toast.error('Nie udało się wczytać listy podopiecznych.')
+    });
   }
 
   openAddForm(): void {
@@ -44,9 +51,13 @@ export class DokCasesListComponent implements OnInit {
   }
 
   onSave(value: DokCaseFormValue): void {
-    this.dokCasesService.create(value).subscribe(() => {
-      this.isFormOpen.set(false);
-      this.load();
+    this.dokCasesService.create(value).subscribe({
+      next: () => {
+        this.isFormOpen.set(false);
+        this.toast.success('Dodano podopiecznego.');
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się dodać podopiecznego.')
     });
   }
 
@@ -60,6 +71,12 @@ export class DokCasesListComponent implements OnInit {
 
   deleteCase(dokCase: DokCase): void {
     if (!confirm(`Usunąć podopiecznego „${dokCase.personFullName}”?`)) return;
-    this.dokCasesService.delete(dokCase.id).subscribe(() => this.load());
+    this.dokCasesService.delete(dokCase.id).subscribe({
+      next: () => {
+        this.toast.success('Podopieczny usunięty.');
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się usunąć podopiecznego.')
+    });
   }
 }

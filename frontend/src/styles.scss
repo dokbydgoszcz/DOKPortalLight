@@ -193,11 +193,16 @@ tr:hover td{background:#FAFAF7}
 .field textarea{min-height:92px;resize:vertical}
 .field.full{grid-column:1/-1}
 .modal-foot{padding:15px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
-.toast{
-  position:fixed;right:22px;bottom:22px;background:var(--green-dark);color:white;padding:12px 14px;border-radius:12px;
-  box-shadow:var(--shadow);font-size:12px;display:none;z-index:100
+.toast-stack{
+  position:fixed;right:22px;bottom:22px;z-index:100;
+  display:flex;flex-direction:column;gap:10px;align-items:flex-end;
+  max-width:min(360px,calc(100vw - 32px));
 }
-.toast.show{display:block;animation:pop .25s ease}
+.toast{
+  background:var(--green-dark);color:white;padding:12px 14px;border-radius:12px;
+  box-shadow:var(--shadow);font-size:12px;line-height:1.5;cursor:pointer;animation:pop .25s ease;
+}
+.toast.error{background:var(--danger)}
 @keyframes pop{from{transform:translateY(8px);opacity:.5}to{transform:none;opacity:1}}
 .drawer{
   position:fixed;right:-480px;top:0;width:min(460px,95vw);height:100vh;background:white;z-index:70;box-shadow:-12px 0 35px rgba(0,0,0,.15);transition:.25s ease;display:flex;flex-direction:column

@@ -40,15 +40,5 @@ public static class DbSeeder
                 }
             }
         }
-
-        var db = services.GetRequiredService<AppDbContext>();
-        if (!await db.Parishes.AnyAsync())
-        {
-            db.Parishes.AddRange(
-                new Parish { Id = Guid.NewGuid(), Name = "św. Mateusza" },
-                new Parish { Id = Guid.NewGuid(), Name = "Chrystusa Króla" },
-                new Parish { Id = Guid.NewGuid(), Name = "św. Józefa" });
-            await db.SaveChangesAsync();
-        }
     }
 }

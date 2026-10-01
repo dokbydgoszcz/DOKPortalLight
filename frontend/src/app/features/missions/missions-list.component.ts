@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { MissionsService } from './missions.service';
 import { Mission, MissionFormValue } from './mission.model';
 import { MissionFormComponent } from './mission-form.component';
+import { ToastService } from '../../core/notifications/toast.service';
 
 @Component({
   selector: 'app-missions-list',
@@ -15,14 +16,20 @@ export class MissionsListComponent implements OnInit {
   readonly isFormOpen = signal(false);
   formValue: MissionFormValue = { personId: '', servicePlace: '', missionStartDate: '', missionEndDate: '' };
 
-  constructor(private readonly missionsService: MissionsService) {}
+  constructor(
+    private readonly missionsService: MissionsService,
+    private readonly toast: ToastService
+  ) {}
 
   ngOnInit(): void {
     this.load();
   }
 
   load(): void {
-    this.missionsService.search().subscribe(result => this.missions.set(result.items));
+    this.missionsService.search().subscribe({
+      next: result => this.missions.set(result.items),
+      error: () => this.toast.error('Nie udało się wczytać listy misji.')
+    });
   }
 
   openAddForm(): void {
@@ -31,9 +38,13 @@ export class MissionsListComponent implements OnInit {
   }
 
   onSave(value: MissionFormValue): void {
-    this.missionsService.create(value).subscribe(() => {
-      this.isFormOpen.set(false);
-      this.load();
+    this.missionsService.create(value).subscribe({
+      next: () => {
+        this.isFormOpen.set(false);
+        this.toast.success('Dodano misję.');
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się dodać misji.')
     });
   }
 
@@ -43,7 +54,13 @@ export class MissionsListComponent implements OnInit {
 
   deleteMission(mission: Mission): void {
     if (!confirm(`Usunąć misję „${mission.personFullName}”?`)) return;
-    this.missionsService.delete(mission.id).subscribe(() => this.load());
+    this.missionsService.delete(mission.id).subscribe({
+      next: () => {
+        this.toast.success('Misja usunięta.');
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się usunąć misji.')
+    });
   }
 
   statusPillClass(status: string): string {

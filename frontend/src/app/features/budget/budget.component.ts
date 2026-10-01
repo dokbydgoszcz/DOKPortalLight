@@ -2,6 +2,7 @@ import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BudgetService } from './budget.service';
 import { BudgetEntry, CreateBudgetEntryValue } from './budget-entry.model';
+import { ToastService } from '../../core/notifications/toast.service';
 
 @Component({
   selector: 'app-budget',
@@ -32,14 +33,20 @@ export class BudgetComponent implements OnInit {
     return Array.from(totals.entries()).map(([category, amount]) => ({ category, amount }));
   });
 
-  constructor(private readonly budgetService: BudgetService) {}
+  constructor(
+    private readonly budgetService: BudgetService,
+    private readonly toast: ToastService
+  ) {}
 
   ngOnInit(): void {
     this.load();
   }
 
   load(): void {
-    this.budgetService.listEntries('SKSP').subscribe(entries => this.entries.set(entries));
+    this.budgetService.listEntries('SKSP').subscribe({
+      next: entries => this.entries.set(entries),
+      error: () => this.toast.error('Nie udało się wczytać operacji budżetowych.')
+    });
   }
 
   openAddForm(): void {
@@ -48,9 +55,13 @@ export class BudgetComponent implements OnInit {
   }
 
   createEntry(): void {
-    this.budgetService.create(this.newEntry).subscribe(() => {
-      this.isFormOpen.set(false);
-      this.load();
+    this.budgetService.create(this.newEntry).subscribe({
+      next: () => {
+        this.isFormOpen.set(false);
+        this.toast.success('Dodano operację.');
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się dodać operacji.')
     });
   }
 
@@ -60,6 +71,12 @@ export class BudgetComponent implements OnInit {
 
   deleteEntry(entry: BudgetEntry): void {
     if (!confirm(`Usunąć operację „${entry.description}”?`)) return;
-    this.budgetService.delete(entry.id).subscribe(() => this.load());
+    this.budgetService.delete(entry.id).subscribe({
+      next: () => {
+        this.toast.success('Operacja usunięta.');
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się usunąć operacji.')
+    });
   }
 }

@@ -12,10 +12,12 @@ export class DashboardComponent implements OnInit {
   readonly summary = signal<DashboardSummary | null>(null);
 
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-01', text: 'Pełny rejestr 150 parafii Diecezji Bydgoskiej — nowy ekran „Rejestr parafii" z możliwością dodawania kolejnych.' },
+    { date: '2026-10-01', text: 'Powiadomienia (dymki) o powodzeniu lub błędzie przy zapisie, edycji i usuwaniu — widoczne w prawym dolnym rogu.' },
     { date: '2026-10-01', text: 'Czytelne komunikaty błędów zamiast technicznych awarii serwera.' },
     { date: '2026-10-01', text: 'Walidacja formularzy logowania, użytkowników i osób (np. format e-maila, długość hasła).' },
     { date: '2026-10-01', text: 'Blokada konta na 15 minut po 5 nieudanych próbach logowania.' },
-    { date: '2026-10-01', text: 'Przycisk „Usuń" na listach (Osoby, Kandydaci, Misje, Formatorzy, Superwizje, Spotkania, Sprawy DOK, Potrzeby parafialne, Budżet) — dane są ukrywane, nie kasowane trwale, więc pomyłkę da się cofnąć.' },
+    { date: '2026-10-01', text: 'Przycisk „Usuń" na listach (Osoby, Kandydaci, Misje, Formatorzy, Superwizje, Spotkania, Sprawy DOK, Parafie, Potrzeby parafialne, Budżet SKŚP i DOK) — dane są ukrywane, nie kasowane trwale, więc pomyłkę da się cofnąć.' },
     { date: '2026-10-01', text: 'Logowanie: spinner i informacja o wybudzaniu serwera, gdy backend jest uśpiony.' },
     { date: '2026-10-01', text: 'Automatyczne wylogowanie po 20 minutach bezczynności.' },
     { date: '2026-10-01', text: 'Naprawiono błąd 404 po odświeżeniu strony.' },

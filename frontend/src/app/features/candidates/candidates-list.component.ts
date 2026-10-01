@@ -2,6 +2,7 @@ import { Component, OnInit, computed, signal } from '@angular/core';
 import { CandidatesService } from './candidates.service';
 import { Candidate, CandidateFormValue } from './candidate.model';
 import { CandidateFormComponent } from './candidate-form.component';
+import { ToastService } from '../../core/notifications/toast.service';
 
 @Component({
   selector: 'app-candidates-list',
@@ -20,14 +21,20 @@ export class CandidatesListComponent implements OnInit {
   readonly yearThreeCount = computed(() => this.candidates().filter(c => c.year === 3).length);
   readonly missingOpinionsCount = computed(() => this.candidates().filter(c => c.opinionsCollected < c.opinionsRequired).length);
 
-  constructor(private readonly candidatesService: CandidatesService) {}
+  constructor(
+    private readonly candidatesService: CandidatesService,
+    private readonly toast: ToastService
+  ) {}
 
   ngOnInit(): void {
     this.load();
   }
 
   load(): void {
-    this.candidatesService.search().subscribe(result => this.candidates.set(result.items));
+    this.candidatesService.search().subscribe({
+      next: result => this.candidates.set(result.items),
+      error: () => this.toast.error('Nie udało się wczytać listy kandydatów.')
+    });
   }
 
   openAddForm(): void {
@@ -36,9 +43,13 @@ export class CandidatesListComponent implements OnInit {
   }
 
   onSave(value: CandidateFormValue): void {
-    this.candidatesService.create(value).subscribe(() => {
-      this.isFormOpen.set(false);
-      this.load();
+    this.candidatesService.create(value).subscribe({
+      next: () => {
+        this.isFormOpen.set(false);
+        this.toast.success('Dodano kandydata.');
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się dodać kandydata.')
     });
   }
 
@@ -48,6 +59,12 @@ export class CandidatesListComponent implements OnInit {
 
   deleteCandidate(candidate: Candidate): void {
     if (!confirm(`Usunąć kandydata „${candidate.personFullName}”?`)) return;
-    this.candidatesService.delete(candidate.id).subscribe(() => this.load());
+    this.candidatesService.delete(candidate.id).subscribe({
+      next: () => {
+        this.toast.success('Kandydat usunięty.');
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się usunąć kandydata.')
+    });
   }
 }
