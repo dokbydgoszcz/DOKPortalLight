@@ -20,4 +20,8 @@ export class UsersService {
   assignRoles(id: string, roles: string[]) {
     return this.http.put<AppUserAccount>(`${this.baseUrl}/${id}/roles`, { roles });
   }
+
+  resetPassword(id: string, newPassword: string) {
+    return this.http.put<void>(`${this.baseUrl}/${id}/reset-password`, { newPassword });
+  }
 }

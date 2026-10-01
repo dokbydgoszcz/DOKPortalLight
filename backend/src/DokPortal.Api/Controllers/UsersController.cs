@@ -44,4 +44,17 @@ public class UsersController : ControllerBase
 
         return Ok(updated);
     }
+
+    [HttpPut("{id}/reset-password")]
+    public async Task<IActionResult> ResetPassword(string id, ResetPasswordRequest request, CancellationToken ct)
+    {
+        var succeeded = await _userService.ResetPasswordAsync(id, request.NewPassword, ct);
+        if (!succeeded) return NotFound();
+
+        var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
+        var currentUserEmail = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Email).Value;
+        await _auditLogService.LogAsync(currentUserId, currentUserEmail, "ResetUserPassword", id, DokPortal.Domain.Enums.AuditResult.Allowed, ct);
+
+        return NoContent();
+    }
 }

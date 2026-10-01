@@ -16,8 +16,24 @@
   </div>
 </div>
 
-<div class="card">
+<div class="card" style="margin-bottom:16px">
   <div class="card-body empty">
     Statystyki SKŚP, DOK oraz sprawy wymagające uwagi pojawią się po wdrożeniu kolejnych faz.
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h3>Co nowego</h3></div>
+  <div class="card-body">
+    <div class="list">
+      @for (entry of changelog; track entry.date + entry.text) {
+        <div class="list-row">
+          <div class="list-main">
+            <div class="list-title">{{ entry.text }}</div>
+            <div class="list-sub">{{ entry.date }}</div>
+          </div>
+        </div>
+      }
+    </div>
   </div>
 </div>

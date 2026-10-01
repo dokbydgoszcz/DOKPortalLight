@@ -13,4 +13,5 @@ export interface CreateUserValue {
   email: string;
   password: string;
   roles: string[];
+  personId?: string;
 }

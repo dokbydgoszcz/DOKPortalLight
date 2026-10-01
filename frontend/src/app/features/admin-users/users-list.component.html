@@ -3,11 +3,65 @@
 </div>
 
 <div class="card" style="margin-bottom:16px">
-  <div class="card-body form-grid">
-    <div class="field"><label>E-mail</label><input [(ngModel)]="newUser.email" name="email" /></div>
-    <div class="field"><label>Hasło</label><input type="password" [(ngModel)]="newUser.password" name="password" /></div>
-    <div class="field full">
-      <button class="btn primary" (click)="createUser()">＋ Utwórz konto</button>
+  <div class="card-body">
+    <div class="field" style="margin-bottom:12px">
+      <label>Osoba</label>
+      @if (selectedPerson(); as person) {
+        <div class="list-row">
+          <div class="list-main">
+            <div class="list-title">{{ person.fullName }}</div>
+            @if (person.email) {
+              <div class="list-sub">{{ person.email }}</div>
+            }
+          </div>
+          <button class="btn ghost small" type="button" (click)="clearSelectedPerson()">Zmień</button>
+        </div>
+      } @else if (addingNewPerson()) {
+        <div class="form-grid">
+          <div class="field"><label>Imię</label><input [(ngModel)]="newPersonFirstName" name="newPersonFirstName" /></div>
+          <div class="field"><label>Nazwisko</label><input [(ngModel)]="newPersonLastName" name="newPersonLastName" /></div>
+          <div class="field full">
+            <button class="btn ghost small" type="button" (click)="cancelAddingNewPerson()">Anuluj dodawanie nowej osoby</button>
+          </div>
+        </div>
+      } @else {
+        <input
+          [(ngModel)]="personQuery"
+          name="personQuery"
+          (ngModelChange)="onPersonQueryChange()"
+          placeholder="Szukaj osoby po imieniu lub nazwisku…"
+        />
+        @if (personResults().length > 0) {
+          <div class="list" style="margin-top:8px">
+            @for (person of personResults(); track person.id) {
+              <button class="list-row" type="button" style="width:100%;text-align:left;border:1px solid var(--line);cursor:pointer" (click)="selectPerson(person)">
+                <div class="list-main">
+                  <div class="list-title">{{ person.fullName }}</div>
+                  @if (person.email) {
+                    <div class="list-sub">{{ person.email }}</div>
+                  }
+                </div>
+              </button>
+            }
+          </div>
+        }
+        <div style="margin-top:8px">
+          <span class="small-muted">Nie znaleziono osoby? </span>
+          <button class="link" type="button" style="border:0;background:transparent;padding:0" (click)="startAddingNewPerson()">Dodaj nową osobę</button>
+        </div>
+      }
+    </div>
+
+    <div class="form-grid">
+      <div class="field"><label>E-mail</label><input [(ngModel)]="newUser.email" name="email" /></div>
+      <div class="field"><label>Hasło</label><input type="password" [(ngModel)]="newUser.password" name="password" /></div>
+      <div class="field"><label>Powtórz hasło</label><input type="password" [(ngModel)]="confirmPassword" name="confirmPassword" /></div>
+      @if (createError()) {
+        <div class="field full"><div class="note" style="border-color:#f2b8bf;background:#fff0f2">{{ createError() }}</div></div>
+      }
+      <div class="field full">
+        <button class="btn primary" (click)="createUser()">＋ Utwórz konto</button>
+      </div>
     </div>
   </div>
 </div>
@@ -15,7 +69,7 @@
 <div class="card">
   <div class="table-wrap">
     <table>
-      <thead><tr><th>E-mail</th>@for (role of allRoles; track role) {<th>{{ role }}</th>}</tr></thead>
+      <thead><tr><th>E-mail</th>@for (role of allRoles; track role) {<th>{{ role }}</th>}<th></th></tr></thead>
       <tbody>
         @for (user of users(); track user.id) {
           <tr>
@@ -26,6 +80,21 @@
                        (change)="toggleRole(user, role, $any($event.target).checked)" />
               </td>
             }
+            <td>
+              @if (resettingUserId() === user.id) {
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                  <input type="password" placeholder="Nowe hasło" [(ngModel)]="resetPasswordValue" name="resetPasswordValue" style="width:120px" />
+                  <input type="password" placeholder="Powtórz" [(ngModel)]="resetPasswordConfirm" name="resetPasswordConfirm" style="width:120px" />
+                  <button class="btn primary small" type="button" (click)="confirmResetPassword(user.id)">Zapisz</button>
+                  <button class="btn ghost small" type="button" (click)="cancelResetPassword()">Anuluj</button>
+                  @if (resetError()) {
+                    <span class="small-muted" style="color:var(--danger)">{{ resetError() }}</span>
+                  }
+                </div>
+              } @else {
+                <button class="btn ghost small" type="button" (click)="startResetPassword(user.id)">Resetuj hasło</button>
+              }
+            </td>
           </tr>
         }
       </tbody>

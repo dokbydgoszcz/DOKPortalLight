@@ -42,10 +42,10 @@ export class AuthService {
     this.tokenSignal.set(response.token);
   }
 
-  logout(): void {
+  logout(reason?: 'idle'): void {
     localStorage.removeItem(STORAGE_KEY);
     this.tokenSignal.set(null);
-    this.router.navigateByUrl('/login');
+    this.router.navigateByUrl('/login', reason ? { state: { reason } } : undefined);
   }
 
   hasRole(role: string): boolean {

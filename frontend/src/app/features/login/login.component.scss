@@ -213,6 +213,16 @@
   outline-offset:2px;
 }
 
+.session-note{
+  margin:0 0 20px;
+  padding:10px 12px;
+  border-radius:10px;
+  background:var(--accent-soft);
+  color:#1F5A54;
+  font-size:13px;
+  line-height:1.45;
+}
+
 .form-error{
   margin:-4px 0 18px;
   padding:10px 12px;
@@ -256,6 +266,28 @@
   transform:translateX(3px);
 }
 
+.spinner{
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,.35);
+  border-top-color:#fff;
+  animation:spin .7s linear infinite;
+  flex:0 0 auto;
+}
+@keyframes spin{
+  to{ transform:rotate(360deg); }
+}
+
+.wakeup-hint{
+  margin:14px 0 0;
+  font-size:12px;
+  line-height:1.5;
+  color:var(--muted);
+  text-align:center;
+  min-height:0;
+}
+
 .login-footer{
   margin-top:28px;
   padding-top:20px;
@@ -277,6 +309,9 @@
   }
   .submit-btn:hover:not(:disabled) .submit-arrow{
     transform:none;
+  }
+  .spinner{
+    animation-duration:1.4s;
   }
 }
 

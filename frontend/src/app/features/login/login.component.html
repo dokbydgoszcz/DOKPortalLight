@@ -37,6 +37,10 @@
         <h2>Witaj ponownie.</h2>
         <p class="form-sub">Zaloguj się do portalu ośrodka.</p>
 
+        @if (sessionExpiredMessage()) {
+          <div class="session-note" role="status">{{ sessionExpiredMessage() }}</div>
+        }
+
         <form (ngSubmit)="submit()" novalidate>
           <div class="form-field">
             <label for="login-email">Adres e-mail</label>
@@ -47,6 +51,7 @@
               placeholder="nazwa@domena.pl"
               autocomplete="username"
               [(ngModel)]="email"
+              [disabled]="isSubmitting()"
               required
             />
           </div>
@@ -60,6 +65,7 @@
                 [type]="showPassword() ? 'text' : 'password'"
                 autocomplete="current-password"
                 [(ngModel)]="password"
+                [disabled]="isSubmitting()"
                 required
               />
               <button
@@ -90,6 +96,9 @@
           }
 
           <button class="submit-btn" type="submit" [disabled]="isSubmitting()">
+            @if (isSubmitting()) {
+              <span class="spinner" aria-hidden="true"></span>
+            }
             <span>{{ isSubmitting() ? 'Logowanie…' : 'Zaloguj się' }}</span>
             @if (!isSubmitting()) {
               <svg class="submit-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -98,6 +107,12 @@
               </svg>
             }
           </button>
+
+          <p class="wakeup-hint" aria-live="polite">
+            @if (isWakingUp()) {
+              Serwer właśnie się wybudza po dłuższej nieaktywności — może to potrwać do około 30 sekund.
+            }
+          </p>
         </form>
 
         <footer class="login-footer">
