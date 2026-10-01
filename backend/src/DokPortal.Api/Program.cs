@@ -93,6 +93,23 @@ else
     builder.Services.AddSingleton<IFileStorageService, NullFileStorageService>();
 }
 
+var smtpHost = builder.Configuration["Smtp:Host"];
+if (!string.IsNullOrWhiteSpace(smtpHost))
+{
+    var smtpPort = builder.Configuration.GetValue<int?>("Smtp:Port") ?? 587;
+    var smtpUsername = builder.Configuration["Smtp:Username"] ?? "";
+    var smtpPassword = builder.Configuration["Smtp:Password"] ?? "";
+    var smtpFromEmail = builder.Configuration["Smtp:FromEmail"] ?? smtpUsername;
+    var smtpFromName = builder.Configuration["Smtp:FromName"] ?? "DOK Portal Light";
+    var smtpEnableSsl = builder.Configuration.GetValue<bool?>("Smtp:EnableSsl") ?? true;
+    builder.Services.AddSingleton<IEmailSender>(
+        new SmtpEmailSender(smtpHost, smtpPort, smtpUsername, smtpPassword, smtpFromEmail, smtpFromName, smtpEnableSsl));
+}
+else
+{
+    builder.Services.AddSingleton<IEmailSender, NullEmailSender>();
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {

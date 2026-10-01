@@ -1,3 +1,4 @@
+using DokPortal.Application.Common;
 using DokPortal.Application.Mailing;
 using DokPortal.Domain.Entities;
 using DokPortal.Domain.Enums;
@@ -9,8 +10,13 @@ namespace DokPortal.Infrastructure.Services;
 public class MailingService : IMailingService
 {
     private readonly AppDbContext _db;
+    private readonly IEmailSender _emailSender;
 
-    public MailingService(AppDbContext db) => _db = db;
+    public MailingService(AppDbContext db, IEmailSender emailSender)
+    {
+        _db = db;
+        _emailSender = emailSender;
+    }
 
     public async Task<int> GetRecipientCountAsync(MailingGroup group, CancellationToken ct) => group switch
     {
@@ -51,11 +57,35 @@ public class MailingService : IMailingService
         var campaign = await _db.MailingCampaigns.FirstOrDefaultAsync(c => c.Id == id, ct);
         if (campaign is null) return null;
 
-        campaign.RecipientCount = await GetRecipientCountAsync(campaign.Group, ct);
+        var recipientEmails = await GetRecipientEmailsAsync(campaign.Group, ct);
+        foreach (var email in recipientEmails)
+        {
+            await _emailSender.SendAsync(email, campaign.Subject, campaign.Body, ct);
+        }
+
+        campaign.RecipientCount = recipientEmails.Count;
         campaign.Status = CampaignStatus.Sent;
         campaign.SentAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
         return ToDto(campaign);
+    }
+
+    private Task<List<string>> GetRecipientEmailsAsync(MailingGroup group, CancellationToken ct)
+    {
+        var personIds = group switch
+        {
+            MailingGroup.CandidatesSksp => _db.Candidates.Select(c => c.PersonId),
+            MailingGroup.Missionaries => _db.CanonicalMissions.Select(m => m.PersonId).Distinct(),
+            MailingGroup.DokGraduates => _db.DokCases.Where(c => c.Stage == DokStage.Graduate).Select(c => c.PersonId),
+            MailingGroup.DokCases => _db.DokCases.Select(c => c.PersonId),
+            _ => throw new ArgumentOutOfRangeException(nameof(group))
+        };
+
+        return _db.People
+            .Where(p => personIds.Contains(p.Id) && p.Email != null && p.Email != "")
+            .Select(p => p.Email!)
+            .Distinct()
+            .ToListAsync(ct);
     }
 
     private static MailingCampaignDto ToDto(MailingCampaign c) => new()
