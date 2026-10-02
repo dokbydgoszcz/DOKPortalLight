@@ -1,5 +1,6 @@
 using DokPortal.Application.Auth;
 using DokPortal.Application.AuditLog;
+using DokPortal.Application.Permissions;
 using DokPortal.Domain.Enums;
 using DokPortal.Infrastructure.Auth;
 using DokPortal.Infrastructure.Identity;
@@ -17,17 +18,20 @@ public class AuthController : ControllerBase
     private readonly IJwtTokenGenerator _tokenGenerator;
     private readonly JwtOptions _jwtOptions;
     private readonly IAuditLogService _auditLogService;
+    private readonly IPermissionService _permissionService;
 
     public AuthController(
         UserManager<AppUser> userManager,
         IJwtTokenGenerator tokenGenerator,
         JwtOptions jwtOptions,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        IPermissionService permissionService)
     {
         _userManager = userManager;
         _tokenGenerator = tokenGenerator;
         _jwtOptions = jwtOptions;
         _auditLogService = auditLogService;
+        _permissionService = permissionService;
     }
 
     [HttpPost("login")]
@@ -56,7 +60,8 @@ public class AuthController : ControllerBase
         await _userManager.ResetAccessFailedCountAsync(user);
 
         var roles = await _userManager.GetRolesAsync(user);
-        var token = _tokenGenerator.GenerateToken(user.Id, user.Email!, user.PersonId, roles);
+        var permissions = await _permissionService.GetPermissionsForRolesAsync(roles, ct);
+        var token = _tokenGenerator.GenerateToken(user.Id, user.Email!, user.PersonId, roles, permissions);
 
         await _auditLogService.LogAsync(user.Id, user.Email!, "Login", "Zalogowano", AuditResult.Allowed, ct);
 

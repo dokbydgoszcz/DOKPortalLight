@@ -12,7 +12,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
 
     public JwtTokenGenerator(JwtOptions options) => _options = options;
 
-    public string GenerateToken(string userId, string email, Guid? personId, IEnumerable<string> roles)
+    public string GenerateToken(string userId, string email, Guid? personId, IEnumerable<string> roles, IEnumerable<string> permissions)
     {
         var claims = new List<Claim>
         {
@@ -27,6 +27,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         }
 
         claims.AddRange(roles.Select(role => new Claim("role", role)));
+        claims.AddRange(permissions.Select(permission => new Claim("permission", permission)));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

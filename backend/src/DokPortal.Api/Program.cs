@@ -14,6 +14,7 @@ using DokPortal.Application.Mailing;
 using DokPortal.Application.Missions;
 using DokPortal.Application.NameDays;
 using DokPortal.Application.ParishNeeds;
+using DokPortal.Application.Permissions;
 using DokPortal.Application.Parishes;
 using DokPortal.Application.PastoralNotes;
 using DokPortal.Application.Reminders;
@@ -84,6 +85,8 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IMailingService, MailingService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
 
 var blobConnectionString = builder.Configuration["BlobStorage:ConnectionString"];
 var blobContainerName = builder.Configuration["BlobStorage:ContainerName"] ?? "case-documents";

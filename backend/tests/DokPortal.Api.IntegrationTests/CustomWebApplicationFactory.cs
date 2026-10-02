@@ -1,5 +1,6 @@
 using DokPortal.Domain.Constants;
 using DokPortal.Infrastructure.Persistence;
+using DokPortal.Infrastructure.Seed;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -43,6 +44,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                     roleManager.CreateAsync(new IdentityRole(role)).GetAwaiter().GetResult();
                 }
             }
+
+            DbSeeder.SeedRolePermissionsAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>())
+                .GetAwaiter().GetResult();
         });
     }
 
