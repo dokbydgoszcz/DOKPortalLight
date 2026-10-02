@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using DokPortal.Application.CaseDocuments;
 using DokPortal.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
@@ -15,11 +16,12 @@ public class CaseDocumentsController : ControllerBase
     public CaseDocumentsController(ICaseDocumentService caseDocumentService) => _caseDocumentService = caseDocumentService;
 
     [HttpGet]
+    [HasPermission(Permissions.CaseDocumentsView)]
     public async Task<ActionResult<IReadOnlyList<CaseDocumentDto>>> GetAll(Guid caseId, CancellationToken ct)
         => Ok(await _caseDocumentService.GetForCaseAsync(caseId, ct));
 
     [HttpPost]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.KatechistaProwadzacy}")]
+    [HasPermission(Permissions.CaseDocumentsManage)]
     public async Task<ActionResult<CaseDocumentDto>> Create(Guid caseId, CreateCaseDocumentRequest request, CancellationToken ct)
     {
         var created = await _caseDocumentService.CreateAsync(caseId, request, ct);
@@ -27,7 +29,7 @@ public class CaseDocumentsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.KatechistaProwadzacy}")]
+    [HasPermission(Permissions.CaseDocumentsManage)]
     public async Task<ActionResult<CaseDocumentDto>> SetProvided(Guid caseId, Guid id, SetCaseDocumentProvidedRequest request, CancellationToken ct)
     {
         var updated = await _caseDocumentService.SetProvidedAsync(caseId, id, request.IsProvided, ct);
@@ -35,7 +37,7 @@ public class CaseDocumentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/upload")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.KatechistaProwadzacy}")]
+    [HasPermission(Permissions.CaseDocumentsManage)]
     [RequestSizeLimit(20_000_000)]
     public async Task<ActionResult<CaseDocumentDto>> UploadFile(Guid caseId, Guid id, IFormFile file, CancellationToken ct)
     {
@@ -48,6 +50,7 @@ public class CaseDocumentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}/download")]
+    [HasPermission(Permissions.CaseDocumentsView)]
     public async Task<IActionResult> DownloadFile(Guid caseId, Guid id, CancellationToken ct)
     {
         var result = await _caseDocumentService.DownloadFileAsync(caseId, id, ct);

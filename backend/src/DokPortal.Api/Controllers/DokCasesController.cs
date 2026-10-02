@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Common;
 using DokPortal.Application.DokCases;
@@ -18,11 +19,13 @@ public class DokCasesController : ControllerBase
     public DokCasesController(IDokCaseService dokCaseService) => _dokCaseService = dokCaseService;
 
     [HttpGet]
+    [HasPermission(Permissions.DokCasesView)]
     public async Task<ActionResult<PagedResult<DokCaseDto>>> Search(
         [FromQuery] DokPath? path, [FromQuery] int page = 1, [FromQuery] int pageSize = 100, CancellationToken ct = default)
         => Ok(await _dokCaseService.SearchAsync(path, page, pageSize, ct));
 
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.DokCasesView)]
     public async Task<ActionResult<DokCaseDto>> GetById(Guid id, CancellationToken ct)
     {
         var dokCase = await _dokCaseService.GetByIdAsync(id, ct);
@@ -30,7 +33,7 @@ public class DokCasesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK}")]
+    [HasPermission(Permissions.DokCasesManage)]
     public async Task<ActionResult<DokCaseDto>> Create(CreateDokCaseRequest request, CancellationToken ct)
     {
         var created = await _dokCaseService.CreateAsync(request, ct);
@@ -38,7 +41,7 @@ public class DokCasesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK}")]
+    [HasPermission(Permissions.DokCasesManage)]
     public async Task<ActionResult<DokCaseDto>> Update(Guid id, UpdateDokCaseRequest request, CancellationToken ct)
     {
         var updated = await _dokCaseService.UpdateAsync(id, request, ct);
@@ -46,7 +49,7 @@ public class DokCasesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK}")]
+    [HasPermission(Permissions.DokCasesManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;

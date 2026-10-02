@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Meetings;
 using DokPortal.Domain.Constants;
@@ -16,10 +17,12 @@ public class MeetingsController : ControllerBase
     public MeetingsController(IMeetingService meetingService) => _meetingService = meetingService;
 
     [HttpGet]
+    [HasPermission(Permissions.MeetingsView)]
     public async Task<ActionResult<IReadOnlyList<MeetingDto>>> GetAll(CancellationToken ct)
         => Ok(await _meetingService.GetAllAsync(ct));
 
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.MeetingsView)]
     public async Task<ActionResult<MeetingDto>> GetById(Guid id, CancellationToken ct)
     {
         var meeting = await _meetingService.GetByIdAsync(id, ct);
@@ -27,7 +30,7 @@ public class MeetingsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.KatechistaProwadzacy}")]
+    [HasPermission(Permissions.MeetingsManage)]
     public async Task<ActionResult<MeetingDto>> Create(CreateMeetingRequest request, CancellationToken ct)
     {
         var created = await _meetingService.CreateAsync(request, ct);
@@ -35,7 +38,7 @@ public class MeetingsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.KatechistaProwadzacy}")]
+    [HasPermission(Permissions.MeetingsManage)]
     public async Task<ActionResult<MeetingDto>> Update(Guid id, CreateMeetingRequest request, CancellationToken ct)
     {
         var updated = await _meetingService.UpdateAsync(id, request, ct);
@@ -43,7 +46,7 @@ public class MeetingsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.KatechistaProwadzacy}")]
+    [HasPermission(Permissions.MeetingsManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;

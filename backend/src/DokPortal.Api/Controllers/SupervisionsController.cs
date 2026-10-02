@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Supervisions;
 using DokPortal.Domain.Constants;
@@ -17,10 +18,12 @@ public class SupervisionsController : ControllerBase
     public SupervisionsController(ISupervisionService supervisionService) => _supervisionService = supervisionService;
 
     [HttpGet]
+    [HasPermission(Permissions.SupervisionsView)]
     public async Task<ActionResult<IReadOnlyList<SupervisionDto>>> GetAll([FromQuery] Institution? institution, CancellationToken ct)
         => Ok(await _supervisionService.GetAllAsync(institution, ct));
 
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.SupervisionsView)]
     public async Task<ActionResult<SupervisionDto>> GetById(Guid id, CancellationToken ct)
     {
         var supervision = await _supervisionService.GetByIdAsync(id, ct);
@@ -28,7 +31,7 @@ public class SupervisionsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.DyrektorSKSP},{AppRoles.Superwizor}")]
+    [HasPermission(Permissions.SupervisionsManage)]
     public async Task<ActionResult<SupervisionDto>> Create(CreateSupervisionRequest request, CancellationToken ct)
     {
         var created = await _supervisionService.CreateAsync(request, ct);
@@ -36,7 +39,7 @@ public class SupervisionsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.DyrektorSKSP},{AppRoles.Superwizor}")]
+    [HasPermission(Permissions.SupervisionsManage)]
     public async Task<ActionResult<SupervisionDto>> Update(Guid id, CreateSupervisionRequest request, CancellationToken ct)
     {
         var updated = await _supervisionService.UpdateAsync(id, request, ct);
@@ -44,7 +47,7 @@ public class SupervisionsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.DyrektorSKSP},{AppRoles.Superwizor}")]
+    [HasPermission(Permissions.SupervisionsManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;

@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using DokPortal.Api.Authorization;
 using DokPortal.Application.AuditLog;
 using DokPortal.Application.DokCases;
 using DokPortal.Application.PastoralNotes;
@@ -17,19 +18,24 @@ public class PastoralNotesController : ControllerBase
     private readonly IPastoralNoteService _pastoralNoteService;
     private readonly IDokCaseService _dokCaseService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IAuthorizationService _authorization;
 
-    public PastoralNotesController(IPastoralNoteService pastoralNoteService, IDokCaseService dokCaseService, IAuditLogService auditLogService)
+    public PastoralNotesController(
+        IPastoralNoteService pastoralNoteService, IDokCaseService dokCaseService,
+        IAuditLogService auditLogService, IAuthorizationService authorization)
     {
         _pastoralNoteService = pastoralNoteService;
         _dokCaseService = dokCaseService;
         _auditLogService = auditLogService;
+        _authorization = authorization;
     }
 
     [HttpGet]
+    [HasPermission(Permissions.PastoralNotesView)]
     public async Task<ActionResult<IReadOnlyList<PastoralNoteDto>>> GetAll(Guid caseId, CancellationToken ct)
     {
         var currentUserId = GetCurrentUserId();
-        var isPrivileged = User.IsInRole(AppRoles.Administrator) || User.IsInRole(AppRoles.DyrektorDOK);
+        var isPrivileged = (await _authorization.AuthorizeAsync(User, null, Permissions.PastoralNotesReadAll)).Succeeded;
         var notes = await _pastoralNoteService.GetVisibleForCaseAsync(caseId, currentUserId, isPrivileged, ct);
 
         var dokCase = await _dokCaseService.GetByIdAsync(caseId, ct);
@@ -43,7 +49,7 @@ public class PastoralNotesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.KatechistaProwadzacy}")]
+    [HasPermission(Permissions.PastoralNotesWrite)]
     public async Task<ActionResult<PastoralNoteDto>> Create(Guid caseId, CreatePastoralNoteRequest request, CancellationToken ct)
     {
         var currentUserId = GetCurrentUserId();

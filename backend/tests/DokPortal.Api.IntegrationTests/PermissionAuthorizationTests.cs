@@ -85,6 +85,57 @@ public class PermissionAuthorizationTests : IntegrationTestBase
     }
 
     [Theory]
+    [InlineData("/api/dok-cases", "DyrektorDOK", HttpStatusCode.OK)]
+    [InlineData("/api/dok-cases", "Superwizor", HttpStatusCode.OK)]
+    [InlineData("/api/dok-cases", "KatechistaProwadzacy", HttpStatusCode.OK)]
+    [InlineData("/api/dok-cases", "Biskup", HttpStatusCode.OK)]
+    [InlineData("/api/dok-cases", "DyrektorSKSP", HttpStatusCode.Forbidden)]
+    [InlineData("/api/meetings", "DyrektorDOK", HttpStatusCode.OK)]
+    [InlineData("/api/meetings", "KatechistaProwadzacy", HttpStatusCode.OK)]
+    [InlineData("/api/meetings", "Superwizor", HttpStatusCode.Forbidden)]
+    [InlineData("/api/meetings", "Biskup", HttpStatusCode.Forbidden)]
+    [InlineData("/api/supervisions", "Superwizor", HttpStatusCode.OK)]
+    [InlineData("/api/supervisions", "DyrektorSKSP", HttpStatusCode.OK)]
+    [InlineData("/api/supervisions", "KatechistaProwadzacy", HttpStatusCode.Forbidden)]
+    [InlineData("/api/supervisions", "Biskup", HttpStatusCode.Forbidden)]
+    public async Task DokModules_Reads_RequireViewPermission(string url, string role, HttpStatusCode expected)
+    {
+        var client = await CreateAuthenticatedClientAsync($"user-{Guid.NewGuid():N}@example.org", "Sekret123!", role);
+
+        var response = await client.GetAsync(url);
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("KatechistaProwadzacy", HttpStatusCode.OK)]
+    [InlineData("DyrektorDOK", HttpStatusCode.OK)]
+    [InlineData("Superwizor", HttpStatusCode.Forbidden)]
+    [InlineData("Biskup", HttpStatusCode.Forbidden)]
+    public async Task PastoralNotes_Read_RequiresViewPermission(string role, HttpStatusCode expected)
+    {
+        var client = await CreateAuthenticatedClientAsync($"user-{Guid.NewGuid():N}@example.org", "Sekret123!", role);
+
+        var response = await client.GetAsync($"/api/dok-cases/{Guid.NewGuid()}/notes");
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Superwizor", HttpStatusCode.OK)]
+    [InlineData("Biskup", HttpStatusCode.OK)]
+    [InlineData("KatechistaProwadzacy", HttpStatusCode.OK)]
+    [InlineData("DyrektorSKSP", HttpStatusCode.Forbidden)]
+    public async Task CaseDocuments_Read_RequiresViewPermission(string role, HttpStatusCode expected)
+    {
+        var client = await CreateAuthenticatedClientAsync($"user-{Guid.NewGuid():N}@example.org", "Sekret123!", role);
+
+        var response = await client.GetAsync($"/api/dok-cases/{Guid.NewGuid()}/documents");
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    [Theory]
     [InlineData("KatechistaProwadzacy")]
     [InlineData("Biskup")]
     public async Task People_AndParishes_Lists_AreOpenToEveryAuthenticatedUser(string role)
