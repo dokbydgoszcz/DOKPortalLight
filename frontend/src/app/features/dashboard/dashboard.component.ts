@@ -12,6 +12,7 @@ export class DashboardComponent implements OnInit {
   readonly summary = signal<DashboardSummary | null>(null);
 
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-02', text: 'Nawigacja na telefonie — dodano przycisk menu (☰) w pasku górnym. Wcześniej na wąskich ekranach nie dało się otworzyć menu bocznego.' },
     { date: '2026-10-02', text: 'Naprawiono błąd w formularzach (Formatorzy, Kandydaci, Misje, Podopieczni DOK): przycisk „Zapisz" jest teraz zablokowany, dopóki nie wybierzesz osoby z listy, zamiast zgłaszać błąd dopiero po kliknięciu.' },
     { date: '2026-10-02', text: 'Automatyczne przypomnienia o imieninach — raz w tygodniu każdy użytkownik portalu dostaje e-mail z listą osób mających imieniny w najbliższych 7 dniach.' },
     { date: '2026-10-02', text: 'Automatyczne przypomnienia o spotkaniach — katechista prowadzący dostaje e-mail dzień przed spotkaniem przypisanym do jego sprawy DOK.' },

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { IdleTimeoutService } from '../../core/auth/idle-timeout.service';
@@ -17,6 +17,8 @@ export class ShellComponent implements OnInit, OnDestroy {
     NAV_ITEMS.filter(item => item.roles.length === 0 || this.auth.hasAnyRole(item.roles))
   );
 
+  readonly isSidebarOpen = signal(false);
+
   constructor(
     readonly auth: AuthService,
     private readonly idleTimeout: IdleTimeoutService
@@ -32,5 +34,13 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   logout(): void {
     this.auth.logout();
+  }
+
+  toggleSidebar(): void {
+    this.isSidebarOpen.update(open => !open);
+  }
+
+  closeSidebar(): void {
+    this.isSidebarOpen.set(false);
   }
 }

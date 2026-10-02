@@ -1,0 +1,18 @@
+.mobile-menu {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 48, 45, 0.45);
+  z-index: 95;
+}
+
+@media (max-width: 850px) {
+  .sidebar-backdrop.show {
+    display: block;
+  }
+}
