@@ -1,6 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { DashboardService } from './dashboard.service';
-import { DashboardSummary } from './dashboard.model';
+import { DashboardSummary, DokStageCount } from './dashboard.model';
 
 @Component({
   selector: 'app-dashboard',
@@ -11,7 +11,15 @@ import { DashboardSummary } from './dashboard.model';
 export class DashboardComponent implements OnInit {
   readonly summary = signal<DashboardSummary | null>(null);
 
+  readonly stageLabels: Record<DokStageCount['stage'], string> = {
+    Application: 'Zgłoszenie',
+    Formation: 'Formacja',
+    Sacrament: 'Sakrament',
+    Graduate: 'Absolwent'
+  };
+
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-02', text: 'Pulpit startowy pokazuje teraz więcej informacji: liczbę podopiecznych DOK w każdym etapie, sprawy z brakującymi dokumentami, spotkania w najbliższych 7 dniach oraz liczbę kandydatów SKŚP.' },
     { date: '2026-10-02', text: 'Nawigacja na telefonie — dodano przycisk menu (☰) w pasku górnym. Wcześniej na wąskich ekranach nie dało się otworzyć menu bocznego.' },
     { date: '2026-10-02', text: 'Naprawiono błąd w formularzach (Formatorzy, Kandydaci, Misje, Podopieczni DOK): przycisk „Zapisz" jest teraz zablokowany, dopóki nie wybierzesz osoby z listy, zamiast zgłaszać błąd dopiero po kliknięciu.' },
     { date: '2026-10-02', text: 'Automatyczne przypomnienia o imieninach — raz w tygodniu każdy użytkownik portalu dostaje e-mail z listą osób mających imieniny w najbliższych 7 dniach.' },

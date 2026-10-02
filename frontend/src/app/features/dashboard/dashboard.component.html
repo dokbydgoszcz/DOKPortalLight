@@ -14,12 +14,27 @@
     <div class="stat-label">Parafie</div>
     <div class="stat-value">{{ summary()?.parishCount ?? '—' }}</div>
   </div>
+  <div class="card stat">
+    <div class="stat-label">Kandydaci SKŚP</div>
+    <div class="stat-value">{{ summary()?.activeCandidatesCount ?? '—' }}</div>
+  </div>
+  <div class="card stat">
+    <div class="stat-label">Spotkania w ciągu 7 dni</div>
+    <div class="stat-value">{{ summary()?.upcomingMeetingsCount ?? '—' }}</div>
+  </div>
 </div>
 
-<div class="card" style="margin-bottom:16px">
-  <div class="card-body empty">
-    Statystyki SKŚP, DOK oraz sprawy wymagające uwagi pojawią się po wdrożeniu kolejnych faz.
+<div class="grid stats">
+  <div class="card stat">
+    <div class="stat-label">Sprawy DOK z brakującymi dokumentami</div>
+    <div class="stat-value">{{ summary()?.missingDocumentsCasesCount ?? '—' }}</div>
   </div>
+  @for (item of summary()?.dokCasesByStage ?? []; track item.stage) {
+    <div class="card stat">
+      <div class="stat-label">DOK — {{ stageLabels[item.stage] }}</div>
+      <div class="stat-value">{{ item.count }}</div>
+    </div>
+  }
 </div>
 
 <div class="card">

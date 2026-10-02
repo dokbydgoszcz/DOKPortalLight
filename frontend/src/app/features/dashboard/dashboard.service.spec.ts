@@ -14,7 +14,14 @@ describe('DashboardService', () => {
     service.getSummary().subscribe();
 
     const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/dashboard/summary`);
-    req.flush({ peopleCount: 1, parishCount: 1 });
+    req.flush({
+      peopleCount: 1,
+      parishCount: 1,
+      dokCasesByStage: [],
+      missingDocumentsCasesCount: 0,
+      upcomingMeetingsCount: 0,
+      activeCandidatesCount: 0
+    });
     httpMock.verify();
   });
 });
