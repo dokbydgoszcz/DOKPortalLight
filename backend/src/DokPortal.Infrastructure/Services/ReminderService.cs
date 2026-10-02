@@ -125,4 +125,71 @@ public class ReminderService : IReminderService
             FailedSends = failedSends
         };
     }
+
+    private sealed record UpcomingMeetingRow(
+        Guid MeetingId,
+        DateOnly MeetingDate,
+        string PersonFirstName,
+        string PersonLastName,
+        string? CatechistEmail);
+
+    public async Task<UpcomingMeetingsReminderResultDto> RunUpcomingMeetingsReminderAsync(CancellationToken ct)
+    {
+        var tomorrow = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
+
+        var rows = await (
+            from meeting in _db.Meetings
+            where meeting.DokCaseId != null && meeting.MeetingDate == tomorrow && meeting.ReminderSentAtUtc == null
+            join dokCase in _db.DokCases on meeting.DokCaseId equals dokCase.Id
+            join person in _db.People on dokCase.PersonId equals person.Id
+            join catechist in _db.People on dokCase.CatechistPersonId equals catechist.Id
+            select new UpcomingMeetingRow(meeting.Id, meeting.MeetingDate, person.FirstName, person.LastName, catechist.Email)
+        ).ToListAsync(ct);
+
+        var emailsSentToCatechists = 0;
+        var failedSends = 0;
+        var meetingIdsToStamp = new List<Guid>();
+
+        foreach (var row in rows)
+        {
+            if (string.IsNullOrWhiteSpace(row.CatechistEmail))
+            {
+                continue;
+            }
+
+            var personFullName = $"{row.PersonFirstName} {row.PersonLastName}";
+            var body = $"Przypomnienie: jutro ({row.MeetingDate:yyyy-MM-dd}) odbywa się spotkanie z podopiecznym {personFullName}.";
+            try
+            {
+                await _emailSender.SendAsync(row.CatechistEmail!, "Nadchodzące spotkanie — przypomnienie", body, ct);
+                emailsSentToCatechists++;
+                meetingIdsToStamp.Add(row.MeetingId);
+            }
+            catch (Exception ex)
+            {
+                failedSends++;
+                _logger.LogWarning(ex, "Nie udało się wysłać przypomnienia o spotkaniu {MeetingId} do katechisty", row.MeetingId);
+            }
+        }
+
+        if (meetingIdsToStamp.Count > 0)
+        {
+            var now = DateTime.UtcNow;
+            var meetingsToStamp = await _db.Meetings
+                .Where(m => meetingIdsToStamp.Contains(m.Id))
+                .ToListAsync(ct);
+            foreach (var meeting in meetingsToStamp)
+            {
+                meeting.ReminderSentAtUtc = now;
+            }
+            await _db.SaveChangesAsync(ct);
+        }
+
+        return new UpcomingMeetingsReminderResultDto
+        {
+            MeetingsProcessed = rows.Count,
+            EmailsSentToCatechists = emailsSentToCatechists,
+            FailedSends = failedSends
+        };
+    }
 }

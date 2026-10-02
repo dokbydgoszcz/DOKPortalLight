@@ -232,4 +232,159 @@ public class ReminderServiceTests
         Assert.False(result.DirectorsSummarySent);
         Assert.Empty(emailSender.Sent);
     }
+
+    [Fact]
+    public async Task RunUpcomingMeetingsReminderAsync_SendsReminderForMeetingTomorrowWithCase()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var person = NewPerson();
+        var catechist = NewPerson("katechista@example.org");
+        db.People.AddRange(person, catechist);
+        var dokCase = NewDokCase(person.Id, catechist.Id);
+        db.DokCases.Add(dokCase);
+        var meeting = new Meeting
+        {
+            Id = Guid.NewGuid(), DokCaseId = dokCase.Id,
+            MeetingDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1),
+            CreatedAtUtc = DateTime.UtcNow
+        };
+        db.Meetings.Add(meeting);
+        await db.SaveChangesAsync();
+
+        var emailSender = new RecordingEmailSender();
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+
+        var result = await service.RunUpcomingMeetingsReminderAsync(default);
+
+        Assert.Equal(1, result.MeetingsProcessed);
+        Assert.Equal(1, result.EmailsSentToCatechists);
+        Assert.Single(emailSender.Sent);
+        Assert.Equal("katechista@example.org", emailSender.Sent[0].To);
+
+        var reloaded = await db.Meetings.AsNoTracking().SingleAsync(m => m.Id == meeting.Id);
+        Assert.NotNull(reloaded.ReminderSentAtUtc);
+    }
+
+    [Fact]
+    public async Task RunUpcomingMeetingsReminderAsync_SkipsMeetingNotHappeningTomorrow()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var person = NewPerson();
+        var catechist = NewPerson("katechista@example.org");
+        db.People.AddRange(person, catechist);
+        var dokCase = NewDokCase(person.Id, catechist.Id);
+        db.DokCases.Add(dokCase);
+        db.Meetings.AddRange(
+            new Meeting { Id = Guid.NewGuid(), DokCaseId = dokCase.Id, MeetingDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(2), CreatedAtUtc = DateTime.UtcNow },
+            new Meeting { Id = Guid.NewGuid(), DokCaseId = dokCase.Id, MeetingDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1), CreatedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var emailSender = new RecordingEmailSender();
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+
+        var result = await service.RunUpcomingMeetingsReminderAsync(default);
+
+        Assert.Equal(0, result.MeetingsProcessed);
+        Assert.Empty(emailSender.Sent);
+    }
+
+    [Fact]
+    public async Task RunUpcomingMeetingsReminderAsync_SkipsGroupMeetingWithoutDokCase()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        db.Meetings.Add(new Meeting
+        {
+            Id = Guid.NewGuid(), DokCaseId = null, GroupLabel = "Spotkanie grupowe",
+            MeetingDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1), CreatedAtUtc = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var emailSender = new RecordingEmailSender();
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+
+        var result = await service.RunUpcomingMeetingsReminderAsync(default);
+
+        Assert.Equal(0, result.MeetingsProcessed);
+        Assert.Empty(emailSender.Sent);
+    }
+
+    [Fact]
+    public async Task RunUpcomingMeetingsReminderAsync_SkipsWhenCatechistHasNoEmail()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var person = NewPerson();
+        var catechist = NewPerson(email: null);
+        db.People.AddRange(person, catechist);
+        var dokCase = NewDokCase(person.Id, catechist.Id);
+        db.DokCases.Add(dokCase);
+        var meeting = new Meeting
+        {
+            Id = Guid.NewGuid(), DokCaseId = dokCase.Id,
+            MeetingDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1), CreatedAtUtc = DateTime.UtcNow
+        };
+        db.Meetings.Add(meeting);
+        await db.SaveChangesAsync();
+
+        var emailSender = new RecordingEmailSender();
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+
+        var result = await service.RunUpcomingMeetingsReminderAsync(default);
+
+        Assert.Equal(1, result.MeetingsProcessed);
+        Assert.Equal(0, result.EmailsSentToCatechists);
+        var reloaded = await db.Meetings.AsNoTracking().SingleAsync(m => m.Id == meeting.Id);
+        Assert.Null(reloaded.ReminderSentAtUtc);
+    }
+
+    [Fact]
+    public async Task RunUpcomingMeetingsReminderAsync_DoesNotStampWhenSendFails()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var person = NewPerson();
+        var catechist = NewPerson("katechista@example.org");
+        db.People.AddRange(person, catechist);
+        var dokCase = NewDokCase(person.Id, catechist.Id);
+        db.DokCases.Add(dokCase);
+        var meeting = new Meeting
+        {
+            Id = Guid.NewGuid(), DokCaseId = dokCase.Id,
+            MeetingDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1), CreatedAtUtc = DateTime.UtcNow
+        };
+        db.Meetings.Add(meeting);
+        await db.SaveChangesAsync();
+
+        var service = new ReminderService(db, new ThrowingEmailSender(), NullLogger<ReminderService>.Instance);
+        var result = await service.RunUpcomingMeetingsReminderAsync(default);
+
+        Assert.Equal(0, result.EmailsSentToCatechists);
+        Assert.Equal(1, result.FailedSends);
+        var reloaded = await db.Meetings.AsNoTracking().SingleAsync(m => m.Id == meeting.Id);
+        Assert.Null(reloaded.ReminderSentAtUtc);
+    }
+
+    [Fact]
+    public async Task RunUpcomingMeetingsReminderAsync_SkipsMeetingAlreadyReminded()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var person = NewPerson();
+        var catechist = NewPerson("katechista@example.org");
+        db.People.AddRange(person, catechist);
+        var dokCase = NewDokCase(person.Id, catechist.Id);
+        db.DokCases.Add(dokCase);
+        db.Meetings.Add(new Meeting
+        {
+            Id = Guid.NewGuid(), DokCaseId = dokCase.Id,
+            MeetingDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1), CreatedAtUtc = DateTime.UtcNow,
+            ReminderSentAtUtc = DateTime.UtcNow.AddHours(-2)
+        });
+        await db.SaveChangesAsync();
+
+        var emailSender = new RecordingEmailSender();
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+
+        var result = await service.RunUpcomingMeetingsReminderAsync(default);
+
+        Assert.Equal(0, result.MeetingsProcessed);
+        Assert.Empty(emailSender.Sent);
+    }
 }
