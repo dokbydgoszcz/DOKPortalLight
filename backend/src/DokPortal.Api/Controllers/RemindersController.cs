@@ -22,14 +22,31 @@ public class RemindersController : ControllerBase
     [HttpPost("missing-documents/run")]
     public async Task<ActionResult<MissingDocumentsReminderResultDto>> RunMissingDocumentsReminder(CancellationToken ct)
     {
-        var configuredKey = _configuration["Reminders:ApiKey"];
-        if (string.IsNullOrEmpty(configuredKey) || !HasValidKey(Request.Headers["X-Reminders-Key"], configuredKey))
+        if (!IsRequestAuthorized())
         {
             return Unauthorized();
         }
 
         var result = await _reminderService.RunMissingDocumentsReminderAsync(ct);
         return Ok(result);
+    }
+
+    [HttpPost("upcoming-meetings/run")]
+    public async Task<ActionResult<UpcomingMeetingsReminderResultDto>> RunUpcomingMeetingsReminder(CancellationToken ct)
+    {
+        if (!IsRequestAuthorized())
+        {
+            return Unauthorized();
+        }
+
+        var result = await _reminderService.RunUpcomingMeetingsReminderAsync(ct);
+        return Ok(result);
+    }
+
+    private bool IsRequestAuthorized()
+    {
+        var configuredKey = _configuration["Reminders:ApiKey"];
+        return !string.IsNullOrEmpty(configuredKey) && HasValidKey(Request.Headers["X-Reminders-Key"], configuredKey);
     }
 
     private static bool HasValidKey(StringValues provided, string configured)
