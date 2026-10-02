@@ -49,7 +49,7 @@ Kolejność: 1 → 2 → 3. Po części 1 system działa poprawnie na backendzie
 | AuditLog | `AuditLog.View` |
 | Permissions | `Permissions.Manage` |
 
-`Manage` = tworzenie, edycja i usuwanie (u mailingu także wysyłka; u dokumentów spraw także upload). Łącznie 43 uprawnienia.
+`Manage` = tworzenie, edycja i usuwanie (u mailingu także wysyłka; u dokumentów spraw także upload). Łącznie 41 uprawnień. W kodzie stałe są płaskie (`Permissions.PeopleManage` = `"People.Manage"`), bo C# nie pozwala na klasę zagnieżdżoną o nazwie otaczającej klasy.
 
 ### Domyślne przydziały (seed) i różnice względem dziś
 
@@ -130,7 +130,7 @@ Mapa przydziałów jest cache'owana w `IMemoryCache` (jeden wpis, TTL 60 s, czys
 
 ## Część 3 — ekran „Uprawnienia ról"
 
-- Backend: `PermissionsController` (`api/permissions`), oba endpointy z `[HasPermission(Permissions.Permissions.Manage)]`: `GET matrix` (`{ roles: string[], permissions: [{ name, module, label }], grants: { [rola]: string[] } }`) oraz `PUT roles/{role}` (`{ permissions: string[] }`); zapis loguje do audytu akcję `UpdateRolePermissions` z opisem roli i różnicą (dodane/odebrane).
+- Backend: `PermissionsController` (`api/permissions`), oba endpointy z `[HasPermission(Permissions.PermissionsManage)]`: `GET matrix` (`{ roles: string[], permissions: [{ name, module, label }], grants: { [rola]: string[] } }`) oraz `PUT roles/{role}` (`{ permissions: string[] }`); zapis loguje do audytu akcję `UpdateRolePermissions` z opisem roli i różnicą (dodane/odebrane).
 - Frontend: komponent `permissions-matrix`, trasa `/admin/permissions` (`Permissions.Manage`), pozycja „Uprawnienia ról" w menu. Tabela: wiersze = uprawnienia pogrupowane po module, kolumny = role (bez Administratora), checkboxy, przycisk „Zapisz" per rola lub dla całości, toast po zapisie, informacja, że zmiany w menu użytkownika widać po ponownym zalogowaniu.
 - Testy: kontroler (200 dla Admina, 403 dla innych, walidacja nieznanej roli/uprawnienia, wpis audytu), spec komponentu.
 

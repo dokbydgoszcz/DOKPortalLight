@@ -2,7 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using DokPortal.Api.Authorization;
 using DokPortal.Application.Budget;
+using DokPortal.Application.Permissions;
 using DokPortal.Domain.Constants;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -199,6 +201,74 @@ public class PermissionAuthorizationTests : IntegrationTestBase
         var response = await client.GetAsync(url);
 
         Assert.Equal(expected, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangingRolePermissions_TakesEffectOnNextRequest()
+    {
+        var client = await CreateAuthenticatedClientAsync($"kat-{Guid.NewGuid():N}@example.org", "Sekret123!", "KatechistaProwadzacy");
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/candidates")).StatusCode);
+        var original = DefaultRolePermissions.Grants["KatechistaProwadzacy"];
+
+        try
+        {
+            using (var scope = Factory.Services.CreateScope())
+            {
+                var service = scope.ServiceProvider.GetRequiredService<IPermissionService>();
+                await service.UpdateRolePermissionsAsync("KatechistaProwadzacy", original.Append(Permissions.CandidatesView).ToArray(), default);
+            }
+
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/candidates")).StatusCode);
+        }
+        finally
+        {
+            using var scope = Factory.Services.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<IPermissionService>();
+            await service.UpdateRolePermissionsAsync("KatechistaProwadzacy", original, default);
+        }
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/candidates")).StatusCode);
+    }
+
+    [Fact]
+    public void DefaultGrants_PreserveLegacyWriteAndExportAccess_ExceptIntentionalBudgetDokChange()
+    {
+        var legacy = new Dictionary<string, string[]>
+        {
+            ["DyrektorSKSP"] = new[]
+            {
+                Permissions.PeopleManage, Permissions.PeopleExport,
+                Permissions.CandidatesManage, Permissions.CandidatesExport,
+                Permissions.MissionsManage, Permissions.MissionsExport,
+                Permissions.FormatorsManage, Permissions.FormatorsExport,
+                Permissions.ParishNeedsManage, Permissions.BudgetSkspManage,
+                Permissions.SupervisionsManage, Permissions.SupervisionsExport,
+                Permissions.DocumentsGenerate, Permissions.MailingManage
+            },
+            ["DyrektorDOK"] = new[]
+            {
+                Permissions.PeopleManage, Permissions.PeopleExport,
+                Permissions.DokCasesManage, Permissions.DokCasesExport,
+                Permissions.CaseDocumentsManage, Permissions.PastoralNotesWrite,
+                Permissions.MeetingsManage, Permissions.MeetingsExport,
+                Permissions.SupervisionsManage, Permissions.SupervisionsExport,
+                Permissions.DocumentsGenerate, Permissions.MailingManage
+            },
+            ["Superwizor"] = new[] { Permissions.SupervisionsManage, Permissions.SupervisionsExport },
+            ["KatechistaProwadzacy"] = new[]
+            {
+                Permissions.CaseDocumentsManage, Permissions.PastoralNotesWrite, Permissions.MeetingsManage
+            },
+            ["Biskup"] = Array.Empty<string>()
+        };
+
+        foreach (var (role, permissions) in legacy)
+        {
+            Assert.All(permissions, p => Assert.Contains(p, DefaultRolePermissions.Grants[role]));
+        }
+
+        Assert.DoesNotContain(Permissions.BudgetDokManage, DefaultRolePermissions.Grants["DyrektorSKSP"]);
+        Assert.Contains(Permissions.BudgetDokManage, DefaultRolePermissions.Grants["DyrektorDOK"]);
     }
 
     [Theory]
