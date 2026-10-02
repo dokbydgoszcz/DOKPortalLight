@@ -8,4 +8,6 @@ public interface IExportService
     Task<byte[]> ExportMissionsAsync(CancellationToken ct);
     Task<byte[]> ExportFormatorsAsync(CancellationToken ct);
     Task<byte[]> ExportSupervisionsAsync(CancellationToken ct);
+    Task<byte[]> ExportMeetingsAsync(CancellationToken ct);
+    Task<byte[]> ExportParishesAsync(CancellationToken ct);
 }

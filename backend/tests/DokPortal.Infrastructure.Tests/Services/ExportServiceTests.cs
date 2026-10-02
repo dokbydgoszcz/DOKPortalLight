@@ -183,4 +183,51 @@ public class ExportServiceTests
         Assert.Equal(new[] { "SKŚP", "Grupa A", "2026-09-15", "8", "10", "Modlitwa", "Wnioski" }, Row(sheet, 2, 7));
         Assert.Equal(new[] { "DOK", "Grupa B", "2026-09-20", "", "", "", "" }, Row(sheet, 3, 7));
     }
+
+    [Fact]
+    public async Task ExportMeetingsAsync_UsesCasePersonOrGroupLabelAndAttendanceText()
+    {
+        await using var db = CreateContext();
+        var person = NewPerson("Jan", "Kowalski");
+        var catechist = NewPerson("Anna", "Nowak");
+        db.People.AddRange(person, catechist);
+        var dokCase = new DokCase
+        {
+            Id = Guid.NewGuid(), PersonId = person.Id, CatechistPersonId = catechist.Id,
+            Path = DokPath.Confirmation, Stage = DokStage.Formation
+        };
+        db.DokCases.Add(dokCase);
+        db.Meetings.AddRange(
+            new Meeting { Id = Guid.NewGuid(), DokCaseId = dokCase.Id, MeetingDate = new DateOnly(2026, 10, 1), IsAttended = true, Notes = "ok" },
+            new Meeting { Id = Guid.NewGuid(), GroupLabel = "Grupa B", MeetingDate = new DateOnly(2026, 10, 2) },
+            new Meeting { Id = Guid.NewGuid(), GroupLabel = "Grupa C", MeetingDate = new DateOnly(2026, 10, 3), IsAttended = false },
+            new Meeting { Id = Guid.NewGuid(), GroupLabel = "Usunięte", MeetingDate = new DateOnly(2026, 10, 4), DeletedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var sheet = OpenSheet(await new ExportService(db).ExportMeetingsAsync(default));
+
+        Assert.Equal(new[] { "Data", "Podopieczny / grupa", "Obecność", "Uwagi" }, Row(sheet, 1, 4));
+        Assert.Equal(new[] { "2026-10-01", "Jan Kowalski", "Tak", "ok" }, Row(sheet, 2, 4));
+        Assert.Equal(new[] { "2026-10-02", "Grupa B", "—", "" }, Row(sheet, 3, 4));
+        Assert.Equal(new[] { "2026-10-03", "Grupa C", "Nie", "" }, Row(sheet, 4, 4));
+        Assert.Equal(4, sheet.LastRowUsed()!.RowNumber());
+    }
+
+    [Fact]
+    public async Task ExportParishesAsync_WritesNameAndCitySortedByName()
+    {
+        await using var db = CreateContext();
+        db.Parishes.AddRange(
+            new Parish { Id = Guid.NewGuid(), Name = "Św. Pawła", City = "Bydgoszcz" },
+            new Parish { Id = Guid.NewGuid(), Name = "Matki Bożej" },
+            new Parish { Id = Guid.NewGuid(), Name = "Usunięta", DeletedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var sheet = OpenSheet(await new ExportService(db).ExportParishesAsync(default));
+
+        Assert.Equal(new[] { "Nazwa", "Miejscowość" }, Row(sheet, 1, 2));
+        Assert.Equal(new[] { "Matki Bożej", "" }, Row(sheet, 2, 2));
+        Assert.Equal(new[] { "Św. Pawła", "Bydgoszcz" }, Row(sheet, 3, 2));
+        Assert.Equal(3, sheet.LastRowUsed()!.RowNumber());
+    }
 }

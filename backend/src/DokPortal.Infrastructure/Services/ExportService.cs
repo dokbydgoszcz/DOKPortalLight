@@ -131,6 +131,35 @@ public class ExportService : IExportService
             }));
     }
 
+    public async Task<byte[]> ExportMeetingsAsync(CancellationToken ct)
+    {
+        var meetings = await _db.Meetings.AsNoTracking()
+            .Include(m => m.DokCase).ThenInclude(c => c!.Person)
+            .OrderBy(m => m.MeetingDate)
+            .ToListAsync(ct);
+
+        return BuildWorkbook(
+            "Spotkania",
+            new[] { "Data", "Podopieczny / grupa", "Obecność", "Uwagi" },
+            meetings.Select(m => new object?[]
+            {
+                FormatDate(m.MeetingDate),
+                m.DokCase?.Person?.FullName ?? m.GroupLabel,
+                m.IsAttended is bool attended ? YesNo(attended) : "—",
+                m.Notes
+            }));
+    }
+
+    public async Task<byte[]> ExportParishesAsync(CancellationToken ct)
+    {
+        var parishes = await _db.Parishes.AsNoTracking().OrderBy(p => p.Name).ToListAsync(ct);
+
+        return BuildWorkbook(
+            "Parafie",
+            new[] { "Nazwa", "Miejscowość" },
+            parishes.Select(p => new object?[] { p.Name, p.City }));
+    }
+
     private static string? FormatDate(DateOnly? date) => date?.ToString("yyyy-MM-dd");
 
     private static string YesNo(bool value) => value ? "Tak" : "Nie";
