@@ -40,5 +40,21 @@ public static class DbSeeder
                 }
             }
         }
+
+        await SeedRolePermissionsAsync(services.GetRequiredService<AppDbContext>());
+    }
+
+    public static async Task SeedRolePermissionsAsync(AppDbContext db, CancellationToken ct = default)
+    {
+        if (await db.RolePermissions.AnyAsync(ct)) return;
+
+        foreach (var (role, permissions) in DefaultRolePermissions.Grants)
+        {
+            foreach (var permission in permissions)
+            {
+                db.RolePermissions.Add(new RolePermission { RoleName = role, Permission = permission });
+            }
+        }
+        await db.SaveChangesAsync(ct);
     }
 }

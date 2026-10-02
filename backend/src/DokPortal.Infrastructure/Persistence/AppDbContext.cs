@@ -28,6 +28,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<GeneratedDocument> GeneratedDocuments => Set<GeneratedDocument>();
     public DbSet<MailingCampaign> MailingCampaigns => Set<MailingCampaign>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -131,6 +132,13 @@ public class AppDbContext : IdentityDbContext<AppUser>
             entity.Property(a => a.UserEmail).IsRequired().HasMaxLength(256);
             entity.Property(a => a.Action).IsRequired().HasMaxLength(100);
             entity.Property(a => a.ObjectDescription).IsRequired().HasMaxLength(300);
+        });
+
+        builder.Entity<RolePermission>(entity =>
+        {
+            entity.HasKey(r => new { r.RoleName, r.Permission });
+            entity.Property(r => r.RoleName).IsRequired().HasMaxLength(256);
+            entity.Property(r => r.Permission).IsRequired().HasMaxLength(100);
         });
 
         foreach (var entityType in builder.Model.GetEntityTypes())
