@@ -12,4 +12,6 @@ public class Meeting : ISoftDeletable
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
     public string? DeletedBy { get; set; }
+
+    public DateTime? ReminderSentAtUtc { get; set; }
 }
