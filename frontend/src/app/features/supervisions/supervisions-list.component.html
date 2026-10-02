@@ -2,7 +2,7 @@
   <div><h2>Superwizje</h2><p>Frekwencja, tematyka i wnioski — wspólne dla SKŚP i DOK.</p></div>
   <div style="display:flex;gap:8px;align-items:center">
     <app-export-button list="supervisions" />
-    <button class="btn primary" (click)="openAddForm()">＋ Nowa superwizja</button>
+    <button *appHasPermission="'Supervisions.Manage'" class="btn primary" (click)="openAddForm()">＋ Nowa superwizja</button>
   </div>
 </div>
 
@@ -14,9 +14,11 @@
           <div class="list-title">{{ supervision.groupLabel }} — {{ supervision.supervisionDate }}</div>
           <div class="list-sub">{{ supervision.institution }} @if (supervision.attendeesCount !== null) { • {{ supervision.attendeesCount }}/{{ supervision.expectedCount }} obecnych }</div>
         </div>
-        <span class="link" (click)="openEditForm(supervision)">Edytuj</span>
-        &nbsp;·&nbsp;
-        <span class="link" style="color:var(--danger)" (click)="deleteSupervision(supervision)">Usuń</span>
+        <ng-container *appHasPermission="'Supervisions.Manage'">
+          <span class="link" (click)="openEditForm(supervision)">Edytuj</span>
+          &nbsp;·&nbsp;
+          <span class="link" style="color:var(--danger)" (click)="deleteSupervision(supervision)">Usuń</span>
+        </ng-container>
       </div>
     } @empty {
       <div class="empty">Brak superwizji.</div>

@@ -2,7 +2,7 @@
   <div><h2>Baza osób</h2><p>Jeden profil osoby, wiele ról i powiązań.</p></div>
   <div style="display:flex;gap:8px;align-items:center">
     <app-export-button list="people" />
-    <button class="btn primary" (click)="openAddForm()">＋ Dodaj osobę</button>
+    <button *appHasPermission="'People.Manage'" class="btn primary" (click)="openAddForm()">＋ Dodaj osobę</button>
   </div>
 </div>
 
@@ -22,9 +22,11 @@
             <td>{{ person.email }}<br /><span class="small-muted">{{ person.phone }}</span></td>
             <td>{{ person.parishName }}</td>
             <td>
-              <span class="link" (click)="openEditForm(person)">Edytuj</span>
-              &nbsp;·&nbsp;
-              <span class="link" style="color:var(--danger)" (click)="deletePerson(person)">Usuń</span>
+              <ng-container *appHasPermission="'People.Manage'">
+                <span class="link" (click)="openEditForm(person)">Edytuj</span>
+                &nbsp;·&nbsp;
+                <span class="link" style="color:var(--danger)" (click)="deletePerson(person)">Usuń</span>
+              </ng-container>
             </td>
           </tr>
         } @empty {

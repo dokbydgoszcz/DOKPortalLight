@@ -1,3 +1,4 @@
+import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
 import { PeopleService } from './people.service';
@@ -11,7 +12,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-people-list',
   standalone: true,
-  imports: [ExportButtonComponent, PersonFormComponent, PaginationComponent],
+  imports: [HasPermissionDirective, ExportButtonComponent, PersonFormComponent, PaginationComponent],
   templateUrl: './people-list.component.html',
   styleUrl: './people-list.component.scss'
 })

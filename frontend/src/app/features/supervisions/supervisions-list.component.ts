@@ -1,3 +1,4 @@
+import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -8,7 +9,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 @Component({
   selector: 'app-supervisions-list',
   standalone: true,
-  imports: [ExportButtonComponent, FormsModule],
+  imports: [HasPermissionDirective, ExportButtonComponent, FormsModule],
   templateUrl: './supervisions-list.component.html',
   styleUrl: './supervisions-list.component.scss'
 })

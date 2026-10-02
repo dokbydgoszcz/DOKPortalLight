@@ -1,3 +1,4 @@
+import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
 import { MissionsService } from './missions.service';
@@ -11,7 +12,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-missions-list',
   standalone: true,
-  imports: [ExportButtonComponent, MissionFormComponent, PaginationComponent],
+  imports: [HasPermissionDirective, ExportButtonComponent, MissionFormComponent, PaginationComponent],
   templateUrl: './missions-list.component.html',
   styleUrl: './missions-list.component.scss'
 })
