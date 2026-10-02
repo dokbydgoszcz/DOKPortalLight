@@ -16,7 +16,7 @@ describe('ExportButtonComponent', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: AuthService, useValue: { hasAnyRole: () => allowed } }
+        { provide: AuthService, useValue: { hasPermission: () => allowed } }
       ]
     });
     fixture = TestBed.createComponent(ExportButtonComponent);
@@ -50,5 +50,22 @@ describe('ExportButtonComponent', () => {
     expect(click).toHaveBeenCalledTimes(1);
     expect(fixture.nativeElement.querySelector('button').disabled).toBe(false);
     click.mockRestore();
+  });
+
+  it('asks AuthService for the export permission of the list', () => {
+    const hasPermission = vi.fn(() => true);
+    TestBed.configureTestingModule({
+      imports: [ExportButtonComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AuthService, useValue: { hasPermission } }
+      ]
+    });
+    const spyFixture = TestBed.createComponent(ExportButtonComponent);
+    spyFixture.componentRef.setInput('list', 'dok-cases');
+    spyFixture.detectChanges();
+
+    expect(hasPermission).toHaveBeenCalledWith('DokCases.Export');
   });
 });

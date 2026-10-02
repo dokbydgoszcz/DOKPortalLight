@@ -25,7 +25,7 @@ export class ExportButtonComponent {
   ) {}
 
   canExport(): boolean {
-    return this.auth.hasAnyRole(EXPORT_LISTS[this.list].roles);
+    return this.auth.hasPermission(EXPORT_LISTS[this.list].permission);
   }
 
   export(): void {
