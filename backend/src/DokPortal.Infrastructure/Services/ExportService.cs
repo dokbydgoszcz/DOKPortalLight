@@ -79,6 +79,58 @@ public class ExportService : IExportService
             }));
     }
 
+    private static readonly Dictionary<Institution, string> InstitutionLabels = new()
+    {
+        [Institution.SKSP] = "SKŚP",
+        [Institution.DOK] = "DOK"
+    };
+
+    public async Task<byte[]> ExportMissionsAsync(CancellationToken ct)
+    {
+        var missions = await _db.CanonicalMissions.AsNoTracking()
+            .Include(m => m.Person)
+            .OrderBy(m => m.Person!.LastName).ThenBy(m => m.Person!.FirstName).ThenBy(m => m.MissionStartDate)
+            .ToListAsync(ct);
+
+        return BuildWorkbook(
+            "Katechiści posłani",
+            new[] { "Katechista", "Miejsce posługi", "Data od", "Data do", "Data udzielenia", "Miejsce udzielenia", "Grupa superwizyjna" },
+            missions.Select(m => new object?[]
+            {
+                m.Person?.FullName, m.ServicePlace, FormatDate(m.MissionStartDate), FormatDate(m.MissionEndDate),
+                FormatDate(m.GrantedDate), m.GrantedPlace, m.SupervisionGroup
+            }));
+    }
+
+    public async Task<byte[]> ExportFormatorsAsync(CancellationToken ct)
+    {
+        var formators = await _db.Formators.AsNoTracking()
+            .Include(f => f.Person)
+            .OrderBy(f => f.Person!.LastName).ThenBy(f => f.Person!.FirstName)
+            .ToListAsync(ct);
+
+        return BuildWorkbook(
+            "Formatorzy SKŚP",
+            new[] { "Osoba", "Funkcja" },
+            formators.Select(f => new object?[] { f.Person?.FullName, f.Function }));
+    }
+
+    public async Task<byte[]> ExportSupervisionsAsync(CancellationToken ct)
+    {
+        var supervisions = await _db.Supervisions.AsNoTracking()
+            .OrderBy(s => s.SupervisionDate).ThenBy(s => s.GroupLabel)
+            .ToListAsync(ct);
+
+        return BuildWorkbook(
+            "Superwizje",
+            new[] { "Instytucja", "Grupa", "Data", "Obecnych", "Oczekiwanych", "Temat", "Wnioski" },
+            supervisions.Select(s => new object?[]
+            {
+                InstitutionLabels[s.Institution], s.GroupLabel, FormatDate(s.SupervisionDate),
+                s.AttendeesCount, s.ExpectedCount, s.Topic, s.Conclusion
+            }));
+    }
+
     private static string? FormatDate(DateOnly? date) => date?.ToString("yyyy-MM-dd");
 
     private static string YesNo(bool value) => value ? "Tak" : "Nie";

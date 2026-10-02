@@ -114,4 +114,73 @@ public class ExportServiceTests
         Assert.Equal(new[] { "Jan Kowalski", "3", "", "0", "2", "Nie" }, Row(sheet, 3, 6));
         Assert.Equal(3, sheet.LastRowUsed()!.RowNumber());
     }
+
+    [Fact]
+    public async Task ExportMissionsAsync_WritesDatesAndPlaces()
+    {
+        await using var db = CreateContext();
+        var person = NewPerson("Jan", "Kowalski");
+        db.People.Add(person);
+        db.CanonicalMissions.AddRange(
+            new CanonicalMission
+            {
+                Id = Guid.NewGuid(), PersonId = person.Id, ServicePlace = "Parafia św. Jana",
+                MissionStartDate = new DateOnly(2026, 1, 1), MissionEndDate = new DateOnly(2027, 1, 1),
+                GrantedDate = new DateOnly(2025, 12, 20), GrantedPlace = "Bydgoszcz", SupervisionGroup = "Grupa A"
+            },
+            new CanonicalMission
+            {
+                Id = Guid.NewGuid(), PersonId = person.Id, ServicePlace = "Usunięta",
+                MissionStartDate = new DateOnly(2020, 1, 1), MissionEndDate = new DateOnly(2021, 1, 1), DeletedAtUtc = DateTime.UtcNow
+            });
+        await db.SaveChangesAsync();
+
+        var sheet = OpenSheet(await new ExportService(db).ExportMissionsAsync(default));
+
+        Assert.Equal(
+            new[] { "Katechista", "Miejsce posługi", "Data od", "Data do", "Data udzielenia", "Miejsce udzielenia", "Grupa superwizyjna" },
+            Row(sheet, 1, 7));
+        Assert.Equal(
+            new[] { "Jan Kowalski", "Parafia św. Jana", "2026-01-01", "2027-01-01", "2025-12-20", "Bydgoszcz", "Grupa A" },
+            Row(sheet, 2, 7));
+        Assert.Equal(2, sheet.LastRowUsed()!.RowNumber());
+    }
+
+    [Fact]
+    public async Task ExportFormatorsAsync_WritesPersonAndFunction()
+    {
+        await using var db = CreateContext();
+        var person = NewPerson("Jan", "Kowalski");
+        db.People.Add(person);
+        db.Formators.AddRange(
+            new Formator { Id = Guid.NewGuid(), PersonId = person.Id, Function = "Wykładowca" },
+            new Formator { Id = Guid.NewGuid(), PersonId = person.Id, Function = "Usunięty", DeletedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var sheet = OpenSheet(await new ExportService(db).ExportFormatorsAsync(default));
+
+        Assert.Equal(new[] { "Osoba", "Funkcja" }, Row(sheet, 1, 2));
+        Assert.Equal(new[] { "Jan Kowalski", "Wykładowca" }, Row(sheet, 2, 2));
+        Assert.Equal(2, sheet.LastRowUsed()!.RowNumber());
+    }
+
+    [Fact]
+    public async Task ExportSupervisionsAsync_WritesInstitutionLabelAndCounts()
+    {
+        await using var db = CreateContext();
+        db.Supervisions.AddRange(
+            new Supervision
+            {
+                Id = Guid.NewGuid(), Institution = Institution.SKSP, GroupLabel = "Grupa A", SupervisionDate = new DateOnly(2026, 9, 15),
+                AttendeesCount = 8, ExpectedCount = 10, Topic = "Modlitwa", Conclusion = "Wnioski"
+            },
+            new Supervision { Id = Guid.NewGuid(), Institution = Institution.DOK, GroupLabel = "Grupa B", SupervisionDate = new DateOnly(2026, 9, 20) });
+        await db.SaveChangesAsync();
+
+        var sheet = OpenSheet(await new ExportService(db).ExportSupervisionsAsync(default));
+
+        Assert.Equal(new[] { "Instytucja", "Grupa", "Data", "Obecnych", "Oczekiwanych", "Temat", "Wnioski" }, Row(sheet, 1, 7));
+        Assert.Equal(new[] { "SKŚP", "Grupa A", "2026-09-15", "8", "10", "Modlitwa", "Wnioski" }, Row(sheet, 2, 7));
+        Assert.Equal(new[] { "DOK", "Grupa B", "2026-09-20", "", "", "", "" }, Row(sheet, 3, 7));
+    }
 }
