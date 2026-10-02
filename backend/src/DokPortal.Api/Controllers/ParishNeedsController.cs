@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.ParishNeeds;
 using DokPortal.Domain.Constants;
@@ -16,11 +17,12 @@ public class ParishNeedsController : ControllerBase
     public ParishNeedsController(IParishNeedService parishNeedService) => _parishNeedService = parishNeedService;
 
     [HttpGet]
+    [HasPermission(Permissions.ParishNeedsView)]
     public async Task<ActionResult<IReadOnlyList<ParishNeedDto>>> GetAll(CancellationToken ct)
         => Ok(await _parishNeedService.GetAllAsync(ct));
 
     [HttpPost]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.ParishNeedsManage)]
     public async Task<ActionResult<ParishNeedDto>> Create(CreateParishNeedRequest request, CancellationToken ct)
     {
         var created = await _parishNeedService.CreateAsync(request, ct);
@@ -28,7 +30,7 @@ public class ParishNeedsController : ControllerBase
     }
 
     [HttpPut("{id:guid}/assign")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.ParishNeedsManage)]
     public async Task<ActionResult<ParishNeedDto>> Assign(Guid id, AssignParishNeedRequest request, CancellationToken ct)
     {
         var updated = await _parishNeedService.AssignAsync(id, request.PersonId, ct);
@@ -36,7 +38,7 @@ public class ParishNeedsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.ParishNeedsManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;

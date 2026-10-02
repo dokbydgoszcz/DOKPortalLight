@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Formators;
 using DokPortal.Domain.Constants;
@@ -16,10 +17,12 @@ public class FormatorsController : ControllerBase
     public FormatorsController(IFormatorService formatorService) => _formatorService = formatorService;
 
     [HttpGet]
+    [HasPermission(Permissions.FormatorsView)]
     public async Task<ActionResult<IReadOnlyList<FormatorDto>>> GetAll(CancellationToken ct)
         => Ok(await _formatorService.GetAllAsync(ct));
 
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.FormatorsView)]
     public async Task<ActionResult<FormatorDto>> GetById(Guid id, CancellationToken ct)
     {
         var formator = await _formatorService.GetByIdAsync(id, ct);
@@ -27,7 +30,7 @@ public class FormatorsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.FormatorsManage)]
     public async Task<ActionResult<FormatorDto>> Create(CreateFormatorRequest request, CancellationToken ct)
     {
         var created = await _formatorService.CreateAsync(request, ct);
@@ -35,7 +38,7 @@ public class FormatorsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.FormatorsManage)]
     public async Task<ActionResult<FormatorDto>> Update(Guid id, CreateFormatorRequest request, CancellationToken ct)
     {
         var updated = await _formatorService.UpdateAsync(id, request, ct);
@@ -43,7 +46,7 @@ public class FormatorsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.FormatorsManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;

@@ -64,6 +64,27 @@ public class PermissionAuthorizationTests : IntegrationTestBase
     }
 
     [Theory]
+    [InlineData("/api/candidates", "DyrektorSKSP", HttpStatusCode.OK)]
+    [InlineData("/api/candidates", "KatechistaProwadzacy", HttpStatusCode.Forbidden)]
+    [InlineData("/api/candidates", "Biskup", HttpStatusCode.Forbidden)]
+    [InlineData("/api/missions", "DyrektorSKSP", HttpStatusCode.OK)]
+    [InlineData("/api/missions", "Biskup", HttpStatusCode.OK)]
+    [InlineData("/api/missions", "KatechistaProwadzacy", HttpStatusCode.Forbidden)]
+    [InlineData("/api/formators", "DyrektorSKSP", HttpStatusCode.OK)]
+    [InlineData("/api/formators", "KatechistaProwadzacy", HttpStatusCode.Forbidden)]
+    [InlineData("/api/parish-needs", "DyrektorSKSP", HttpStatusCode.OK)]
+    [InlineData("/api/parish-needs", "KatechistaProwadzacy", HttpStatusCode.Forbidden)]
+    [InlineData("/api/parish-needs", "DyrektorDOK", HttpStatusCode.Forbidden)]
+    public async Task SkspModules_Reads_RequireViewPermission(string url, string role, HttpStatusCode expected)
+    {
+        var client = await CreateAuthenticatedClientAsync($"user-{Guid.NewGuid():N}@example.org", "Sekret123!", role);
+
+        var response = await client.GetAsync(url);
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    [Theory]
     [InlineData("KatechistaProwadzacy")]
     [InlineData("Biskup")]
     public async Task People_AndParishes_Lists_AreOpenToEveryAuthenticatedUser(string role)

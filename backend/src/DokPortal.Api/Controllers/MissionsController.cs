@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Common;
 using DokPortal.Application.Missions;
@@ -17,11 +18,13 @@ public class MissionsController : ControllerBase
     public MissionsController(IMissionService missionService) => _missionService = missionService;
 
     [HttpGet]
+    [HasPermission(Permissions.MissionsView)]
     public async Task<ActionResult<PagedResult<MissionDto>>> Search(
         [FromQuery] string? query, [FromQuery] int page = 1, [FromQuery] int pageSize = 100, CancellationToken ct = default)
         => Ok(await _missionService.SearchAsync(query, page, pageSize, ct));
 
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.MissionsView)]
     public async Task<ActionResult<MissionDto>> GetById(Guid id, CancellationToken ct)
     {
         var mission = await _missionService.GetByIdAsync(id, ct);
@@ -29,7 +32,7 @@ public class MissionsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.MissionsManage)]
     public async Task<ActionResult<MissionDto>> Create(CreateMissionRequest request, CancellationToken ct)
     {
         var created = await _missionService.CreateAsync(request, ct);
@@ -37,7 +40,7 @@ public class MissionsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.MissionsManage)]
     public async Task<ActionResult<MissionDto>> Update(Guid id, UpdateMissionRequest request, CancellationToken ct)
     {
         var updated = await _missionService.UpdateAsync(id, request, ct);
@@ -45,7 +48,7 @@ public class MissionsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.MissionsManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;

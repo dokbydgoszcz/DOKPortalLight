@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Candidates;
 using DokPortal.Application.Common;
@@ -17,11 +18,13 @@ public class CandidatesController : ControllerBase
     public CandidatesController(ICandidateService candidateService) => _candidateService = candidateService;
 
     [HttpGet]
+    [HasPermission(Permissions.CandidatesView)]
     public async Task<ActionResult<PagedResult<CandidateDto>>> Search(
         [FromQuery] int? year, [FromQuery] int page = 1, [FromQuery] int pageSize = 100, CancellationToken ct = default)
         => Ok(await _candidateService.SearchAsync(year, page, pageSize, ct));
 
     [HttpGet("{id:guid}")]
+    [HasPermission(Permissions.CandidatesView)]
     public async Task<ActionResult<CandidateDto>> GetById(Guid id, CancellationToken ct)
     {
         var candidate = await _candidateService.GetByIdAsync(id, ct);
@@ -29,7 +32,7 @@ public class CandidatesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.CandidatesManage)]
     public async Task<ActionResult<CandidateDto>> Create(CreateCandidateRequest request, CancellationToken ct)
     {
         var created = await _candidateService.CreateAsync(request, ct);
@@ -37,7 +40,7 @@ public class CandidatesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.CandidatesManage)]
     public async Task<ActionResult<CandidateDto>> Update(Guid id, UpdateCandidateRequest request, CancellationToken ct)
     {
         var updated = await _candidateService.UpdateAsync(id, request, ct);
@@ -45,7 +48,7 @@ public class CandidatesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.CandidatesManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
