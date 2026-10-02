@@ -7,7 +7,7 @@ import { AuthService } from '../../core/auth/auth.service';
 describe('ShellComponent', () => {
   let fixture: ComponentFixture<ShellComponent>;
 
-  function setup(roles: string[]) {
+  function setup(permissions: string[]) {
     TestBed.configureTestingModule({
       imports: [ShellComponent],
       providers: [
@@ -15,8 +15,8 @@ describe('ShellComponent', () => {
         {
           provide: AuthService,
           useValue: {
-            roles: () => roles,
-            hasAnyRole: (required: string[]) => required.some(r => roles.includes(r)),
+            roles: () => [],
+            hasPermission: (p: string) => permissions.includes(p),
             logout: vi.fn()
           }
         }
@@ -26,13 +26,26 @@ describe('ShellComponent', () => {
     fixture.detectChanges();
   }
 
-  it('hides the admin nav item for a user without the Administrator role', () => {
-    setup(['KatechistaProwadzacy']);
-    expect((fixture.nativeElement.textContent as string)).not.toContain('Użytkownicy i role');
+  it('hides the admin nav items for a user without the matching permissions', () => {
+    setup(['Meetings.View']);
+    const text = fixture.nativeElement.textContent as string;
+
+    expect(text).not.toContain('Użytkownicy i role');
+    expect(text).not.toContain('Audit log');
   });
 
-  it('shows the admin nav item for an Administrator', () => {
-    setup(['Administrator']);
+  it('shows the admin nav item for a user with Users.Manage', () => {
+    setup(['Users.Manage']);
+
     expect((fixture.nativeElement.textContent as string)).toContain('Użytkownicy i role');
+  });
+
+  it('always shows the items that need no permission and only the permitted modules', () => {
+    setup(['Meetings.View']);
+    const text = fixture.nativeElement.textContent as string;
+
+    expect(text).toContain('Baza osób');
+    expect(text).toContain('Harmonogram i obecności');
+    expect(text).not.toContain('Budżet SKŚP');
   });
 });

@@ -14,7 +14,7 @@ import { NAV_ITEMS } from '../nav-items';
 })
 export class ShellComponent implements OnInit, OnDestroy {
   readonly visibleNavItems = computed(() =>
-    NAV_ITEMS.filter(item => item.roles.length === 0 || this.auth.hasAnyRole(item.roles))
+    NAV_ITEMS.filter(item => !item.permission || this.auth.hasPermission(item.permission))
   );
 
   readonly isSidebarOpen = signal(false);
