@@ -66,7 +66,7 @@ public class ReminderServiceTests
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
-        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
 
         var result = await service.RunMissingDocumentsReminderAsync(default);
 
@@ -90,7 +90,7 @@ public class ReminderServiceTests
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
-        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
 
         var result = await service.RunMissingDocumentsReminderAsync(default);
 
@@ -118,7 +118,7 @@ public class ReminderServiceTests
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
-        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
 
         var result = await service.RunMissingDocumentsReminderAsync(default);
 
@@ -141,7 +141,7 @@ public class ReminderServiceTests
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
-        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
         await service.RunMissingDocumentsReminderAsync(default);
 
         var reloaded = await db.CaseDocuments.AsNoTracking().SingleAsync(d => d.Id == document.Id);
@@ -163,7 +163,7 @@ public class ReminderServiceTests
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
-        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
         var result = await service.RunMissingDocumentsReminderAsync(default);
 
         Assert.Equal(0, result.EmailsSentToCatechists);
@@ -184,7 +184,7 @@ public class ReminderServiceTests
         db.CaseDocuments.Add(document);
         await db.SaveChangesAsync();
 
-        var service = new ReminderService(db, new ThrowingEmailSender(), NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, new ThrowingEmailSender(), NullLogger<ReminderService>.Instance, new NameDayService(db));
         var result = await service.RunMissingDocumentsReminderAsync(default);
 
         Assert.Equal(0, result.EmailsSentToCatechists);
@@ -212,7 +212,7 @@ public class ReminderServiceTests
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
-        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
         var result = await service.RunMissingDocumentsReminderAsync(default);
 
         Assert.True(result.DirectorsSummarySent);
@@ -224,7 +224,7 @@ public class ReminderServiceTests
     {
         await using var db = CreateContext(Guid.NewGuid().ToString());
         var emailSender = new RecordingEmailSender();
-        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
 
         var result = await service.RunMissingDocumentsReminderAsync(default);
 
@@ -252,7 +252,7 @@ public class ReminderServiceTests
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
-        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
 
         var result = await service.RunUpcomingMeetingsReminderAsync(default);
 
@@ -280,7 +280,7 @@ public class ReminderServiceTests
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
-        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
 
         var result = await service.RunUpcomingMeetingsReminderAsync(default);
 
@@ -300,7 +300,7 @@ public class ReminderServiceTests
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
-        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
 
         var result = await service.RunUpcomingMeetingsReminderAsync(default);
 
@@ -326,7 +326,7 @@ public class ReminderServiceTests
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
-        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
 
         var result = await service.RunUpcomingMeetingsReminderAsync(default);
 
@@ -353,7 +353,7 @@ public class ReminderServiceTests
         db.Meetings.Add(meeting);
         await db.SaveChangesAsync();
 
-        var service = new ReminderService(db, new ThrowingEmailSender(), NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, new ThrowingEmailSender(), NullLogger<ReminderService>.Instance, new NameDayService(db));
         var result = await service.RunUpcomingMeetingsReminderAsync(default);
 
         Assert.Equal(0, result.EmailsSentToCatechists);
@@ -380,11 +380,131 @@ public class ReminderServiceTests
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
-        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance);
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
 
         var result = await service.RunUpcomingMeetingsReminderAsync(default);
 
         Assert.Equal(0, result.MeetingsProcessed);
         Assert.Empty(emailSender.Sent);
+    }
+
+    [Fact]
+    public async Task RunUpcomingNameDaysReminderAsync_WithNoUpcomingNameDays_SendsNothing()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var user = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "user@example.org", Email = "user@example.org" };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        var emailSender = new RecordingEmailSender();
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
+
+        var result = await service.RunUpcomingNameDaysReminderAsync(default);
+
+        Assert.Equal(0, result.NameDaysFound);
+        Assert.Equal(0, result.RecipientsNotified);
+        Assert.Empty(emailSender.Sent);
+    }
+
+    [Fact]
+    public async Task RunUpcomingNameDaysReminderAsync_SendsDigestToAllUsersWithEmail()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var today = DateTime.UtcNow;
+        var soon = today.AddDays(2);
+        db.People.Add(new Person
+        {
+            Id = Guid.NewGuid(), FirstName = "Jan", LastName = "Kowalski",
+            NameDayMonth = soon.Month, NameDayDay = soon.Day,
+            CreatedAtUtc = today, UpdatedAtUtc = today
+        });
+        var userA = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "a@example.org", Email = "a@example.org" };
+        var userB = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "b@example.org", Email = "b@example.org" };
+        db.Users.AddRange(userA, userB);
+        await db.SaveChangesAsync();
+
+        var emailSender = new RecordingEmailSender();
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
+
+        var result = await service.RunUpcomingNameDaysReminderAsync(default);
+
+        Assert.Equal(1, result.NameDaysFound);
+        Assert.Equal(2, result.RecipientsNotified);
+        Assert.Equal(2, emailSender.Sent.Count);
+        Assert.Contains(emailSender.Sent, s => s.To == "a@example.org" && s.Body.Contains("Jan Kowalski"));
+        Assert.Contains(emailSender.Sent, s => s.To == "b@example.org" && s.Body.Contains("Jan Kowalski"));
+    }
+
+    [Fact]
+    public async Task RunUpcomingNameDaysReminderAsync_SkipsUsersWithoutEmail()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var today = DateTime.UtcNow;
+        var soon = today.AddDays(1);
+        db.People.Add(new Person
+        {
+            Id = Guid.NewGuid(), FirstName = "Anna", LastName = "Nowak",
+            NameDayMonth = soon.Month, NameDayDay = soon.Day,
+            CreatedAtUtc = today, UpdatedAtUtc = today
+        });
+        var userWithEmail = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "with@example.org", Email = "with@example.org" };
+        var userWithoutEmail = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "without" };
+        db.Users.AddRange(userWithEmail, userWithoutEmail);
+        await db.SaveChangesAsync();
+
+        var emailSender = new RecordingEmailSender();
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
+
+        var result = await service.RunUpcomingNameDaysReminderAsync(default);
+
+        Assert.Equal(1, result.RecipientsNotified);
+        Assert.Single(emailSender.Sent);
+        Assert.Equal("with@example.org", emailSender.Sent[0].To);
+    }
+
+    [Fact]
+    public async Task RunUpcomingNameDaysReminderAsync_ContinuesAfterOneRecipientFails()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var today = DateTime.UtcNow;
+        var soon = today.AddDays(1);
+        db.People.Add(new Person
+        {
+            Id = Guid.NewGuid(), FirstName = "Piotr", LastName = "Zalewski",
+            NameDayMonth = soon.Month, NameDayDay = soon.Day,
+            CreatedAtUtc = today, UpdatedAtUtc = today
+        });
+        var okUser = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "ok@example.org", Email = "ok@example.org" };
+        var failingUser = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "failing@example.org", Email = "failing@example.org" };
+        db.Users.AddRange(okUser, failingUser);
+        await db.SaveChangesAsync();
+
+        var emailSender = new SelectivelyFailingEmailSender("failing@example.org");
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
+
+        var result = await service.RunUpcomingNameDaysReminderAsync(default);
+
+        Assert.Equal(1, result.RecipientsNotified);
+        Assert.Equal(1, result.FailedSends);
+        Assert.Single(emailSender.Sent);
+        Assert.Equal("ok@example.org", emailSender.Sent[0]);
+    }
+
+    private class SelectivelyFailingEmailSender : IEmailSender
+    {
+        private readonly string _failingEmail;
+        public List<string> Sent { get; } = new();
+
+        public SelectivelyFailingEmailSender(string failingEmail) => _failingEmail = failingEmail;
+
+        public Task SendAsync(string toEmail, string subject, string body, CancellationToken ct)
+        {
+            if (toEmail == _failingEmail)
+            {
+                throw new InvalidOperationException("Symulowany błąd wysyłki.");
+            }
+            Sent.Add(toEmail);
+            return Task.CompletedTask;
+        }
     }
 }

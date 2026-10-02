@@ -1,4 +1,5 @@
 using DokPortal.Application.Common;
+using DokPortal.Application.NameDays;
 using DokPortal.Application.Reminders;
 using DokPortal.Domain.Constants;
 using DokPortal.Infrastructure.Persistence;
@@ -12,12 +13,14 @@ public class ReminderService : IReminderService
     private readonly AppDbContext _db;
     private readonly IEmailSender _emailSender;
     private readonly ILogger<ReminderService> _logger;
+    private readonly INameDayService _nameDayService;
 
-    public ReminderService(AppDbContext db, IEmailSender emailSender, ILogger<ReminderService> logger)
+    public ReminderService(AppDbContext db, IEmailSender emailSender, ILogger<ReminderService> logger, INameDayService nameDayService)
     {
         _db = db;
         _emailSender = emailSender;
         _logger = logger;
+        _nameDayService = nameDayService;
     }
 
     private sealed record MissingDocumentRow(
@@ -189,6 +192,53 @@ public class ReminderService : IReminderService
         {
             MeetingsProcessed = rows.Count,
             EmailsSentToCatechists = emailsSentToCatechists,
+            FailedSends = failedSends
+        };
+    }
+
+    public async Task<UpcomingNameDaysReminderResultDto> RunUpcomingNameDaysReminderAsync(CancellationToken ct)
+    {
+        var upcoming = await _nameDayService.GetUpcomingAsync(7, ct);
+
+        if (upcoming.Count == 0)
+        {
+            return new UpcomingNameDaysReminderResultDto
+            {
+                NameDaysFound = 0,
+                RecipientsNotified = 0,
+                FailedSends = 0
+            };
+        }
+
+        var lines = upcoming.Select(d => $"- {d.FullName} — {d.NameDayMonth:D2}.{d.NameDayDay:D2} (za {d.DaysUntil} dni)");
+        var body = "Imieniny w najbliższym tygodniu:\n" + string.Join("\n", lines);
+
+        var recipientEmails = await _db.Users
+            .Where(u => u.Email != null && u.Email != "")
+            .Select(u => u.Email!)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var recipientsNotified = 0;
+        var failedSends = 0;
+        foreach (var email in recipientEmails)
+        {
+            try
+            {
+                await _emailSender.SendAsync(email, "Nadchodzące imieniny", body, ct);
+                recipientsNotified++;
+            }
+            catch (Exception ex)
+            {
+                failedSends++;
+                _logger.LogWarning(ex, "Nie udało się wysłać przypomnienia o imieninach do {Email}", email);
+            }
+        }
+
+        return new UpcomingNameDaysReminderResultDto
+        {
+            NameDaysFound = upcoming.Count,
+            RecipientsNotified = recipientsNotified,
             FailedSends = failedSends
         };
     }
