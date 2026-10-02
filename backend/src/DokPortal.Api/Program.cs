@@ -21,7 +21,9 @@ using DokPortal.Application.Reminders;
 using DokPortal.Application.Supervisions;
 using DokPortal.Application.People;
 using DokPortal.Application.Users;
+using DokPortal.Api.Authorization;
 using DokPortal.Api.ErrorHandling;
+using Microsoft.AspNetCore.Authorization;
 using DokPortal.Api.Filters;
 using DokPortal.Infrastructure.Auth;
 using DokPortal.Infrastructure.Identity;
@@ -134,6 +136,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 builder.Services.AddCors(options =>
 {

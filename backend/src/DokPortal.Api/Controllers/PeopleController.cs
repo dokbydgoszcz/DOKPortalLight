@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Common;
 using DokPortal.Application.People;
@@ -29,7 +30,7 @@ public class PeopleController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP},{AppRoles.DyrektorDOK}")]
+    [HasPermission(Permissions.PeopleManage)]
     public async Task<ActionResult<PersonDto>> Create(CreatePersonRequest request, CancellationToken ct)
     {
         var created = await _personService.CreateAsync(request, ct);
@@ -37,7 +38,7 @@ public class PeopleController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP},{AppRoles.DyrektorDOK}")]
+    [HasPermission(Permissions.PeopleManage)]
     public async Task<ActionResult<PersonDto>> Update(Guid id, UpdatePersonRequest request, CancellationToken ct)
     {
         var updated = await _personService.UpdateAsync(id, request, ct);
@@ -45,7 +46,7 @@ public class PeopleController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP},{AppRoles.DyrektorDOK}")]
+    [HasPermission(Permissions.PeopleManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;

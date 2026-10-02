@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.AuditLog;
 using DokPortal.Application.Users;
@@ -9,7 +10,7 @@ namespace DokPortal.Api.Controllers;
 
 [ApiController]
 [Route("api/users")]
-[Authorize(Roles = AppRoles.Administrator)]
+[HasPermission(Permissions.UsersManage)]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;

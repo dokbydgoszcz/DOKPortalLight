@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Parishes;
 using DokPortal.Domain.Constants;
@@ -20,7 +21,7 @@ public class ParishesController : ControllerBase
         => Ok(await _parishService.GetAllAsync(ct));
 
     [HttpPost]
-    [Authorize(Roles = AppRoles.Administrator)]
+    [HasPermission(Permissions.ParishesManage)]
     public async Task<ActionResult<ParishDto>> Create(CreateParishRequest request, CancellationToken ct)
     {
         var created = await _parishService.CreateAsync(request, ct);
@@ -28,7 +29,7 @@ public class ParishesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = AppRoles.Administrator)]
+    [HasPermission(Permissions.ParishesManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;

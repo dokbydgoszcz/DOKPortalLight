@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using DokPortal.Application.AuditLog;
 using DokPortal.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
@@ -7,7 +8,7 @@ namespace DokPortal.Api.Controllers;
 
 [ApiController]
 [Route("api/audit-log")]
-[Authorize(Roles = AppRoles.Administrator)]
+[HasPermission(Permissions.AuditLogView)]
 public class AuditLogController : ControllerBase
 {
     private readonly IAuditLogService _auditLogService;

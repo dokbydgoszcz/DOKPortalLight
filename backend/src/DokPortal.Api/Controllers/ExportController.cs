@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using DokPortal.Api.Authorization;
 using DokPortal.Application.AuditLog;
 using DokPortal.Application.Export;
 using DokPortal.Domain.Constants;
@@ -25,35 +26,35 @@ public class ExportController : ControllerBase
     }
 
     [HttpGet("people")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP},{AppRoles.DyrektorDOK}")]
+    [HasPermission(Permissions.PeopleExport)]
     public Task<IActionResult> People(CancellationToken ct) => ExportAsync("people", "osoby", _exportService.ExportPeopleAsync, ct);
 
     [HttpGet("dok-cases")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK}")]
+    [HasPermission(Permissions.DokCasesExport)]
     public Task<IActionResult> DokCases(CancellationToken ct) => ExportAsync("dok-cases", "podopieczni-dok", _exportService.ExportDokCasesAsync, ct);
 
     [HttpGet("candidates")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.CandidatesExport)]
     public Task<IActionResult> Candidates(CancellationToken ct) => ExportAsync("candidates", "kandydaci-sksp", _exportService.ExportCandidatesAsync, ct);
 
     [HttpGet("missions")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.MissionsExport)]
     public Task<IActionResult> Missions(CancellationToken ct) => ExportAsync("missions", "katechisci-poslani", _exportService.ExportMissionsAsync, ct);
 
     [HttpGet("formators")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP}")]
+    [HasPermission(Permissions.FormatorsExport)]
     public Task<IActionResult> Formators(CancellationToken ct) => ExportAsync("formators", "formatorzy", _exportService.ExportFormatorsAsync, ct);
 
     [HttpGet("supervisions")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK},{AppRoles.DyrektorSKSP},{AppRoles.Superwizor}")]
+    [HasPermission(Permissions.SupervisionsExport)]
     public Task<IActionResult> Supervisions(CancellationToken ct) => ExportAsync("supervisions", "superwizje", _exportService.ExportSupervisionsAsync, ct);
 
     [HttpGet("meetings")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorDOK}")]
+    [HasPermission(Permissions.MeetingsExport)]
     public Task<IActionResult> Meetings(CancellationToken ct) => ExportAsync("meetings", "spotkania", _exportService.ExportMeetingsAsync, ct);
 
     [HttpGet("parishes")]
-    [Authorize(Roles = AppRoles.Administrator)]
+    [HasPermission(Permissions.ParishesExport)]
     public Task<IActionResult> Parishes(CancellationToken ct) => ExportAsync("parishes", "parafie", _exportService.ExportParishesAsync, ct);
 
     private async Task<IActionResult> ExportAsync(
