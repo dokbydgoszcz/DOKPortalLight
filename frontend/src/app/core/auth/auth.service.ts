@@ -15,18 +15,30 @@ interface DecodedToken {
   sub?: string;
   email?: string;
   role?: string | string[];
+  permission?: string | string[];
   personId?: string;
   exp?: number;
 }
 
 const STORAGE_KEY = 'dokportal.token';
+const PERMISSIONS_AWARE_KEY = 'dokportal.permissionsAware';
+
+function readStoredToken(): string | null {
+  const token = localStorage.getItem(STORAGE_KEY);
+  if (token && localStorage.getItem(PERMISSIONS_AWARE_KEY) !== '1') {
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+  return token;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly tokenSignal = signal<string | null>(localStorage.getItem(STORAGE_KEY));
+  private readonly tokenSignal = signal<string | null>(readStoredToken());
 
   readonly isAuthenticated = computed(() => this.tokenSignal() !== null);
-  readonly roles = computed(() => this.decodeRoles(this.tokenSignal()));
+  readonly roles = computed(() => this.decodeClaimList(this.tokenSignal(), 'role'));
+  readonly permissions = computed(() => this.decodeClaimList(this.tokenSignal(), 'permission'));
 
   constructor(private readonly http: HttpClient, private readonly router: Router) {}
 
@@ -39,11 +51,13 @@ export class AuthService {
       this.http.post<LoginResponse>(`${environment.apiBaseUrl}/api/auth/login`, { email, password })
     );
     localStorage.setItem(STORAGE_KEY, response.token);
+    localStorage.setItem(PERMISSIONS_AWARE_KEY, '1');
     this.tokenSignal.set(response.token);
   }
 
   logout(reason?: 'idle'): void {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(PERMISSIONS_AWARE_KEY);
     this.tokenSignal.set(null);
     this.router.navigateByUrl('/login', reason ? { state: { reason } } : undefined);
   }
@@ -56,11 +70,19 @@ export class AuthService {
     return roles.some(role => this.hasRole(role));
   }
 
-  private decodeRoles(token: string | null): string[] {
+  hasPermission(permission: string): boolean {
+    return this.permissions().includes(permission);
+  }
+
+  hasAnyPermission(permissions: string[]): boolean {
+    return permissions.some(permission => this.hasPermission(permission));
+  }
+
+  private decodeClaimList(token: string | null, claim: 'role' | 'permission'): string[] {
     if (!token) return [];
-    const decoded = this.decodeToken(token);
-    if (!decoded?.role) return [];
-    return Array.isArray(decoded.role) ? decoded.role : [decoded.role];
+    const value = this.decodeToken(token)?.[claim];
+    if (!value) return [];
+    return Array.isArray(value) ? value : [value];
   }
 
   private decodeToken(token: string): DecodedToken | null {
