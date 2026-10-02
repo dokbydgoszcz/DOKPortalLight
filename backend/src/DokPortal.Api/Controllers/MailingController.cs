@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using DokPortal.Application.Mailing;
 using DokPortal.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
@@ -15,16 +16,17 @@ public class MailingController : ControllerBase
     public MailingController(IMailingService mailingService) => _mailingService = mailingService;
 
     [HttpGet]
+    [HasPermission(Permissions.MailingView)]
     public async Task<ActionResult<IReadOnlyList<MailingCampaignDto>>> List(CancellationToken ct)
         => Ok(await _mailingService.ListAsync(ct));
 
     [HttpPost]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP},{AppRoles.DyrektorDOK}")]
+    [HasPermission(Permissions.MailingManage)]
     public async Task<ActionResult<MailingCampaignDto>> Create(CreateMailingCampaignRequest request, CancellationToken ct)
         => Ok(await _mailingService.CreateAsync(request, ct));
 
     [HttpPost("{id:guid}/send")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP},{AppRoles.DyrektorDOK}")]
+    [HasPermission(Permissions.MailingManage)]
     public async Task<ActionResult<MailingCampaignDto>> Send(Guid id, CancellationToken ct)
     {
         var sent = await _mailingService.SendAsync(id, ct);

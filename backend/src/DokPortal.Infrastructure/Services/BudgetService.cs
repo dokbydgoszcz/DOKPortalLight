@@ -50,6 +50,12 @@ public class BudgetService : IBudgetService
         return true;
     }
 
+    public async Task<BudgetFund?> GetFundAsync(Guid id, CancellationToken ct)
+    {
+        var entry = await _db.BudgetEntries.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, ct);
+        return entry?.Fund;
+    }
+
     private static BudgetEntryDto ToDto(BudgetEntry e) => new()
     {
         Id = e.Id,

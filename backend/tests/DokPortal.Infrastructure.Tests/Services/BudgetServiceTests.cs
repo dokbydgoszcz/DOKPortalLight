@@ -34,4 +34,22 @@ public class BudgetServiceTests
         Assert.Single(skspEntries);
         Assert.Equal("Wynajem sali", skspEntries[0].Description);
     }
+
+    [Fact]
+    public async Task GetFundAsync_ReturnsFundOfExistingEntry_AndNullForMissingOrDeleted()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var service = new BudgetService(db);
+        var dokEntry = await service.CreateAsync(new CreateBudgetEntryRequest
+        {
+            Fund = BudgetFund.DOK, EntryDate = new DateOnly(2026, 9, 18), Description = "Opis",
+            Category = "Kat", Type = BudgetEntryType.Expense, Amount = 10m
+        }, default);
+
+        Assert.Equal(BudgetFund.DOK, await service.GetFundAsync(dokEntry.Id, default));
+        Assert.Null(await service.GetFundAsync(Guid.NewGuid(), default));
+
+        await service.DeleteAsync(dokEntry.Id, "user-1", default);
+        Assert.Null(await service.GetFundAsync(dokEntry.Id, default));
+    }
 }

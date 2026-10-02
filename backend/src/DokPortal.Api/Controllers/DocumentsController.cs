@@ -1,3 +1,4 @@
+using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Documents;
 using DokPortal.Domain.Constants;
@@ -16,11 +17,12 @@ public class DocumentsController : ControllerBase
     public DocumentsController(IDocumentService documentService) => _documentService = documentService;
 
     [HttpGet]
+    [HasPermission(Permissions.DocumentsView)]
     public async Task<ActionResult<IReadOnlyList<GeneratedDocumentDto>>> GetHistory(CancellationToken ct)
         => Ok(await _documentService.GetHistoryAsync(ct));
 
     [HttpPost("generate")]
-    [Authorize(Roles = $"{AppRoles.Administrator},{AppRoles.DyrektorSKSP},{AppRoles.DyrektorDOK}")]
+    [HasPermission(Permissions.DocumentsGenerate)]
     public async Task<IActionResult> Generate(GenerateDocumentRequest request, CancellationToken ct)
     {
         var userId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using DokPortal.Api.Authorization;
+using DokPortal.Application.Budget;
 using DokPortal.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
@@ -131,6 +132,71 @@ public class PermissionAuthorizationTests : IntegrationTestBase
         var client = await CreateAuthenticatedClientAsync($"user-{Guid.NewGuid():N}@example.org", "Sekret123!", role);
 
         var response = await client.GetAsync($"/api/dok-cases/{Guid.NewGuid()}/documents");
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("SKSP", "DyrektorSKSP", HttpStatusCode.OK)]
+    [InlineData("SKSP", "DyrektorDOK", HttpStatusCode.Forbidden)]
+    [InlineData("SKSP", "KatechistaProwadzacy", HttpStatusCode.Forbidden)]
+    [InlineData("DOK", "DyrektorDOK", HttpStatusCode.OK)]
+    [InlineData("DOK", "DyrektorSKSP", HttpStatusCode.Forbidden)]
+    [InlineData("DOK", "KatechistaProwadzacy", HttpStatusCode.Forbidden)]
+    public async Task Budget_Read_IsGatedPerFund(string fund, string role, HttpStatusCode expected)
+    {
+        var client = await CreateAuthenticatedClientAsync($"user-{Guid.NewGuid():N}@example.org", "Sekret123!", role);
+
+        var response = await client.GetAsync($"/api/budget?fund={fund}");
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    private static object BudgetBody(string fund) => new
+    {
+        Fund = fund, EntryDate = "2026-09-18", Description = "Opis", Category = "Kategoria", Type = "Expense", Amount = 10m
+    };
+
+    [Theory]
+    [InlineData("DOK", "DyrektorDOK", HttpStatusCode.Created)]
+    [InlineData("DOK", "DyrektorSKSP", HttpStatusCode.Forbidden)]
+    [InlineData("SKSP", "DyrektorSKSP", HttpStatusCode.Created)]
+    [InlineData("SKSP", "DyrektorDOK", HttpStatusCode.Forbidden)]
+    public async Task Budget_Create_IsGatedPerFund(string fund, string role, HttpStatusCode expected)
+    {
+        var client = await CreateAuthenticatedClientAsync($"user-{Guid.NewGuid():N}@example.org", "Sekret123!", role);
+
+        var response = await client.PostAsJsonAsync("/api/budget", BudgetBody(fund));
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Budget_Delete_IsGatedByFundOfTheEntry()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        var created = await (await admin.PostAsJsonAsync("/api/budget", BudgetBody("DOK")))
+            .Content.ReadFromJsonAsync<BudgetEntryDto>(EnumJsonOptions);
+        var sksp = await CreateAuthenticatedClientAsync($"sksp-{Guid.NewGuid():N}@example.org", "Sekret123!", "DyrektorSKSP");
+        var dok = await CreateAuthenticatedClientAsync($"dok-{Guid.NewGuid():N}@example.org", "Sekret123!", "DyrektorDOK");
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await sksp.DeleteAsync($"/api/budget/{created!.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await dok.DeleteAsync($"/api/budget/{created.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await dok.DeleteAsync($"/api/budget/{Guid.NewGuid()}")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/api/documents", "DyrektorSKSP", HttpStatusCode.OK)]
+    [InlineData("/api/documents", "DyrektorDOK", HttpStatusCode.OK)]
+    [InlineData("/api/documents", "KatechistaProwadzacy", HttpStatusCode.Forbidden)]
+    [InlineData("/api/mailing/campaigns", "DyrektorSKSP", HttpStatusCode.OK)]
+    [InlineData("/api/mailing/campaigns", "DyrektorDOK", HttpStatusCode.OK)]
+    [InlineData("/api/mailing/campaigns", "KatechistaProwadzacy", HttpStatusCode.Forbidden)]
+    public async Task DocumentsAndMailing_Reads_RequireViewPermission(string url, string role, HttpStatusCode expected)
+    {
+        var client = await CreateAuthenticatedClientAsync($"user-{Guid.NewGuid():N}@example.org", "Sekret123!", role);
+
+        var response = await client.GetAsync(url);
 
         Assert.Equal(expected, response.StatusCode);
     }
