@@ -1,5 +1,6 @@
 using ClosedXML.Excel;
 using DokPortal.Application.Export;
+using DokPortal.Domain.Enums;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,6 +26,56 @@ public class ExportService : IExportService
             {
                 p.FirstName, p.LastName, p.Email, p.Phone, FormatDate(p.BirthDate), p.Parish?.Name,
                 p.NameDayDay is int day && p.NameDayMonth is int month ? $"{day:00}.{month:00}" : null
+            }));
+    }
+
+    private static readonly Dictionary<DokPath, string> PathLabels = new()
+    {
+        [DokPath.BaptismCandidate] = "Kandydaci do Chrztu",
+        [DokPath.Confirmation] = "Bierzmowanie",
+        [DokPath.Communion] = "Stół Pański",
+        [DokPath.Conversion] = "Konwersja",
+        [DokPath.ReturnToUnity] = "Powrót do Jedności"
+    };
+
+    private static readonly Dictionary<DokStage, string> StageLabels = new()
+    {
+        [DokStage.Application] = "Zgłoszenie",
+        [DokStage.Formation] = "Formacja",
+        [DokStage.Sacrament] = "Sakrament",
+        [DokStage.Graduate] = "Absolwent"
+    };
+
+    public async Task<byte[]> ExportDokCasesAsync(CancellationToken ct)
+    {
+        var cases = await _db.DokCases.AsNoTracking()
+            .Include(c => c.Person).Include(c => c.CatechistPerson).Include(c => c.MentorPerson)
+            .OrderBy(c => c.Person!.LastName).ThenBy(c => c.Person!.FirstName)
+            .ToListAsync(ct);
+
+        return BuildWorkbook(
+            "Podopieczni DOK",
+            new[] { "Osoba", "Ścieżka", "Etap", "Katechista", "Opiekun (mentor)", "Data ostatniego spotkania", "Data zakończenia" },
+            cases.Select(c => new object?[]
+            {
+                c.Person?.FullName, PathLabels[c.Path], StageLabels[c.Stage], c.CatechistPerson?.FullName,
+                c.MentorPerson?.FullName, FormatDate(c.LastMeetingDate), c.CompletedAtUtc?.ToString("yyyy-MM-dd")
+            }));
+    }
+
+    public async Task<byte[]> ExportCandidatesAsync(CancellationToken ct)
+    {
+        var candidates = await _db.Candidates.AsNoTracking()
+            .Include(c => c.Person)
+            .OrderBy(c => c.Person!.LastName).ThenBy(c => c.Person!.FirstName).ThenBy(c => c.Year)
+            .ToListAsync(ct);
+
+        return BuildWorkbook(
+            "Kandydaci SKŚP",
+            new[] { "Osoba", "Rok", "Frekwencja (%)", "Opinie zebrane", "Opinie wymagane", "Rekolekcje" },
+            candidates.Select(c => new object?[]
+            {
+                c.Person?.FullName, c.Year, c.AttendancePercentage, c.OpinionsCollected, c.OpinionsRequired, YesNo(c.IsRetreatCompleted)
             }));
     }
 
