@@ -74,4 +74,36 @@ public class RemindersControllerTests : IntegrationTestBase
         var result = await response.Content.ReadFromJsonAsync<UpcomingMeetingsReminderResultDto>();
         Assert.NotNull(result);
     }
+
+    [Fact]
+    public async Task RunUpcomingNameDays_WithoutKeyHeader_ReturnsUnauthorized()
+    {
+        var response = await Client.PostAsync("/api/reminders/upcoming-name-days/run", content: null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RunUpcomingNameDays_WithWrongKey_ReturnsUnauthorized()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/reminders/upcoming-name-days/run");
+        request.Headers.Add("X-Reminders-Key", "zly-klucz");
+
+        var response = await Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RunUpcomingNameDays_WithCorrectKey_ReturnsOkWithResult()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/reminders/upcoming-name-days/run");
+        request.Headers.Add("X-Reminders-Key", "testing-only-reminders-key");
+
+        var response = await Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<UpcomingNameDaysReminderResultDto>();
+        Assert.NotNull(result);
+    }
 }

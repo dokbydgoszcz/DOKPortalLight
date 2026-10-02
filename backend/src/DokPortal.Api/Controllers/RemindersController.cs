@@ -43,6 +43,18 @@ public class RemindersController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("upcoming-name-days/run")]
+    public async Task<ActionResult<UpcomingNameDaysReminderResultDto>> RunUpcomingNameDaysReminder(CancellationToken ct)
+    {
+        if (!IsRequestAuthorized())
+        {
+            return Unauthorized();
+        }
+
+        var result = await _reminderService.RunUpcomingNameDaysReminderAsync(ct);
+        return Ok(result);
+    }
+
     private bool IsRequestAuthorized()
     {
         var configuredKey = _configuration["Reminders:ApiKey"];
