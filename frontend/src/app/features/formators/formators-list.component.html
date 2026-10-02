@@ -40,6 +40,7 @@
           <div class="field">
             <label>Osoba</label>
             <select [(ngModel)]="formValue.personId" name="personId">
+              <option value="">— wybierz —</option>
               @for (person of people; track person.id) {
                 <option [value]="person.id">{{ person.fullName }}</option>
               }
@@ -50,7 +51,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn ghost" (click)="onCancel()">Anuluj</button>
-        <button class="btn primary" (click)="onSave()">Zapisz</button>
+        <button class="btn primary" [disabled]="!formValue.personId" (click)="onSave()">Zapisz</button>
       </div>
     </div>
   </div>

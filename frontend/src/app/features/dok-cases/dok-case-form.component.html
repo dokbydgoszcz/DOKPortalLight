@@ -10,6 +10,7 @@
           <div class="field">
             <label>Osoba</label>
             <select [(ngModel)]="value.personId" name="personId">
+              <option value="">— wybierz —</option>
               @for (person of people; track person.id) {
                 <option [value]="person.id">{{ person.fullName }}</option>
               }
@@ -37,6 +38,7 @@
           <div class="field">
             <label>Katechista prowadzący</label>
             <select [(ngModel)]="value.catechistPersonId" name="catechistPersonId">
+              <option value="">— wybierz —</option>
               @for (person of people; track person.id) {
                 <option [value]="person.id">{{ person.fullName }}</option>
               }
@@ -46,7 +48,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn ghost" (click)="cancel.emit()">Anuluj</button>
-        <button class="btn primary" (click)="submit()">Zapisz</button>
+        <button class="btn primary" [disabled]="!value.personId || !value.catechistPersonId" (click)="submit()">Zapisz</button>
       </div>
     </div>
   </div>
