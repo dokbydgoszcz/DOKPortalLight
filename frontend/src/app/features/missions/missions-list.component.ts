@@ -1,3 +1,4 @@
+import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
 import { MissionsService } from './missions.service';
 import { Mission, MissionFormValue } from './mission.model';
@@ -10,7 +11,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-missions-list',
   standalone: true,
-  imports: [MissionFormComponent, PaginationComponent],
+  imports: [ExportButtonComponent, MissionFormComponent, PaginationComponent],
   templateUrl: './missions-list.component.html',
   styleUrl: './missions-list.component.scss'
 })

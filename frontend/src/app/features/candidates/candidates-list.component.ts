@@ -1,3 +1,4 @@
+import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
 import { CandidatesService } from './candidates.service';
 import { Candidate, CandidateFormValue } from './candidate.model';
@@ -10,7 +11,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-candidates-list',
   standalone: true,
-  imports: [CandidateFormComponent, PaginationComponent],
+  imports: [ExportButtonComponent, CandidateFormComponent, PaginationComponent],
   templateUrl: './candidates-list.component.html',
   styleUrl: './candidates-list.component.scss'
 })

@@ -1,3 +1,4 @@
+import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
 import { PeopleService } from './people.service';
 import { Person, PersonFormValue } from './person.model';
@@ -10,7 +11,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-people-list',
   standalone: true,
-  imports: [PersonFormComponent, PaginationComponent],
+  imports: [ExportButtonComponent, PersonFormComponent, PaginationComponent],
   templateUrl: './people-list.component.html',
   styleUrl: './people-list.component.scss'
 })

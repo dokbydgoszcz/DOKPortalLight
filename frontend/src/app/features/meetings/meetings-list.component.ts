@@ -1,3 +1,4 @@
+import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MeetingsService } from './meetings.service';
@@ -9,7 +10,7 @@ import { DokCase } from '../dok-cases/dok-case.model';
 @Component({
   selector: 'app-meetings-list',
   standalone: true,
-  imports: [FormsModule],
+  imports: [ExportButtonComponent, FormsModule],
   templateUrl: './meetings-list.component.html',
   styleUrl: './meetings-list.component.scss'
 })

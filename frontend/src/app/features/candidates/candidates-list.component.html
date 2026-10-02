@@ -1,6 +1,9 @@
 <div class="page-heading">
   <div><h2>Kandydaci SKŚP</h2><p>Osoby zapisane do Szkoły Katechistów.</p></div>
-  <button class="btn primary" (click)="openAddForm()">＋ Nowy kandydat</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <app-export-button list="candidates" />
+    <button class="btn primary" (click)="openAddForm()">＋ Nowy kandydat</button>
+  </div>
 </div>
 
 <div class="grid stats">

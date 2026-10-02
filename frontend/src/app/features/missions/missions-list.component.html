@@ -1,6 +1,9 @@
 <div class="page-heading">
   <div><h2>Katechiści posłani</h2><p>Misje kanoniczne, miejsca posługi i grupy superwizyjne.</p></div>
-  <button class="btn primary" (click)="openAddForm()">＋ Dodaj misję</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <app-export-button list="missions" />
+    <button class="btn primary" (click)="openAddForm()">＋ Dodaj misję</button>
+  </div>
 </div>
 
 <div class="card">

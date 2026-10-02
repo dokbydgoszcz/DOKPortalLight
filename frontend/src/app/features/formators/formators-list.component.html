@@ -1,6 +1,9 @@
 <div class="page-heading">
   <div><h2>Formatorzy SKŚP</h2><p>Biskup, wikariusz, referent, wykładowcy i moderatorzy.</p></div>
-  <button class="btn primary" (click)="openAddForm()">＋ Dodaj formatora</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <app-export-button list="formators" />
+    <button class="btn primary" (click)="openAddForm()">＋ Dodaj formatora</button>
+  </div>
 </div>
 
 <div class="card">

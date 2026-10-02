@@ -1,6 +1,9 @@
 <div class="page-heading">
   <div><h2>Harmonogram i obecności</h2><p>Spotkania indywidualne i zajęcia grupowe.</p></div>
-  <button class="btn primary" (click)="openAddForm()">＋ Dodaj spotkanie</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <app-export-button list="meetings" />
+    <button class="btn primary" (click)="openAddForm()">＋ Dodaj spotkanie</button>
+  </div>
 </div>
 
 <div class="card">

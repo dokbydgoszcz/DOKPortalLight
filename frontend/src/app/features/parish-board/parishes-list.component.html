@@ -1,6 +1,9 @@
 <div class="page-heading">
   <div><h2>Parafie</h2><p>Rejestr parafii Diecezji Bydgoskiej.</p></div>
-  <button class="btn primary" (click)="openAddForm()">＋ Dodaj parafię</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <app-export-button list="parishes" />
+    <button class="btn primary" (click)="openAddForm()">＋ Dodaj parafię</button>
+  </div>
 </div>
 
 <div class="card">

@@ -1,3 +1,4 @@
+import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -24,7 +25,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-dok-cases-list',
   standalone: true,
-  imports: [DokCaseFormComponent, PaginationComponent, FormsModule, DatePipe],
+  imports: [ExportButtonComponent, DokCaseFormComponent, PaginationComponent, FormsModule, DatePipe],
   templateUrl: './dok-cases-list.component.html',
   styleUrl: './dok-cases-list.component.scss'
 })

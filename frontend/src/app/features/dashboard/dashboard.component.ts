@@ -19,6 +19,7 @@ export class DashboardComponent implements OnInit {
   };
 
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-02', text: 'Eksport do Excela — na listach (Osoby, Podopieczni DOK, Kandydaci SKŚP, Katechiści posłani, Formatorzy, Superwizje, Spotkania, Parafie) pojawił się przycisk „Eksportuj do Excela". Widzą go tylko osoby z odpowiednimi uprawnieniami, a każdy eksport zapisuje się w dzienniku audytu.' },
     { date: '2026-10-02', text: 'Pulpit startowy pokazuje teraz więcej informacji: liczbę podopiecznych DOK w każdym etapie, sprawy z brakującymi dokumentami, spotkania w najbliższych 7 dniach oraz liczbę kandydatów SKŚP.' },
     { date: '2026-10-02', text: 'Nawigacja na telefonie — dodano przycisk menu (☰) w pasku górnym. Wcześniej na wąskich ekranach nie dało się otworzyć menu bocznego.' },
     { date: '2026-10-02', text: 'Naprawiono błąd w formularzach (Formatorzy, Kandydaci, Misje, Podopieczni DOK): przycisk „Zapisz" jest teraz zablokowany, dopóki nie wybierzesz osoby z listy, zamiast zgłaszać błąd dopiero po kliknięciu.' },

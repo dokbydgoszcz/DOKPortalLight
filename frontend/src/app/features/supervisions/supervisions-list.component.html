@@ -1,6 +1,9 @@
 <div class="page-heading">
   <div><h2>Superwizje</h2><p>Frekwencja, tematyka i wnioski — wspólne dla SKŚP i DOK.</p></div>
-  <button class="btn primary" (click)="openAddForm()">＋ Nowa superwizja</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <app-export-button list="supervisions" />
+    <button class="btn primary" (click)="openAddForm()">＋ Nowa superwizja</button>
+  </div>
 </div>
 
 <div class="card">

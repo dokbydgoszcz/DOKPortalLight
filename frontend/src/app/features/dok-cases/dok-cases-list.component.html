@@ -1,6 +1,9 @@
 <div class="page-heading">
   <div><h2>Podopieczni DOK</h2><p>Pięć ścieżek formacyjnych i indywidualny obieg dokumentów.</p></div>
-  <button class="btn primary" (click)="openAddForm()">＋ Nowy podopieczny</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <app-export-button list="dok-cases" />
+    <button class="btn primary" (click)="openAddForm()">＋ Nowy podopieczny</button>
+  </div>
 </div>
 
 <div class="grid stats">

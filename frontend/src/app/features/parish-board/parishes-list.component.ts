@@ -1,3 +1,4 @@
+import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ParishesService } from './parishes.service';
@@ -7,7 +8,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 @Component({
   selector: 'app-parishes-list',
   standalone: true,
-  imports: [FormsModule],
+  imports: [ExportButtonComponent, FormsModule],
   templateUrl: './parishes-list.component.html',
   styleUrl: './parishes-list.component.scss'
 })

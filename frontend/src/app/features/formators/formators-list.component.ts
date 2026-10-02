@@ -1,3 +1,4 @@
+import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FormatorsService } from './formators.service';
@@ -9,7 +10,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 @Component({
   selector: 'app-formators-list',
   standalone: true,
-  imports: [FormsModule],
+  imports: [ExportButtonComponent, FormsModule],
   templateUrl: './formators-list.component.html',
   styleUrl: './formators-list.component.scss'
 })

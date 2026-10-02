@@ -1,6 +1,9 @@
 <div class="page-heading">
   <div><h2>Baza osób</h2><p>Jeden profil osoby, wiele ról i powiązań.</p></div>
-  <button class="btn primary" (click)="openAddForm()">＋ Dodaj osobę</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <app-export-button list="people" />
+    <button class="btn primary" (click)="openAddForm()">＋ Dodaj osobę</button>
+  </div>
 </div>
 
 <div class="card">
