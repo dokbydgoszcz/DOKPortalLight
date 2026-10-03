@@ -32,4 +32,21 @@ describe('MissionsService', () => {
     req.flush({});
     httpMock.verify();
   });
+
+  it('loads the people waiting for the mission and grants it with one POST', () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const service = TestBed.inject(MissionsService);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    service.pending().subscribe();
+    const pending = httpMock.expectOne(`${environment.apiBaseUrl}/api/missions/pending`);
+    expect(pending.request.method).toBe('GET');
+    pending.flush([]);
+
+    service.grant('p1').subscribe();
+    const grant = httpMock.expectOne(`${environment.apiBaseUrl}/api/missions/grant`);
+    expect(grant.request.method).toBe('POST');
+    expect(grant.request.body).toEqual({ personId: 'p1' });
+    grant.flush({});
+  });
 });

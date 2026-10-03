@@ -1,25 +1,29 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MissionsListComponent } from './missions-list.component';
-import { Mission } from './mission.model';
+import { Mission, PendingCatechist } from './mission.model';
 import { ToastService } from '../../core/notifications/toast.service';
 import { api, clickByText, paged, setInput, setSelect, setup, textOf } from '../../testing/test-helpers';
 
 const mission: Mission = {
   id: '1', personId: 'p1', personFullName: 'Anna Maj', servicePlace: 'Parafia św. Mateusza',
   missionStartDate: '2023-10-15', missionEndDate: '2026-10-14', grantedDate: null, grantedPlace: null,
-  supervisionGroup: 'Grupa A', status: 'wygasa', sentToDok: false
+  supervisionGroup: 'Grupa A', status: 'wygasa', sentToDok: false, attachments: []
 };
 const sentMission: Mission = { ...mission, id: '2', personFullName: 'Jan Kowalski', sentToDok: true };
+const waiting: PendingCatechist = {
+  candidateId: 'c1', personId: 'p9', personFullName: 'Ewa Absolwentka', parishName: 'św. Jana', formationCompletedOn: '2026-09-01'
+};
 const people = [
   { id: 'p1', firstName: 'Anna', lastName: 'Maj', fullName: 'Anna Maj', email: null, phone: null, birthDate: null, parishId: null, parishName: null, notes: null }
 ];
 const url = api('/api/missions');
 
-function boot(items: Mission[] = [mission], totalCount = items.length) {
-  const ctx = setup(MissionsListComponent);
+function boot(items: Mission[] = [mission], totalCount = items.length, pending: PendingCatechist[] = [], granted?: string[]) {
+  const ctx = setup(MissionsListComponent, { granted });
   ctx.fixture.detectChanges();
   ctx.http.expectOne(r => r.url === url).flush({ items, totalCount, page: 1, pageSize: 20 });
+  ctx.http.expectOne(`${url}/pending`).flush(pending);
   ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
   ctx.http.expectOne(r => r.url === api('/api/parishes')).flush([]);
   ctx.fixture.detectChanges();
@@ -245,6 +249,132 @@ describe('MissionsListComponent', () => {
       ctx.fixture.detectChanges();
 
       expect(textOf(ctx.el)).not.toContain('Edytuj');
+    });
+  });
+
+  describe('catechists waiting for the mission', () => {
+    const rowOf = (el: HTMLElement, text: string) =>
+      Array.from(el.querySelectorAll('tbody tr')).find(r => r.textContent!.includes(text)) as HTMLElement;
+
+    it('lists them first, with the status and the completion date', () => {
+      const { el } = boot([mission], 1, [waiting]);
+      const rows = Array.from(el.querySelectorAll('tbody tr'));
+
+      expect(rows[0].textContent).toContain('Ewa Absolwentka');
+      expect(textOf(rows[0] as HTMLElement)).toContain('Przed udzieleniem posługi');
+      expect(textOf(rows[0] as HTMLElement)).toContain('01.09.2026');
+      expect(rows[1].textContent).toContain('Anna Maj');
+      expect(rows).toHaveLength(2);
+    });
+
+    it('is not shown as empty when only waiting people exist', () => {
+      const { el } = boot([], 0, [waiting]);
+
+      expect(textOf(el)).not.toContain('Brak misji.');
+      expect(textOf(el)).toContain('Ewa Absolwentka');
+    });
+
+    it('says there is nothing only when neither missions nor waiting people exist', () => {
+      expect(textOf(boot([], 0, []).el)).toContain('Brak misji.');
+    });
+
+    it('grants the mission with one click, confirms and reloads both lists', () => {
+      const ctx = boot([mission], 1, [waiting]);
+
+      clickByText(rowOf(ctx.el, 'Ewa Absolwentka'), 'Udziel posłania');
+      const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === `${url}/grant`);
+      expect(req.request.body).toEqual({ personId: 'p9' });
+      req.flush(mission);
+
+      expect(toastMessages().some(m => m.startsWith('Udzielono posłania'))).toBe(true);
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush({ items: [mission], totalCount: 1, page: 1, pageSize: 20 });
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === `${url}/pending`).flush([]);
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).not.toContain('Przed udzieleniem posługi');
+    });
+
+    it('shows the server message, or a generic one, when granting fails', () => {
+      const ctx = boot([], 0, [waiting]);
+
+      clickByText(ctx.el, 'Udziel posłania');
+      ctx.http.expectOne(r => r.method === 'POST').flush({ title: 'Ta osoba nie czeka na udzielenie posługi.' }, { status: 400, statusText: 'Bad Request' });
+      clickByText(ctx.el, 'Udziel posłania');
+      ctx.http.expectOne(r => r.method === 'POST').flush('x', { status: 500, statusText: 'Server Error' });
+
+      expect(toastMessages()).toContain('Ta osoba nie czeka na udzielenie posługi.');
+      expect(toastMessages()).toContain('Nie udało się udzielić posłania.');
+    });
+
+    it('hides the grant button from users who cannot manage missions', () => {
+      const { el } = boot([], 0, [waiting], ['Missions.View']);
+
+      expect(textOf(el)).toContain('Ewa Absolwentka');
+      expect(textOf(el)).not.toContain('Udziel posłania');
+    });
+
+    it('reports a failure to load the waiting list', () => {
+      const { fixture, http } = setup(MissionsListComponent);
+      fixture.detectChanges();
+      http.expectOne(r => r.url === url).flush({ items: [], totalCount: 0, page: 1, pageSize: 20 });
+
+      http.expectOne(`${url}/pending`).flush('x', { status: 500, statusText: 'Server Error' });
+
+      expect(toastMessages()).toContain('Nie udało się wczytać listy oczekujących na posłanie.');
+    });
+  });
+
+  describe('the mission document', () => {
+    const file = { id: 'a1', fileName: 'poslanie.pdf', contentType: 'application/pdf', sizeBytes: 2048, uploadedAtUtc: '2026-10-03T10:00:00Z' };
+    const withFile: Mission = { ...mission, attachments: [file] };
+    const filesUrl = `${url}/1/attachments`;
+    const modalText = (el: HTMLElement) => textOf(el.querySelector('.modal') as HTMLElement);
+
+    it('shows the number of files and opens the files window', () => {
+      const { fixture, el } = boot([withFile]);
+
+      expect(textOf(el)).toContain('Załączniki (1)');
+      clickByText(el, 'Załączniki (1)');
+      fixture.detectChanges();
+
+      expect(modalText(el)).toContain('Załączniki — Anna Maj');
+      expect(modalText(el)).toContain('poslanie.pdf');
+    });
+
+    it('offers the window also with no files yet, and closes it', () => {
+      const { fixture, el } = boot([mission]);
+
+      clickByText(el, 'Załączniki', '.link');
+      fixture.detectChanges();
+      expect(modalText(el)).toContain('Brak załączników.');
+
+      clickByText(el, 'Zamknij', '.modal-foot button');
+      fixture.detectChanges();
+      expect(el.querySelector('.modal')).toBeNull();
+    });
+
+    it('uploads a file to the mission address, reloads and shows the new file', () => {
+      const { fixture, http, el } = boot([mission]);
+      clickByText(el, 'Załączniki', '.link');
+      fixture.detectChanges();
+      const input = el.querySelector('.modal input[name="attachmentFiles"]') as HTMLInputElement;
+      Object.defineProperty(input, 'files', { value: [new File(['a'], 'poslanie.pdf')], configurable: true });
+
+      input.dispatchEvent(new Event('change'));
+      http.expectOne(r => r.method === 'POST' && r.url === filesUrl).flush(file);
+      http.expectOne(r => r.method === 'GET' && r.url === url).flush({ items: [withFile], totalCount: 1, page: 1, pageSize: 20 });
+      fixture.detectChanges();
+
+      expect(modalText(el)).toContain('poslanie.pdf');
+    });
+
+    it('lets users who can only view missions download but not add files', () => {
+      const ctx = boot([withFile], 1, [], ['Missions.View']);
+
+      clickByText(ctx.el, 'Załączniki (1)');
+      ctx.fixture.detectChanges();
+
+      expect(modalText(ctx.el)).toContain('Pobierz');
+      expect(ctx.el.querySelector('.modal input[type="file"]')).toBeNull();
     });
   });
 });

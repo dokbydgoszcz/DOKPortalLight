@@ -20,7 +20,7 @@ export interface CreateMailingCampaignValue {
 
 export const MAILING_GROUP_LABELS: Record<MailingGroup, string> = {
   CandidatesSksp: 'Kandydaci SKŚP',
-  Missionaries: 'Katechiści posłani',
+  Missionaries: 'Katechiści',
   DokGraduates: 'Absolwenci DOK',
   DokCases: 'Podopieczni DOK'
 };

@@ -1,5 +1,5 @@
 <div class="page-heading">
-  <div><h2>Katechiści posłani</h2><p>Misje kanoniczne, miejsca posługi i grupy superwizyjne.</p></div>
+  <div><h2>Katechiści</h2><p>Katechiści posłani i czekający na posłanie: misje kanoniczne, miejsca posługi i grupy superwizyjne.</p></div>
   <div style="display:flex;gap:8px;align-items:center">
     <app-export-button list="missions" />
     <button *appHasPermission="'Missions.Manage'" class="btn primary" (click)="openAddForm()">＋ Dodaj misję</button>
@@ -11,6 +11,14 @@
     <table>
       <thead><tr><th>Katechista</th><th>Miejsce posługi</th><th>Misja od</th><th>Misja do</th><th>Superwizja</th><th>Posłany do DOK</th><th>Status</th><th></th></tr></thead>
       <tbody>
+        @for (person of pending(); track person.personId) {
+          <tr class="pending-row">
+            <td><b>{{ person.personFullName }}</b></td>
+            <td colspan="5" class="muted">Ukończył formację {{ person.formationCompletedOn | date: 'dd.MM.yyyy' }}@if (person.parishName) { · {{ person.parishName }} }</td>
+            <td><span class="pill gold">Przed udzieleniem posługi</span></td>
+            <td><button *appHasPermission="'Missions.Manage'" class="btn primary small" (click)="grant(person)">Udziel posłania</button></td>
+          </tr>
+        }
         @for (mission of missions(); track mission.id) {
           <tr>
             <td><b>{{ mission.personFullName }}</b></td>
@@ -21,15 +29,18 @@
             <td class="sent-to-dok">@if (mission.sentToDok) { <span class="pill blue">tak</span> } @else { — }</td>
             <td><span [class]="statusPillClass(mission.status)">{{ mission.status }}</span></td>
             <td>
+              <span class="link" (click)="openAttachments(mission)">Załączniki@if (mission.attachments.length > 0) { ({{ mission.attachments.length }})}</span>
               <ng-container *appHasPermission="'Missions.Manage'">
+                &nbsp;·&nbsp;
                 <span class="link" (click)="openEditForm(mission)">Edytuj</span>
                 &nbsp;·&nbsp;
                 <span class="link" style="color:var(--danger)" (click)="deleteMission(mission)">Usuń</span>
               </ng-container>
             </td>
           </tr>
-        } @empty {
-          <tr><td colspan="8" class="empty">Brak misji.</td></tr>
+        }
+        @if (pending().length === 0 && missions().length === 0) {
+          <tr><td colspan="9" class="empty">Brak misji.</td></tr>
         }
       </tbody>
     </table>
@@ -44,3 +55,26 @@
   (save)="onSave($event)"
   (cancel)="onCancel()">
 </app-mission-form>
+
+@if (attachmentsMission(); as mission) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Załączniki — {{ mission.personFullName }}</h3>
+        <button class="close" (click)="closeAttachments()">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="form-hint" style="margin-bottom:10px">Tu można dołączyć m.in. dokument posłania.</p>
+        <app-attachments
+          [attachments]="mission.attachments"
+          [baseUrl]="attachmentsUrl(mission)"
+          managePermission="Missions.Manage"
+          [showEmpty]="true"
+          (changed)="load()" />
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="closeAttachments()">Zamknij</button>
+      </div>
+    </div>
+  </div>
+}
