@@ -51,6 +51,17 @@ describe('ShellComponent', () => {
     expect((fixture.nativeElement.textContent as string)).toContain('Użytkownicy i role');
   });
 
+  it('shows the footer with the copyright, application name and version under the content', () => {
+    setup([]);
+    const main = el().querySelector('main.main') as HTMLElement;
+    const footer = main.querySelector('app-footer footer');
+
+    expect(footer).not.toBeNull();
+    expect(footer!.textContent).toContain('Diecezja Bydgoska');
+    expect(footer!.textContent).toContain('DOK Portal · wersja');
+    expect(main.lastElementChild!.tagName.toLowerCase()).toBe('app-footer');
+  });
+
   it('always shows the items that need no permission and only the permitted modules', () => {
     setup(['Meetings.View']);
     const text = fixture.nativeElement.textContent as string;

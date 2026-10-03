@@ -4,11 +4,12 @@ import { AuthService } from '../../core/auth/auth.service';
 import { IdleTimeoutService } from '../../core/auth/idle-timeout.service';
 import { ToastContainerComponent } from '../../core/notifications/toast-container.component';
 import { NAV_ITEMS } from '../nav-items';
+import { AppFooterComponent } from '../app-footer.component';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, ToastContainerComponent],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, ToastContainerComponent, AppFooterComponent],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss'
 })
