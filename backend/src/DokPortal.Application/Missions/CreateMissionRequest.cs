@@ -9,4 +9,5 @@ public class CreateMissionRequest
     public DateOnly? GrantedDate { get; init; }
     public string? GrantedPlace { get; init; }
     public string? SupervisionGroup { get; init; }
+    public bool SentToDok { get; init; }
 }

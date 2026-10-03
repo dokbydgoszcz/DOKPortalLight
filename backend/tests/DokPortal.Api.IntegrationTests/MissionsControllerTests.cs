@@ -47,4 +47,23 @@ public class MissionsControllerTests : IntegrationTestBase
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
+
+    [Fact]
+    public async Task SentToDok_IsStoredAndReturned_AndDefaultsToFalse()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        var personId = await SeedPersonAsync(admin, "Marek", "Zielinski");
+
+        var sent = await admin.PostAsJsonAsync("/api/missions", new
+        {
+            PersonId = personId, ServicePlace = "Parafia A", MissionStartDate = "2025-07-01", MissionEndDate = "2028-06-30", SentToDok = true
+        });
+        var plain = await admin.PostAsJsonAsync("/api/missions", new
+        {
+            PersonId = personId, ServicePlace = "Parafia B", MissionStartDate = "2025-07-01", MissionEndDate = "2028-06-30"
+        });
+
+        Assert.True((await sent.Content.ReadFromJsonAsync<MissionDto>())!.SentToDok);
+        Assert.False((await plain.Content.ReadFromJsonAsync<MissionDto>())!.SentToDok);
+    }
 }

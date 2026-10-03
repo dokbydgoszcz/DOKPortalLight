@@ -101,11 +101,11 @@ public class ExportService : IExportService
 
         return BuildWorkbook(
             "Katechiści posłani",
-            new[] { "Katechista", "Miejsce posługi", "Data od", "Data do", "Data udzielenia", "Miejsce udzielenia", "Grupa superwizyjna" },
+            new[] { "Katechista", "Miejsce posługi", "Data od", "Data do", "Data udzielenia", "Miejsce udzielenia", "Grupa superwizyjna", "Posłany do DOK" },
             missions.Select(m => new object?[]
             {
                 m.Person?.FullName, m.ServicePlace, FormatDate(m.MissionStartDate), FormatDate(m.MissionEndDate),
-                FormatDate(m.GrantedDate), m.GrantedPlace, m.SupervisionGroup
+                FormatDate(m.GrantedDate), m.GrantedPlace, m.SupervisionGroup, YesNo(m.SentToDok)
             }));
     }
 

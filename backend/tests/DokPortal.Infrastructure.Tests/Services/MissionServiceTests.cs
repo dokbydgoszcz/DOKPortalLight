@@ -77,4 +77,41 @@ public class MissionServiceTests
 
         Assert.Equal("wygasła", created.Status);
     }
+
+    [Fact]
+    public async Task SentToDok_DefaultsToFalse_AndIsStoredWhenSet()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var personId = await SeedPersonAsync(db, "Marek", "Zielinski");
+        var service = new MissionService(db);
+        var start = DateOnly.FromDateTime(DateTime.UtcNow);
+        var end = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(2));
+
+        var plain = await service.CreateAsync(new CreateMissionRequest { PersonId = personId, ServicePlace = "A", MissionStartDate = start, MissionEndDate = end }, default);
+        var sent = await service.CreateAsync(new CreateMissionRequest { PersonId = personId, ServicePlace = "B", MissionStartDate = start, MissionEndDate = end, SentToDok = true }, default);
+
+        Assert.False(plain.SentToDok);
+        Assert.True(sent.SentToDok);
+        Assert.True((await service.GetByIdAsync(sent.Id, default))!.SentToDok);
+        var page = await service.SearchAsync(null, 1, 20, default);
+        Assert.Equal(new[] { false, true }, page.Items.OrderBy(i => i.ServicePlace).Select(i => i.SentToDok));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ChangesTheSentToDokFlag()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var personId = await SeedPersonAsync(db, "Anna", "Maj");
+        var service = new MissionService(db);
+        var start = DateOnly.FromDateTime(DateTime.UtcNow);
+        var end = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(2));
+        var created = await service.CreateAsync(new CreateMissionRequest { PersonId = personId, ServicePlace = "A", MissionStartDate = start, MissionEndDate = end }, default);
+
+        var updated = await service.UpdateAsync(created.Id, new UpdateMissionRequest
+        {
+            PersonId = personId, ServicePlace = "A", MissionStartDate = start, MissionEndDate = end, SentToDok = true
+        }, default);
+
+        Assert.True(updated!.SentToDok);
+    }
 }

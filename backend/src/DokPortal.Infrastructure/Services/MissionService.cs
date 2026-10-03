@@ -60,6 +60,7 @@ public class MissionService : IMissionService
             GrantedDate = request.GrantedDate,
             GrantedPlace = request.GrantedPlace,
             SupervisionGroup = request.SupervisionGroup,
+            SentToDok = request.SentToDok,
             CreatedAtUtc = DateTime.UtcNow,
             UpdatedAtUtc = DateTime.UtcNow
         };
@@ -80,6 +81,7 @@ public class MissionService : IMissionService
         mission.GrantedDate = request.GrantedDate;
         mission.GrantedPlace = request.GrantedPlace;
         mission.SupervisionGroup = request.SupervisionGroup;
+        mission.SentToDok = request.SentToDok;
         mission.UpdatedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
@@ -108,6 +110,7 @@ public class MissionService : IMissionService
         GrantedDate = m.GrantedDate,
         GrantedPlace = m.GrantedPlace,
         SupervisionGroup = m.SupervisionGroup,
+        SentToDok = m.SentToDok,
         Status = ComputeStatus(m.MissionEndDate)
     };
 

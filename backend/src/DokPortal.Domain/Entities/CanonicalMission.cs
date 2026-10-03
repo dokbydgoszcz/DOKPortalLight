@@ -11,6 +11,8 @@ public class CanonicalMission : ISoftDeletable
     public DateOnly? GrantedDate { get; set; }
     public string? GrantedPlace { get; set; }
     public string? SupervisionGroup { get; set; }
+    /// <summary>Katechista posłany do pracy w DOK.</summary>
+    public bool SentToDok { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
