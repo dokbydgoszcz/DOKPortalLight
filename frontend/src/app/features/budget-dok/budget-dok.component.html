@@ -1,6 +1,6 @@
 <div class="page-heading">
   <div><h2>Budżet DOK</h2><p>Dedykowana ewidencja przychodów i wydatków Ośrodka.</p></div>
-  <button class="btn primary" (click)="openAddForm()">＋ Dodaj operację</button>
+  <button *appHasPermission="'BudgetDok.Manage'" class="btn primary" (click)="openAddForm()">＋ Dodaj operację</button>
 </div>
 
 <div class="finance-grid">
@@ -22,7 +22,7 @@
             <td [style.color]="entry.type === 'Income' ? 'var(--success)' : 'inherit'">
               {{ entry.type === 'Income' ? '+' : '-' }} {{ entry.amount }} zł
             </td>
-            <td><span class="link" style="color:var(--danger)" (click)="deleteEntry(entry)">Usuń</span></td>
+            <td><span *appHasPermission="'BudgetDok.Manage'" class="link" style="color:var(--danger)" (click)="deleteEntry(entry)">Usuń</span></td>
           </tr>
         } @empty {
           <tr><td colspan="5" class="empty">Brak operacji.</td></tr>

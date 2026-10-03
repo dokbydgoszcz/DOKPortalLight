@@ -1,3 +1,4 @@
+import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MailingService } from './mailing.service';
@@ -7,7 +8,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 @Component({
   selector: 'app-mailing',
   standalone: true,
-  imports: [FormsModule],
+  imports: [HasPermissionDirective, FormsModule],
   templateUrl: './mailing.component.html',
   styleUrl: './mailing.component.scss'
 })

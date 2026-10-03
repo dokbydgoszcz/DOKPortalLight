@@ -2,7 +2,7 @@
   <div><h2>Podopieczni DOK</h2><p>Pięć ścieżek formacyjnych i indywidualny obieg dokumentów.</p></div>
   <div style="display:flex;gap:8px;align-items:center">
     <app-export-button list="dok-cases" />
-    <button class="btn primary" (click)="openAddForm()">＋ Nowy podopieczny</button>
+    <button *appHasPermission="'DokCases.Manage'" class="btn primary" (click)="openAddForm()">＋ Nowy podopieczny</button>
   </div>
 </div>
 
@@ -26,11 +26,11 @@
             <td>{{ dokCase.catechistFullName }}</td>
             <td>{{ dokCase.parishName }}</td>
             <td>
-              <span class="link" (click)="openNotes(dokCase)">Notatki</span>
-              &nbsp;·&nbsp;
-              <span class="link" (click)="openDocuments(dokCase)">Dokumenty</span>
-              &nbsp;·&nbsp;
-              <span class="link" style="color:var(--danger)" (click)="deleteCase(dokCase)">Usuń</span>
+              <span class="row-actions">
+                <span *appHasPermission="'PastoralNotes.View'" class="link" (click)="openNotes(dokCase)">Notatki</span>
+                <span *appHasPermission="'CaseDocuments.View'" class="link" (click)="openDocuments(dokCase)">Dokumenty</span>
+                <span *appHasPermission="'DokCases.Manage'" class="link" style="color:var(--danger)" (click)="deleteCase(dokCase)">Usuń</span>
+              </span>
             </td>
           </tr>
         } @empty {
@@ -72,14 +72,14 @@
             <div class="empty">Brak notatek.</div>
           }
         </div>
-        <div class="field full">
+        <div *appHasPermission="'PastoralNotes.Write'" class="field full">
           <label>Nowa notatka</label>
           <textarea [(ngModel)]="newNoteContent" name="newNoteContent" placeholder="Treść notatki…"></textarea>
         </div>
       </div>
       <div class="modal-foot">
         <button class="btn ghost" (click)="closeNotes()">Zamknij</button>
-        <button class="btn primary" (click)="addNote()">Dodaj notatkę</button>
+        <button *appHasPermission="'PastoralNotes.Write'" class="btn primary" (click)="addNote()">Dodaj notatkę</button>
       </div>
     </div>
   </div>
@@ -110,7 +110,7 @@
                 @if (document.hasFile) {
                   <span class="link" (click)="downloadDocument(document)">Pobierz</span>
                 }
-                <label class="btn ghost" style="cursor:pointer">
+                <label *appHasPermission="'CaseDocuments.Manage'" class="btn ghost" style="cursor:pointer">
                   {{ document.hasFile ? 'Zamień plik' : 'Prześlij plik' }}
                   <input type="file" style="display:none" (change)="onFileSelected(document, $event)">
                 </label>
@@ -120,14 +120,14 @@
             <div class="empty">Brak pozycji na liście dokumentów.</div>
           }
         </div>
-        <div class="field full">
+        <div *appHasPermission="'CaseDocuments.Manage'" class="field full">
           <label>Nowa pozycja (nazwa dokumentu)</label>
           <input type="text" [(ngModel)]="newDocumentName" name="newDocumentName" placeholder="np. Metryka chrztu">
         </div>
       </div>
       <div class="modal-foot">
         <button class="btn ghost" (click)="closeDocuments()">Zamknij</button>
-        <button class="btn primary" (click)="addDocument()">Dodaj pozycję</button>
+        <button *appHasPermission="'CaseDocuments.Manage'" class="btn primary" (click)="addDocument()">Dodaj pozycję</button>
       </div>
     </div>
   </div>

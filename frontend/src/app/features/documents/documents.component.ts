@@ -1,3 +1,4 @@
+import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DocumentsService } from './documents.service';
@@ -8,7 +9,7 @@ import { Person } from '../people/person.model';
 @Component({
   selector: 'app-documents',
   standalone: true,
-  imports: [FormsModule],
+  imports: [HasPermissionDirective, FormsModule],
   templateUrl: './documents.component.html',
   styleUrl: './documents.component.scss'
 })

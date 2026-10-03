@@ -1,3 +1,4 @@
+import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ParishNeedsService } from './parish-needs.service';
@@ -10,7 +11,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 @Component({
   selector: 'app-parish-board',
   standalone: true,
-  imports: [FormsModule],
+  imports: [HasPermissionDirective, FormsModule],
   templateUrl: './parish-board.component.html',
   styleUrl: './parish-board.component.scss'
 })

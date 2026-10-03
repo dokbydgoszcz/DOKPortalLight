@@ -1,6 +1,6 @@
 <div class="page-heading">
   <div><h2>Parafie i giełda posługi</h2><p>Potrzeby parafii i ręczne skierowanie katechisty.</p></div>
-  <button class="btn primary" (click)="openAddForm()">＋ Nowe zapotrzebowanie</button>
+  <button *appHasPermission="'ParishNeeds.Manage'" class="btn primary" (click)="openAddForm()">＋ Nowe zapotrzebowanie</button>
 </div>
 
 <div class="card">
@@ -14,11 +14,11 @@
           }
         </div>
         @if (need.status === 'Open') {
-          <button class="btn primary small" (click)="openAssignForm(need)">Skieruj</button>
+          <button *appHasPermission="'ParishNeeds.Manage'" class="btn primary small" (click)="openAssignForm(need)">Skieruj</button>
         } @else {
           <span class="pill green">{{ need.status }}</span>
         }
-        <span class="link" style="color:var(--danger)" (click)="deleteNeed(need)">Usuń</span>
+        <span *appHasPermission="'ParishNeeds.Manage'" class="link" style="color:var(--danger)" (click)="deleteNeed(need)">Usuń</span>
       </div>
     } @empty {
       <div class="empty">Brak zapotrzebowań.</div>

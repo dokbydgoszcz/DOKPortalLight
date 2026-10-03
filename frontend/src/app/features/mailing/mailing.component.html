@@ -1,6 +1,6 @@
 <div class="page-heading">
   <div><h2>Mailing</h2><p>Kampanie e-mail do grup odbiorców.</p></div>
-  <button class="btn primary" (click)="openAddForm()">＋ Nowa kampania</button>
+  <button *appHasPermission="'Mailing.Manage'" class="btn primary" (click)="openAddForm()">＋ Nowa kampania</button>
 </div>
 
 <div class="card">
@@ -22,7 +22,7 @@
             </td>
             <td>
               @if (campaign.status === 'Draft') {
-                <button class="btn primary small" (click)="sendCampaign(campaign)">Wyślij</button>
+                <button *appHasPermission="'Mailing.Manage'" class="btn primary small" (click)="sendCampaign(campaign)">Wyślij</button>
               }
             </td>
           </tr>

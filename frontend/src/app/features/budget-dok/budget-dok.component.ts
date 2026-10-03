@@ -1,3 +1,4 @@
+import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BudgetService } from '../budget/budget.service';
@@ -7,7 +8,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 @Component({
   selector: 'app-budget-dok',
   standalone: true,
-  imports: [FormsModule],
+  imports: [HasPermissionDirective, FormsModule],
   templateUrl: './budget-dok.component.html',
   styleUrl: './budget-dok.component.scss'
 })

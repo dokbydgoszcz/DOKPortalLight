@@ -1,3 +1,4 @@
+import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
@@ -25,7 +26,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-dok-cases-list',
   standalone: true,
-  imports: [ExportButtonComponent, DokCaseFormComponent, PaginationComponent, FormsModule, DatePipe],
+  imports: [HasPermissionDirective, ExportButtonComponent, DokCaseFormComponent, PaginationComponent, FormsModule, DatePipe],
   templateUrl: './dok-cases-list.component.html',
   styleUrl: './dok-cases-list.component.scss'
 })
