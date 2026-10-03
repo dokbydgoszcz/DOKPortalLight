@@ -19,7 +19,10 @@ export class AuditLogComponent implements OnInit {
 
   exportCsv(): void {
     const header = 'Data,Uzytkownik,Akcja,Obiekt,Wynik';
-    const rows = this.entries().map(e => [e.timestampUtc, e.userEmail, e.action, e.objectDescription, e.result].join(','));
+    const quote = (value: string) => (/[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
+    const rows = this.entries().map(e =>
+      [e.timestampUtc, e.userEmail, e.action, e.objectDescription, e.result].map(quote).join(',')
+    );
     const csv = [header, ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
