@@ -7,11 +7,29 @@
 </div>
 
 <div class="card">
+  <div class="card-head" style="display:flex;gap:12px;flex-wrap:wrap">
+    <div class="field" style="min-width:180px">
+      <label>Instytucja</label>
+      <select name="institutionFilter" [ngModel]="institutionFilter()" (ngModelChange)="onInstitutionFilterChange($event)">
+        <option value="">Wszystkie</option>
+        <option value="SKSP">SKŚP</option>
+        <option value="DOK">DOK</option>
+      </select>
+    </div>
+    <div class="field" style="min-width:220px">
+      <label>Sortuj</label>
+      <select name="sortBy" [ngModel]="sortBy()" (ngModelChange)="onSortChange($event)">
+        <option value="dateDesc">Data — najnowsze</option>
+        <option value="dateAsc">Data — najstarsze</option>
+        <option value="institution">Instytucja, potem data</option>
+      </select>
+    </div>
+  </div>
   <div class="card-body list">
-    @for (supervision of supervisions(); track supervision.id) {
+    @for (supervision of sortedSupervisions(); track supervision.id) {
       <div class="list-row">
         <div class="list-main">
-          <div class="list-title">{{ supervision.groupLabel }} — {{ supervision.supervisionDate }}</div>
+          <div class="list-title">{{ supervision.groupLabel }} — {{ supervision.supervisionDate | date: 'dd.MM.yyyy' }}</div>
           <div class="list-sub">{{ supervision.institution }} @if (supervision.attendeesCount !== null) { • {{ supervision.attendeesCount }}/{{ supervision.expectedCount }} obecnych }</div>
         </div>
         <ng-container *appHasPermission="'Supervisions.Manage'">

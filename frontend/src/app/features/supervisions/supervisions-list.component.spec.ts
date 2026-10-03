@@ -186,4 +186,74 @@ describe('SupervisionsListComponent', () => {
       expect(toastMessages()).toContain('Nie udało się usunąć superwizji.');
     });
   });
+
+  describe('filtering and sorting', () => {
+    const groupA: Supervision = { ...supervision, id: 'a', institution: 'DOK', groupLabel: 'Grupa A', supervisionDate: '2026-09-30' };
+    const groupB: Supervision = { ...supervision, id: 'b', institution: 'SKSP', groupLabel: 'Grupa B', supervisionDate: '2026-10-05' };
+    const groupC: Supervision = { ...supervision, id: 'c', institution: 'DOK', groupLabel: 'Grupa C', supervisionDate: '2026-10-10' };
+    const groupD: Supervision = { ...supervision, id: 'd', institution: 'SKSP', groupLabel: 'Grupa D', supervisionDate: '2026-08-01' };
+    const all = [groupA, groupB, groupC, groupD];
+
+    const titles = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll('.list-title')).map(t => t.textContent!.trim().split(' — ')[0]);
+
+    it('shows the newest supervision first by default, whatever order the server returns', () => {
+      const { el } = boot(all);
+
+      expect(titles(el)).toEqual(['Grupa C', 'Grupa B', 'Grupa A', 'Grupa D']);
+    });
+
+    it('sorts by date oldest first', () => {
+      const { fixture, el } = boot(all);
+
+      setSelect(el, 'select[name="sortBy"]', 'dateAsc');
+      fixture.detectChanges();
+
+      expect(titles(el)).toEqual(['Grupa D', 'Grupa A', 'Grupa B', 'Grupa C']);
+    });
+
+    it('sorts by institution, then by date newest first', () => {
+      const { fixture, el } = boot(all);
+
+      setSelect(el, 'select[name="sortBy"]', 'institution');
+      fixture.detectChanges();
+
+      expect(titles(el)).toEqual(['Grupa C', 'Grupa A', 'Grupa B', 'Grupa D']);
+    });
+
+    it('asks the server for one institution when filtered, and for all again when cleared', () => {
+      const { fixture, http, el } = boot(all);
+
+      setSelect(el, 'select[name="institutionFilter"]', 'SKSP');
+      const filtered = http.expectOne(r => r.url === url && r.params.get('institution') === 'SKSP');
+      filtered.flush([groupB, groupD]);
+      fixture.detectChanges();
+      expect(titles(el)).toEqual(['Grupa B', 'Grupa D']);
+
+      setSelect(el, 'select[name="institutionFilter"]', '');
+      const cleared = http.expectOne(r => r.url === url && !r.params.has('institution'));
+      cleared.flush(all);
+      fixture.detectChanges();
+      expect(titles(el)).toHaveLength(4);
+    });
+
+    it('keeps the chosen sorting when the filter changes', () => {
+      const { fixture, http, el } = boot(all);
+      setSelect(el, 'select[name="sortBy"]', 'dateAsc');
+      fixture.detectChanges();
+
+      setSelect(el, 'select[name="institutionFilter"]', 'DOK');
+      http.expectOne(r => r.url === url && r.params.get('institution') === 'DOK').flush([groupC, groupA]);
+      fixture.detectChanges();
+
+      expect(titles(el)).toEqual(['Grupa A', 'Grupa C']);
+    });
+
+    it('shows the date in a readable format and the institution name', () => {
+      const { el } = boot([groupA]);
+
+      expect(textOf(el)).toContain('Grupa A — 30.09.2026');
+      expect(el.querySelector('.list-sub')!.textContent).toContain('DOK');
+    });
+  });
 });
