@@ -53,6 +53,19 @@ public class UsersController : ControllerBase
         return Ok(updated);
     }
 
+    [HttpPut("{id}/person")]
+    public async Task<ActionResult<UserDto>> SetPerson(string id, SetUserPersonRequest request, CancellationToken ct)
+    {
+        var updated = await _userService.SetPersonAsync(id, request.PersonId, ct);
+        if (updated is null) return NotFound();
+
+        var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
+        var currentUserEmail = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Email).Value;
+        await _auditLogService.LogAsync(currentUserId, currentUserEmail, "SetUserPerson", updated.Email, DokPortal.Domain.Enums.AuditResult.Allowed, ct);
+
+        return Ok(updated);
+    }
+
     [HttpPut("{id}/reset-password")]
     public async Task<IActionResult> ResetPassword(string id, ResetPasswordRequest request, CancellationToken ct)
     {
