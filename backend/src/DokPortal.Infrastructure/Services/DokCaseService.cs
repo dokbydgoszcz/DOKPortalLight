@@ -42,6 +42,38 @@ public class DokCaseService : IDokCaseService
         };
     }
 
+    public async Task<PagedResult<DokCaseDto>> SearchGraduatesAsync(string? query, int page, int pageSize, CancellationToken ct)
+    {
+        var q = _db.DokCases
+            .Include(c => c.Person).ThenInclude(p => p!.Parish)
+            .Include(c => c.CatechistPerson)
+            .Include(c => c.MentorPerson)
+            .AsNoTracking()
+            .Where(c => c.Stage == DokStage.Graduate);
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var term = query.Trim().ToLower();
+            q = q.Where(c => c.Person!.FirstName.ToLower().Contains(term) || c.Person.LastName.ToLower().Contains(term));
+        }
+
+        var total = await q.CountAsync(ct);
+        var entities = await q
+            .OrderByDescending(c => c.CompletedAtUtc)
+            .ThenBy(c => c.Person!.LastName)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return new PagedResult<DokCaseDto>
+        {
+            Items = entities.Select(ToDto).ToList(),
+            TotalCount = total,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
     public async Task<DokCaseDto?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         var dokCase = await _db.DokCases
