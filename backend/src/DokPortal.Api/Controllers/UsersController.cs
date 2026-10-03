@@ -1,6 +1,7 @@
 using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.AuditLog;
+using DokPortal.Application.Permissions;
 using DokPortal.Application.Users;
 using DokPortal.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
@@ -15,16 +16,22 @@ public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IPermissionService _permissionService;
 
-    public UsersController(IUserService userService, IAuditLogService auditLogService)
+    public UsersController(IUserService userService, IAuditLogService auditLogService, IPermissionService permissionService)
     {
         _userService = userService;
         _auditLogService = auditLogService;
+        _permissionService = permissionService;
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<UserDto>>> List(CancellationToken ct)
         => Ok(await _userService.ListAsync(ct));
+
+    [HttpGet("roles")]
+    public async Task<ActionResult<IReadOnlyList<string>>> ListRoles(CancellationToken ct)
+        => Ok(await _permissionService.ListRoleNamesAsync(ct));
 
     [HttpPost]
     public async Task<ActionResult<UserDto>> Create(CreateUserRequest request, CancellationToken ct)
