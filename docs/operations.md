@@ -12,6 +12,7 @@ W bashu na Windows przed poleceniami z ID zasobów: `export MSYS_NO_PATHCONV=1`.
 | 503 po dłuższej przerwie | Zimny start F1 (aplikacja uśpiona) | Ponowić po ~30 s. Workflowy przypomnień i `uptime.yml` ponawiają same. |
 | Pierwsze logowanie trwa ok. minuty | Darmowa baza wstrzymana po 60 min bezczynności | Poczekać; kolejne żądania są szybkie. |
 | Żądania do bazy zwracają błąd do początku miesiąca | Wyczerpany darmowy limit bazy (100 tys. vCore-s/mies.) | Sprawdzić zużycie w portalu (SQL → Free offer); rozważyć płatny plan. |
+| Katechista widzi puste listy (sprawy, spotkania, dokumenty) | Konto nie jest powiązane z osobą (`AppUser.PersonId`), a sprawy DOK są ograniczone do podopiecznych przypisanych do jego osoby | Administrator: ekran Użytkownicy → powiąż konto z osobą-katechistą (ta sama osoba, którą wskazano jako katechistę w sprawie). Rola bez uprawnienia „Podgląd wszystkich spraw DOK” widzi tylko swoich podopiecznych. |
 | Mail „Uptime: run failed” z GitHuba | `/health` nie odpowiedział 200 po 5 próbach | Sprawdzić stan aplikacji (niżej), potem Application Insights. |
 
 ## Polecenia diagnostyczne
@@ -52,6 +53,8 @@ Portal Azure → `appi-dokportal`:
 - **Failures** – wyjątki i nieudane żądania (z podglądem stosu),
 - **Performance** – najwolniejsze operacje,
 - **Logs** – zapytania KQL, np. `exceptions | order by timestamp desc | take 20`.
+
+Zapytania KQL z `az monitor app-insights query` mogą być blokowane przez firmowy proxy z przechwytywaniem TLS (host `api.applicationinsights.io`). Wtedy użyj portalu (Logs) albo metryk przez ARM: `az monitor metrics list --resource <id appi-dokportal> --metric requests/count --filter "request/resultCode eq '*'"`.
 
 Telemetria żądań `/health*` jest odrzucana w aplikacji. Dzienny limit danych Log Analytics to ok. 0,15 GB (pilnuje darmowych 5 GB/mies.).
 
