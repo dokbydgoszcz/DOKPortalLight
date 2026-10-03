@@ -8,12 +8,14 @@ const person = {
   id: 'p1', firstName: 'Jan', lastName: 'Kowalski', fullName: 'Jan Kowalski',
   email: 'jan@example.org', phone: null, birthDate: null, parishId: null, parishName: null, notes: null
 };
-const user = { id: 'u1', email: 'admin@dokportal.local', personId: null, roles: ['Administrator'] };
+const user = { id: 'u1', email: 'admin@dokportal.local', personId: null, personFullName: null, roles: ['Administrator'] };
+const linkedUser = { id: 'u2', email: 'anna@example.org', personId: 'p9', personFullName: 'Anna Maj', roles: ['KatechistaProwadzacy'] };
+const unlinkedCatechist = { id: 'u3', email: 'kat@example.org', personId: null, personFullName: null, roles: ['KatechistaProwadzacy'] };
 
-function boot() {
+function boot(users: object[] = [user]) {
   const ctx = setup(UsersListComponent);
   ctx.fixture.detectChanges();
-  flushAll(ctx.http, api('/api/users'), [user]);
+  flushAll(ctx.http, api('/api/users'), users);
   flushAll(ctx.http, api('/api/users/roles'), ['Administrator', 'Biskup']);
   ctx.fixture.detectChanges();
   return ctx;
@@ -274,6 +276,141 @@ describe('UsersListComponent', () => {
       clickByText(el, 'Anuluj');
       fixture.detectChanges();
       expect(el.querySelector('input[placeholder="Nowe hasło"]')).toBeNull();
+    });
+  });
+
+  describe('linking accounts to people', () => {
+    const rowOf = (el: HTMLElement, email: string) =>
+      Array.from(el.querySelectorAll('tbody tr')).find(r => r.textContent!.includes(email)) as HTMLElement;
+    const linkLink = (el: HTMLElement, email: string, text: string) =>
+      Array.from(rowOf(el, email).querySelectorAll<HTMLElement>('.link, button')).find(e => e.textContent!.trim() === text)!;
+
+    it('shows the linked person, or a note when the account has none', () => {
+      const { el } = boot([linkedUser, unlinkedCatechist]);
+
+      expect(el.querySelector('thead')!.textContent).toContain('Osoba');
+      expect(rowOf(el, 'anna@example.org').textContent).toContain('Anna Maj');
+      expect(rowOf(el, 'kat@example.org').textContent).toContain('brak');
+      expect(rowOf(el, 'kat@example.org').textContent).toContain('nie zobaczy podopiecznych');
+      expect(rowOf(el, 'anna@example.org').textContent).not.toContain('nie zobaczy');
+    });
+
+    it('searches for a person and links the account to the chosen one', () => {
+      vi.useFakeTimers();
+      const { fixture, http, el } = boot([unlinkedCatechist]);
+
+      linkLink(el, 'kat@example.org', 'Powiąż').click();
+      fixture.detectChanges();
+      setInput(el, 'input[name="linkQuery"]', 'Kowal');
+      vi.advanceTimersByTime(300);
+      http.expectOne(r => r.url === api('/api/people') && r.params.get('query') === 'Kowal').flush(paged([person]));
+      fixture.detectChanges();
+      clickByText(el, 'Jan Kowalski', '.link-results button');
+
+      const req = http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u3/person'));
+      expect(req.request.body).toEqual({ personId: 'p1' });
+      req.flush({ ...unlinkedCatechist, personId: 'p1', personFullName: 'Jan Kowalski' });
+      expect(toasts().map(t => t.message)).toContain('Konto powiązane z osobą.');
+      flushAll(http, api('/api/users'), [{ ...unlinkedCatechist, personId: 'p1', personFullName: 'Jan Kowalski' }]);
+      flushAll(http, api('/api/users/roles'), ['KatechistaProwadzacy']);
+    });
+
+    it('shows the server message when the person already has another account', () => {
+      vi.useFakeTimers();
+      const { fixture, http, el } = boot([unlinkedCatechist]);
+      linkLink(el, 'kat@example.org', 'Powiąż').click();
+      fixture.detectChanges();
+      setInput(el, 'input[name="linkQuery"]', 'Kowal');
+      vi.advanceTimersByTime(300);
+      http.expectOne(r => r.url === api('/api/people')).flush(paged([person]));
+      fixture.detectChanges();
+      clickByText(el, 'Jan Kowalski', '.link-results button');
+
+      http.expectOne(r => r.method === 'PUT').flush({ title: 'Ta osoba ma już konto: jan@example.org.' }, { status: 400, statusText: 'Bad Request' });
+      fixture.detectChanges();
+
+      expect(textOf(el)).toContain('Ta osoba ma już konto: jan@example.org.');
+    });
+
+    it('falls back to a generic message when the server gives no details', () => {
+      vi.useFakeTimers();
+      const { fixture, http, el } = boot([unlinkedCatechist]);
+      linkLink(el, 'kat@example.org', 'Powiąż').click();
+      fixture.detectChanges();
+      setInput(el, 'input[name="linkQuery"]', 'Kowal');
+      vi.advanceTimersByTime(300);
+      http.expectOne(r => r.url === api('/api/people')).flush(paged([person]));
+      fixture.detectChanges();
+      clickByText(el, 'Jan Kowalski', '.link-results button');
+
+      http.expectOne(r => r.method === 'PUT').flush('x', { status: 500, statusText: 'Server Error' });
+      fixture.detectChanges();
+
+      expect(textOf(el)).toContain('Nie udało się powiązać konta z osobą.');
+    });
+
+    it('offers to change the person of a linked account and can cancel', () => {
+      const { fixture, http, el } = boot([linkedUser]);
+
+      linkLink(el, 'anna@example.org', 'Zmień').click();
+      fixture.detectChanges();
+      expect(el.querySelector('input[name="linkQuery"]')).not.toBeNull();
+
+      clickByText(el, 'Anuluj', 'tbody button');
+      fixture.detectChanges();
+
+      expect(el.querySelector('input[name="linkQuery"]')).toBeNull();
+      http.expectNone(r => r.method === 'PUT');
+    });
+
+    it('unlinks the account after confirmation', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const { http, el } = boot([linkedUser]);
+
+      linkLink(el, 'anna@example.org', 'Odepnij').click();
+
+      const req = http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u2/person'));
+      expect(req.request.body).toEqual({ personId: null });
+      req.flush({ ...linkedUser, personId: null, personFullName: null });
+      expect(toasts().map(t => t.message)).toContain('Konto odpięte od osoby.');
+      flushAll(http, api('/api/users'), [linkedUser]);
+      flushAll(http, api('/api/users/roles'), ['KatechistaProwadzacy']);
+    });
+
+    it('does nothing when unlinking is not confirmed', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+      const { http, el } = boot([linkedUser]);
+
+      linkLink(el, 'anna@example.org', 'Odepnij').click();
+
+      http.expectNone(r => r.method === 'PUT');
+    });
+
+    it('shows an error toast when unlinking fails', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const { http, el } = boot([linkedUser]);
+
+      linkLink(el, 'anna@example.org', 'Odepnij').click();
+      http.expectOne(r => r.method === 'PUT').flush('x', { status: 500, statusText: 'Server Error' });
+
+      expect(toasts().map(t => t.message)).toContain('Nie udało się odpiąć konta od osoby.');
+    });
+
+    it('clears the results when the search box is emptied', () => {
+      vi.useFakeTimers();
+      const { fixture, el, http } = boot([unlinkedCatechist]);
+      linkLink(el, 'kat@example.org', 'Powiąż').click();
+      fixture.detectChanges();
+      setInput(el, 'input[name="linkQuery"]', 'Kowal');
+      vi.advanceTimersByTime(300);
+      http.expectOne(r => r.url === api('/api/people')).flush(paged([person]));
+      fixture.detectChanges();
+      expect(el.querySelectorAll('.link-results button').length).toBe(1);
+
+      setInput(el, 'input[name="linkQuery"]', '   ');
+      fixture.detectChanges();
+
+      expect(el.querySelectorAll('.link-results button').length).toBe(0);
     });
   });
 });

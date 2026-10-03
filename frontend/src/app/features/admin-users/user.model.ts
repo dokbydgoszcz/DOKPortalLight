@@ -2,6 +2,7 @@ export interface AppUserAccount {
   id: string;
   email: string;
   personId: string | null;
+  personFullName: string | null;
   roles: string[];
 }
 

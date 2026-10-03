@@ -74,11 +74,40 @@
 <div class="card">
   <div class="table-wrap">
     <table>
-      <thead><tr><th>E-mail</th>@for (role of allRoles(); track role) {<th>{{ role }}</th>}<th></th></tr></thead>
+      <thead><tr><th>E-mail</th><th>Osoba</th>@for (role of allRoles(); track role) {<th>{{ role }}</th>}<th></th></tr></thead>
       <tbody>
         @for (user of users(); track user.id) {
           <tr>
             <td>{{ user.email }}</td>
+            <td>
+              @if (linkingUserId() === user.id) {
+                <div>
+                  <input [(ngModel)]="linkQuery" name="linkQuery" (ngModelChange)="onLinkQueryChange()" placeholder="Szukaj osoby…" />
+                  <div class="link-results">
+                    @for (candidate of linkResults(); track candidate.id) {
+                      <button class="list-row" type="button" style="width:100%;text-align:left;border:1px solid var(--line);cursor:pointer" (click)="linkPerson(user, candidate)">
+                        {{ candidate.fullName }}@if (candidate.email) { <span class="small-muted"> — {{ candidate.email }}</span> }
+                      </button>
+                    }
+                  </div>
+                  @if (linkError()) {
+                    <div class="small-muted" style="color:var(--danger)">{{ linkError() }}</div>
+                  }
+                  <button class="btn ghost small" type="button" (click)="cancelLinking()">Anuluj</button>
+                </div>
+              } @else if (user.personFullName) {
+                {{ user.personFullName }}
+                <span class="link" (click)="startLinking(user.id)">Zmień</span>
+                &nbsp;·&nbsp;
+                <span class="link" style="color:var(--danger)" (click)="unlinkPerson(user)">Odepnij</span>
+              } @else {
+                <span class="small-muted">brak</span>
+                <span class="link" (click)="startLinking(user.id)">Powiąż</span>
+                @if (user.roles.includes('KatechistaProwadzacy')) {
+                  <div class="small-muted" style="color:var(--danger)">Katechista bez osoby nie zobaczy podopiecznych.</div>
+                }
+              }
+            </td>
             @for (role of allRoles(); track role) {
               <td>
                 <input type="checkbox" [checked]="user.roles.includes(role)"

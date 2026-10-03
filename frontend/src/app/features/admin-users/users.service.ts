@@ -25,6 +25,10 @@ export class UsersService {
     return this.http.put<AppUserAccount>(`${this.baseUrl}/${id}/roles`, { roles });
   }
 
+  setPerson(id: string, personId: string | null) {
+    return this.http.put<AppUserAccount>(`${this.baseUrl}/${id}/person`, { personId });
+  }
+
   resetPassword(id: string, newPassword: string) {
     return this.http.put<void>(`${this.baseUrl}/${id}/reset-password`, { newPassword });
   }

@@ -1,4 +1,5 @@
 import { Component, OnInit, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { UsersService } from './users.service';
 import { AppUserAccount, CreateUserValue } from './user.model';
@@ -28,6 +29,13 @@ export class UsersListComponent implements OnInit {
   newPersonFirstName = '';
   newPersonLastName = '';
   private personSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Powiązanie istniejącego konta z osobą (wiersz w tabeli rozwija wyszukiwarkę osób). */
+  readonly linkingUserId = signal<string | null>(null);
+  linkQuery = '';
+  readonly linkResults = signal<Person[]>([]);
+  readonly linkError = signal<string | null>(null);
+  private linkSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly resettingUserId = signal<string | null>(null);
   resetPasswordValue = '';
@@ -142,6 +150,58 @@ export class UsersListComponent implements OnInit {
     this.usersService.assignRoles(user.id, roles).subscribe({
       next: () => this.load(),
       error: () => this.toast.error('Nie udało się zaktualizować ról.')
+    });
+  }
+
+  startLinking(userId: string): void {
+    this.linkingUserId.set(userId);
+    this.linkQuery = '';
+    this.linkResults.set([]);
+    this.linkError.set(null);
+  }
+
+  cancelLinking(): void {
+    this.linkingUserId.set(null);
+  }
+
+  onLinkQueryChange(): void {
+    if (this.linkSearchTimer) {
+      clearTimeout(this.linkSearchTimer);
+    }
+    const query = this.linkQuery.trim();
+    if (!query) {
+      this.linkResults.set([]);
+      return;
+    }
+    this.linkSearchTimer = setTimeout(() => {
+      this.peopleService.search(query).subscribe({
+        next: result => this.linkResults.set(result.items),
+        error: () => this.toast.error('Nie udało się wyszukać osób.')
+      });
+    }, 300);
+  }
+
+  linkPerson(user: AppUserAccount, person: Person): void {
+    this.linkError.set(null);
+    this.usersService.setPerson(user.id, person.id).subscribe({
+      next: () => {
+        this.linkingUserId.set(null);
+        this.toast.success('Konto powiązane z osobą.');
+        this.load();
+      },
+      error: (error: HttpErrorResponse) =>
+        this.linkError.set(error.error?.title ?? 'Nie udało się powiązać konta z osobą.')
+    });
+  }
+
+  unlinkPerson(user: AppUserAccount): void {
+    if (!confirm(`Odpiąć konto „${user.email}” od osoby ${user.personFullName}?`)) return;
+    this.usersService.setPerson(user.id, null).subscribe({
+      next: () => {
+        this.toast.success('Konto odpięte od osoby.');
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się odpiąć konta od osoby.')
     });
   }
 
