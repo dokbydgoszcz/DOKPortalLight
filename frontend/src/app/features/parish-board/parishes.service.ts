@@ -15,6 +15,10 @@ export class ParishesService {
     return this.http.post<Parish>(`${environment.apiBaseUrl}/api/parishes`, value);
   }
 
+  update(id: string, value: { name: string; city?: string }) {
+    return this.http.put<Parish>(`${environment.apiBaseUrl}/api/parishes/${id}`, value);
+  }
+
   delete(id: string) {
     return this.http.delete<void>(`${environment.apiBaseUrl}/api/parishes/${id}`);
   }

@@ -136,4 +136,91 @@ describe('ParishesListComponent', () => {
       expect(toastMessages()).toContain('Nie udało się usunąć parafii.');
     });
   });
+
+  describe('editing a parish', () => {
+    const saveButton = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.modal-foot button')).find(b => b.textContent!.includes('Zapisz'))!;
+    const editLink = (el: HTMLElement, rowText: string) =>
+      Array.from(Array.from(el.querySelectorAll('tbody tr')).find(r => r.textContent!.includes(rowText))!.querySelectorAll<HTMLElement>('.link'))
+        .find(l => l.textContent!.trim() === 'Edytuj')!;
+
+    async function openEdit(rowText = 'Matki Bożej') {
+      const ctx = boot();
+      editLink(ctx.el, rowText).click();
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      return ctx;
+    }
+
+    it('opens the form filled with the chosen parish', async () => {
+      const ctx = await openEdit();
+
+      expect(textOf(ctx.el)).toContain('Edytuj parafię');
+      expect((ctx.el.querySelector('input[name="name"]') as HTMLInputElement).value).toBe('Matki Bożej');
+      expect((ctx.el.querySelector('input[name="city"]') as HTMLInputElement).value).toBe('Toruń');
+    });
+
+    it('saves the change with PUT, confirms and reloads', async () => {
+      const ctx = await openEdit();
+
+      setInput(ctx.el, 'input[name="name"]', 'Matki Bożej Częstochowskiej');
+      setInput(ctx.el, 'input[name="city"]', 'Chełmża');
+      saveButton(ctx.el).click();
+
+      const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${url}/pa2`);
+      expect(req.request.body).toEqual({ name: 'Matki Bożej Częstochowskiej', city: 'Chełmża' });
+      req.flush({ id: 'pa2', name: 'Matki Bożej Częstochowskiej', city: 'Chełmża' });
+      ctx.fixture.detectChanges();
+
+      expect(toastMessages()).toContain('Zapisano zmiany.');
+      expect(ctx.el.querySelector('.modal')).toBeNull();
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush(parishes);
+    });
+
+    it('refuses an emptied name without calling the API', async () => {
+      const ctx = await openEdit();
+
+      setInput(ctx.el, 'input[name="name"]', '   ');
+      saveButton(ctx.el).click();
+
+      expect(toastMessages()).toContain('Podaj nazwę parafii.');
+      ctx.http.expectNone(r => r.method === 'PUT');
+    });
+
+    it('shows a toast when saving fails and keeps the form open', async () => {
+      const ctx = await openEdit();
+
+      saveButton(ctx.el).click();
+      ctx.http.expectOne(r => r.method === 'PUT').flush('x', { status: 500, statusText: 'Server Error' });
+      ctx.fixture.detectChanges();
+
+      expect(toastMessages()).toContain('Nie udało się zapisać zmian.');
+      expect(ctx.el.querySelector('.modal')).not.toBeNull();
+    });
+
+    it('goes back to adding after an edit was cancelled', async () => {
+      const ctx = await openEdit();
+      clickByText(ctx.el, 'Anuluj', '.modal-foot button');
+      ctx.fixture.detectChanges();
+
+      clickByText(ctx.el, 'Dodaj parafię');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+
+      expect(textOf(ctx.el)).toContain('Nowa parafia');
+      expect((ctx.el.querySelector('input[name="name"]') as HTMLInputElement).value).toBe('');
+    });
+
+    it('hides add, edit and delete from users who cannot manage parishes', () => {
+      const ctx = setup(ParishesListComponent, { granted: [] });
+      ctx.fixture.detectChanges();
+      ctx.http.expectOne(url).flush(parishes);
+      ctx.fixture.detectChanges();
+
+      expect(textOf(ctx.el)).toContain('Matki Bożej');
+      expect(textOf(ctx.el)).not.toContain('Dodaj parafię');
+      expect(textOf(ctx.el)).not.toContain('Edytuj');
+      expect(textOf(ctx.el)).not.toContain('Usuń');
+    });
+  });
 });
