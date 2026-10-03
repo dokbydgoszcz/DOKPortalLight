@@ -11,4 +11,6 @@ public class CreatePersonRequest
     public string? Notes { get; init; }
     public int? NameDayMonth { get; init; }
     public int? NameDayDay { get; init; }
+    /// <summary>Potwierdza zapis mimo ostrzeżenia o telefonie, który ma już inna osoba (nie dotyczy e-maila).</summary>
+    public bool ConfirmDuplicate { get; init; }
 }

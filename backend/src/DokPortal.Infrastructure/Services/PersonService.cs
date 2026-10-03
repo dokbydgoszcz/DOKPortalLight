@@ -51,6 +51,8 @@ public class PersonService : IPersonService
 
     public async Task<PersonDto> CreateAsync(CreatePersonRequest request, CancellationToken ct)
     {
+        await EnsureContactIsUniqueAsync(null, null, null, request, ct);
+
         var person = new Person
         {
             Id = Guid.NewGuid(),
@@ -75,6 +77,7 @@ public class PersonService : IPersonService
     {
         var person = await _db.People.FirstOrDefaultAsync(p => p.Id == id, ct);
         if (person is null) return null;
+        await EnsureContactIsUniqueAsync(id, person.Email, person.Phone, request, ct);
 
         person.FirstName = request.FirstName;
         person.LastName = request.LastName;
@@ -89,6 +92,62 @@ public class PersonService : IPersonService
 
         await _db.SaveChangesAsync(ct);
         return await GetByIdAsync(id, ct);
+    }
+
+    /// <summary>
+    /// E-mail musi być unikalny (twarda blokada): nie może go mieć inna osoba ani konto powiązane z inną osobą.
+    /// Telefon tylko ostrzega, chyba że potwierdzono zapis. Przy edycji sprawdzamy wyłącznie zmienione pola,
+    /// żeby dało się poprawiać osoby, które mają już duplikaty z wcześniejszych danych.
+    /// </summary>
+    private async Task EnsureContactIsUniqueAsync(Guid? selfId, string? currentEmail, string? currentPhone, CreatePersonRequest request, CancellationToken ct)
+    {
+        var email = PersonContactNormalizer.NormalizeEmail(request.Email);
+        if (email is not null && email != PersonContactNormalizer.NormalizeEmail(currentEmail))
+        {
+            var holder = await _db.People.AsNoTracking()
+                .Where(p => p.Id != selfId && p.Email != null && p.Email.ToLower() == email)
+                .Select(p => new { p.Id, p.FirstName, p.LastName })
+                .FirstOrDefaultAsync(ct);
+            if (holder is not null)
+            {
+                var name = $"{holder.FirstName} {holder.LastName}";
+                throw new DuplicatePersonException("EmailTaken",
+                    $"Ten adres e-mail ma już: {name}. Adres e-mail musi być unikalny.",
+                    new[] { new DuplicateMatch(holder.Id, name, "email") });
+            }
+
+            var account = await _db.Users.AsNoTracking()
+                .Where(u => u.PersonId != null && u.PersonId != selfId && u.Email != null && u.Email.ToLower() == email)
+                .Select(u => u.PersonId)
+                .FirstOrDefaultAsync(ct);
+            if (account is { } accountPersonId)
+            {
+                var owner = await _db.People.AsNoTracking().Where(p => p.Id == accountPersonId)
+                    .Select(p => new { p.FirstName, p.LastName }).FirstOrDefaultAsync(ct);
+                var ownerName = owner is null ? "innej osoby" : $"{owner.FirstName} {owner.LastName}";
+                throw new DuplicatePersonException("EmailTaken",
+                    $"Ten adres e-mail jest loginem konta osoby: {ownerName}. Adres e-mail musi być unikalny.",
+                    new[] { new DuplicateMatch(accountPersonId, ownerName, "account") });
+            }
+        }
+
+        var phone = PersonContactNormalizer.NormalizePhone(request.Phone);
+        if (phone is not null && !request.ConfirmDuplicate && phone != PersonContactNormalizer.NormalizePhone(currentPhone))
+        {
+            var withPhone = await _db.People.AsNoTracking()
+                .Where(p => p.Id != selfId && p.Phone != null)
+                .Select(p => new { p.Id, p.FirstName, p.LastName, p.Phone })
+                .ToListAsync(ct);
+            var matches = withPhone
+                .Where(p => PersonContactNormalizer.NormalizePhone(p.Phone) == phone)
+                .Select(p => new DuplicateMatch(p.Id, $"{p.FirstName} {p.LastName}", "phone"))
+                .ToList();
+            if (matches.Count > 0)
+            {
+                throw new DuplicatePersonException("PhoneDuplicate",
+                    $"Ten numer telefonu ma już: {string.Join(", ", matches.Select(m => m.FullName))}.", matches);
+            }
+        }
     }
 
     public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)

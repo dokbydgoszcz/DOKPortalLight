@@ -1,3 +1,4 @@
+using DokPortal.Application.People;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,6 +14,7 @@ public class GlobalExceptionHandler : IExceptionHandler
     {
         var (statusCode, title) = exception switch
         {
+            DuplicatePersonException => (StatusCodes.Status409Conflict, exception.Message),
             InvalidOperationException => (StatusCodes.Status400BadRequest, exception.Message),
             UnauthorizedAccessException => (StatusCodes.Status403Forbidden, "Brak uprawnień do wykonania tej operacji."),
             _ => (StatusCodes.Status500InternalServerError, "Wystąpił nieoczekiwany błąd serwera.")
@@ -30,11 +32,17 @@ public class GlobalExceptionHandler : IExceptionHandler
         }
 
         httpContext.Response.StatusCode = statusCode;
-        await httpContext.Response.WriteAsJsonAsync(new ProblemDetails
+        var problem = new ProblemDetails
         {
             Status = statusCode,
             Title = title
-        }, cancellationToken);
+        };
+        if (exception is DuplicatePersonException duplicate)
+        {
+            problem.Extensions["code"] = duplicate.Code;
+            problem.Extensions["duplicates"] = duplicate.Matches;
+        }
+        await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
 
         return true;
     }
