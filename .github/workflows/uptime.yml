@@ -1,0 +1,33 @@
+name: Uptime
+
+on:
+  schedule:
+    # Co 15 minut w dni robocze, ok. 7:00–21:00 czasu polskiego (UTC 5–19).
+    # Utrzymuje aplikację F1 w gotowości i alarmuje mailem z GitHuba, gdy nie odpowiada.
+    # Celowo woła tylko /health (bez bazy), żeby nie zużywać darmowego limitu bazy.
+    - cron: "*/15 5-19 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sprawdź /health
+        run: |
+          url="https://dokportal-api.azurewebsites.net/health"
+          max_attempts=5
+          for attempt in $(seq 1 $max_attempts); do
+            http_code=$(curl -s -o /dev/null --max-time 60 -w "%{http_code}" "$url") || http_code=000
+            if [ "$http_code" = "200" ]; then
+              echo "OK (próba $attempt)"
+              exit 0
+            fi
+            echo "Próba $attempt/$max_attempts: kod $http_code"
+            case "$http_code" in
+              000|502|503|504) ;;
+              *) echo "Błąd nieprzejściowy — bez ponawiania."; exit 1 ;;
+            esac
+            if [ "$attempt" -lt "$max_attempts" ]; then sleep 30; fi
+          done
+          echo "Aplikacja niedostępna po $max_attempts próbach."
+          exit 1
