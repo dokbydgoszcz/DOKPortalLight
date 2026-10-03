@@ -14,13 +14,16 @@ public static class CaseScopeExtensions
 
     /// <summary>
     /// Ogranicza spotkania do widocznych dla użytkownika: przy pełnym zakresie wszystkie,
-    /// inaczej tylko spotkania powiązane ze sprawami w jego zakresie.
+    /// inaczej spotkania powiązane ze sprawami w jego zakresie oraz zajęcia grupowe, których jest właścicielem.
     /// </summary>
     public static IQueryable<Meeting> ForScope(this IQueryable<Meeting> meetings, AppDbContext db, CaseScope scope)
     {
         if (scope.ViewAll) return meetings;
 
         var visibleCaseIds = db.DokCases.ForScope(scope).Select(c => c.Id);
-        return meetings.Where(m => m.DokCaseId != null && visibleCaseIds.Contains(m.DokCaseId.Value));
+        var personId = scope.PersonId;
+        return meetings.Where(m =>
+            (m.DokCaseId != null && visibleCaseIds.Contains(m.DokCaseId.Value)) ||
+            (personId != null && m.CatechistPersonId == personId));
     }
 }

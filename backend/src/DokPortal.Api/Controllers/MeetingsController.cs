@@ -53,6 +53,14 @@ public class MeetingsController : ControllerBase
         return updated is null ? NotFound() : Ok(updated);
     }
 
+    [HttpPut("{id:guid}/attendees/{caseId:guid}")]
+    [HasPermission(Permissions.MeetingsManage)]
+    public async Task<ActionResult<MeetingDto>> SetAttendeeAttendance(Guid id, Guid caseId, SetAttendanceRequest request, CancellationToken ct)
+    {
+        var updated = await _meetingService.SetAttendeeAttendanceAsync(id, caseId, request.IsAttended, ct);
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
     [HttpDelete("{id:guid}")]
     [HasPermission(Permissions.MeetingsManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)

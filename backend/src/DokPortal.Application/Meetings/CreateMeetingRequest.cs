@@ -7,4 +7,6 @@ public class CreateMeetingRequest
     public required DateOnly MeetingDate { get; init; }
     public bool? IsAttended { get; init; }
     public string? Notes { get; init; }
+    /// <summary>Uczestnicy zajęć grupowych (wyklucza się z DokCaseId).</summary>
+    public IReadOnlyList<AttendeeRequest>? Attendees { get; init; }
 }

@@ -24,6 +24,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<CaseDocument> CaseDocuments => Set<CaseDocument>();
     public DbSet<PastoralNote> PastoralNotes => Set<PastoralNote>();
     public DbSet<Meeting> Meetings => Set<Meeting>();
+    public DbSet<MeetingAttendee> MeetingAttendees => Set<MeetingAttendee>();
     public DbSet<Supervision> Supervisions => Set<Supervision>();
     public DbSet<GeneratedDocument> GeneratedDocuments => Set<GeneratedDocument>();
     public DbSet<MailingCampaign> MailingCampaigns => Set<MailingCampaign>();
@@ -109,6 +110,15 @@ public class AppDbContext : IdentityDbContext<AppUser>
         {
             entity.Property(m => m.GroupLabel).HasMaxLength(200);
             entity.HasOne(m => m.DokCase).WithMany().HasForeignKey(m => m.DokCaseId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<Person>().WithMany().HasForeignKey(m => m.CatechistPersonId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<MeetingAttendee>(entity =>
+        {
+            entity.HasOne(a => a.Meeting).WithMany(m => m.Attendees).HasForeignKey(a => a.MeetingId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(a => a.DokCase).WithMany().HasForeignKey(a => a.DokCaseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(a => new { a.MeetingId, a.DokCaseId }).IsUnique();
+            entity.HasQueryFilter(a => a.Meeting!.DeletedAtUtc == null && a.DokCase!.DeletedAtUtc == null);
         });
 
         builder.Entity<Supervision>(entity =>

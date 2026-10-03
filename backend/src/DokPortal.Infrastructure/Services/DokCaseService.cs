@@ -102,15 +102,24 @@ public class DokCaseService : IDokCaseService
     private async Task<List<DokCaseDto>> ToDtosAsync(IReadOnlyCollection<DokCase> entities, CancellationToken ct)
     {
         var ids = entities.Select(e => e.Id).ToList();
-        var counts = await _db.Meetings.AsNoTracking()
+        // Spotkania indywidualne (obecność na samym spotkaniu) oraz zajęcia grupowe (obecność uczestnika).
+        var individual = await _db.Meetings.AsNoTracking()
             .Where(m => m.DokCaseId != null && ids.Contains(m.DokCaseId.Value) && m.IsAttended != null)
             .GroupBy(m => m.DokCaseId!.Value)
             .Select(g => new { CaseId = g.Key, Recorded = g.Count(), Attended = g.Count(m => m.IsAttended == true) })
             .ToDictionaryAsync(x => x.CaseId, ct);
+        var group = await _db.MeetingAttendees.AsNoTracking()
+            .Where(a => ids.Contains(a.DokCaseId) && a.IsAttended != null)
+            .GroupBy(a => a.DokCaseId)
+            .Select(g => new { CaseId = g.Key, Recorded = g.Count(), Attended = g.Count(a => a.IsAttended == true) })
+            .ToDictionaryAsync(x => x.CaseId, ct);
 
-        return entities
-            .Select(e => counts.TryGetValue(e.Id, out var c) ? ToDto(e, c.Recorded, c.Attended) : ToDto(e, 0, 0))
-            .ToList();
+        return entities.Select(e =>
+        {
+            individual.TryGetValue(e.Id, out var i);
+            group.TryGetValue(e.Id, out var g);
+            return ToDto(e, (i?.Recorded ?? 0) + (g?.Recorded ?? 0), (i?.Attended ?? 0) + (g?.Attended ?? 0));
+        }).ToList();
     }
 
     public async Task<DokCaseDto> CreateAsync(CreateDokCaseRequest request, CancellationToken ct)

@@ -6,6 +6,9 @@ public class Meeting : ISoftDeletable
     public Guid? DokCaseId { get; set; }
     public DokCase? DokCase { get; set; }
     public string? GroupLabel { get; set; }
+    /// <summary>Właściciel zajęć grupowych (katechista prowadzący). Dla spotkań indywidualnych puste – wynika ze sprawy.</summary>
+    public Guid? CatechistPersonId { get; set; }
+    public List<MeetingAttendee> Attendees { get; set; } = new();
     public DateOnly MeetingDate { get; set; }
     public bool? IsAttended { get; set; }
     public string? Notes { get; set; }

@@ -9,4 +9,5 @@ public class MeetingDto
     public required DateOnly MeetingDate { get; init; }
     public bool? IsAttended { get; init; }
     public string? Notes { get; init; }
+    public IReadOnlyList<MeetingAttendeeDto> Attendees { get; init; } = Array.Empty<MeetingAttendeeDto>();
 }

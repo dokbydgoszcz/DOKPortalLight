@@ -23,13 +23,33 @@ public class MeetingService : IMeetingService
         return _db.Meetings.ForScope(_db, scope);
     }
 
-    /// <summary>Spotkanie można przypisać tylko do sprawy z własnego zakresu.</summary>
-    private async Task EnsureCaseAccessibleAsync(Guid? dokCaseId, CancellationToken ct)
-    {
-        if (dokCaseId is null) return;
+    private static IQueryable<Meeting> WithDetails(IQueryable<Meeting> meetings) =>
+        meetings
+            .Include(m => m.DokCase).ThenInclude(c => c!.Person)
+            .Include(m => m.Attendees).ThenInclude(a => a.DokCase).ThenInclude(c => c!.Person);
 
-        var scope = await _scope.GetAsync(ct);
-        if (!await _db.DokCases.ForScope(scope).AnyAsync(c => c.Id == dokCaseId, ct))
+    /// <summary>
+    /// Spotkanie jest albo indywidualne (jedna sprawa), albo grupowe (lista uczestników). Wszystkie wskazane
+    /// sprawy muszą istnieć i należeć do zakresu użytkownika.
+    /// </summary>
+    private async Task ValidateAsync(CreateMeetingRequest request, CaseScope scope, CancellationToken ct)
+    {
+        var attendeeIds = (request.Attendees ?? Array.Empty<AttendeeRequest>()).Select(a => a.DokCaseId).ToList();
+
+        if (request.DokCaseId is not null && attendeeIds.Count > 0)
+        {
+            throw new InvalidOperationException("Spotkanie może być indywidualne albo grupowe, nie oba naraz.");
+        }
+        if (attendeeIds.Distinct().Count() != attendeeIds.Count)
+        {
+            throw new InvalidOperationException("Ten sam podopieczny występuje na liście uczestników więcej niż raz.");
+        }
+
+        var wanted = request.DokCaseId is { } caseId ? attendeeIds.Append(caseId).ToList() : attendeeIds;
+        if (wanted.Count == 0) return;
+
+        var accessible = await _db.DokCases.ForScope(scope).CountAsync(c => wanted.Contains(c.Id), ct);
+        if (accessible != wanted.Count)
         {
             throw new InvalidOperationException("Nie masz dostępu do wskazanej sprawy DOK.");
         }
@@ -37,7 +57,7 @@ public class MeetingService : IMeetingService
 
     public async Task<IReadOnlyList<MeetingDto>> GetAllAsync(CancellationToken ct)
     {
-        var meetings = await (await VisibleAsync(ct)).Include(m => m.DokCase).ThenInclude(c => c!.Person).AsNoTracking()
+        var meetings = await WithDetails(await VisibleAsync(ct)).AsNoTracking()
             .OrderByDescending(m => m.MeetingDate)
             .ToListAsync(ct);
         return meetings.Select(ToDto).ToList();
@@ -45,44 +65,67 @@ public class MeetingService : IMeetingService
 
     public async Task<MeetingDto?> GetByIdAsync(Guid id, CancellationToken ct)
     {
-        var meeting = await (await VisibleAsync(ct)).Include(m => m.DokCase).ThenInclude(c => c!.Person).AsNoTracking()
+        var meeting = await WithDetails(await VisibleAsync(ct)).AsNoTracking()
             .FirstOrDefaultAsync(m => m.Id == id, ct);
         return meeting is null ? null : ToDto(meeting);
     }
 
     public async Task<MeetingDto> CreateAsync(CreateMeetingRequest request, CancellationToken ct)
     {
-        await EnsureCaseAccessibleAsync(request.DokCaseId, ct);
+        var scope = await _scope.GetAsync(ct);
+        await ValidateAsync(request, scope, ct);
 
         var meeting = new Meeting
         {
             Id = Guid.NewGuid(),
             DokCaseId = request.DokCaseId,
             GroupLabel = request.GroupLabel,
+            CatechistPersonId = request.DokCaseId is null ? scope.PersonId : null,
             MeetingDate = request.MeetingDate,
             IsAttended = request.IsAttended,
             Notes = request.Notes,
-            CreatedAtUtc = DateTime.UtcNow
+            CreatedAtUtc = DateTime.UtcNow,
+            Attendees = (request.Attendees ?? Array.Empty<AttendeeRequest>())
+                .Select(a => new MeetingAttendee { Id = Guid.NewGuid(), DokCaseId = a.DokCaseId, IsAttended = a.IsAttended })
+                .ToList()
         };
         _db.Meetings.Add(meeting);
         await _db.SaveChangesAsync(ct);
 
-        var saved = await _db.Meetings.Include(m => m.DokCase).ThenInclude(c => c!.Person).AsNoTracking()
-            .FirstAsync(m => m.Id == meeting.Id, ct);
+        var saved = await WithDetails(_db.Meetings).AsNoTracking().FirstAsync(m => m.Id == meeting.Id, ct);
         return ToDto(saved);
     }
 
     public async Task<MeetingDto?> UpdateAsync(Guid id, CreateMeetingRequest request, CancellationToken ct)
     {
-        var meeting = await (await VisibleAsync(ct)).FirstOrDefaultAsync(m => m.Id == id, ct);
+        var scope = await _scope.GetAsync(ct);
+        var meeting = await (await VisibleAsync(ct)).Include(m => m.Attendees).FirstOrDefaultAsync(m => m.Id == id, ct);
         if (meeting is null) return null;
-        await EnsureCaseAccessibleAsync(request.DokCaseId, ct);
+        await ValidateAsync(request, scope, ct);
 
         meeting.DokCaseId = request.DokCaseId;
         meeting.GroupLabel = request.GroupLabel;
+        meeting.CatechistPersonId = request.DokCaseId is null ? meeting.CatechistPersonId ?? scope.PersonId : null;
         meeting.MeetingDate = request.MeetingDate;
         meeting.IsAttended = request.IsAttended;
         meeting.Notes = request.Notes;
+
+        var wanted = (request.Attendees ?? Array.Empty<AttendeeRequest>()).ToDictionary(a => a.DokCaseId);
+        foreach (var existing in meeting.Attendees.ToList())
+        {
+            if (wanted.Remove(existing.DokCaseId, out var kept))
+            {
+                existing.IsAttended = kept.IsAttended;
+            }
+            else
+            {
+                _db.MeetingAttendees.Remove(existing);
+            }
+        }
+        foreach (var added in wanted.Values)
+        {
+            meeting.Attendees.Add(new MeetingAttendee { Id = Guid.NewGuid(), DokCaseId = added.DokCaseId, IsAttended = added.IsAttended });
+        }
         await _db.SaveChangesAsync(ct);
 
         return await GetByIdAsync(id, ct);
@@ -97,6 +140,18 @@ public class MeetingService : IMeetingService
         await _db.SaveChangesAsync(ct);
 
         return await GetByIdAsync(id, ct);
+    }
+
+    public async Task<MeetingDto?> SetAttendeeAttendanceAsync(Guid meetingId, Guid dokCaseId, bool? isAttended, CancellationToken ct)
+    {
+        var meeting = await (await VisibleAsync(ct)).Include(m => m.Attendees).FirstOrDefaultAsync(m => m.Id == meetingId, ct);
+        var attendee = meeting?.Attendees.FirstOrDefault(a => a.DokCaseId == dokCaseId);
+        if (attendee is null) return null;
+
+        attendee.IsAttended = isAttended;
+        await _db.SaveChangesAsync(ct);
+
+        return await GetByIdAsync(meetingId, ct);
     }
 
     public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
@@ -118,6 +173,15 @@ public class MeetingService : IMeetingService
         GroupLabel = m.GroupLabel,
         MeetingDate = m.MeetingDate,
         IsAttended = m.IsAttended,
-        Notes = m.Notes
+        Notes = m.Notes,
+        Attendees = m.Attendees
+            .Select(a => new MeetingAttendeeDto
+            {
+                DokCaseId = a.DokCaseId,
+                PersonFullName = a.DokCase?.Person?.FullName ?? string.Empty,
+                IsAttended = a.IsAttended
+            })
+            .OrderBy(a => a.PersonFullName)
+            .ToList()
     };
 }
