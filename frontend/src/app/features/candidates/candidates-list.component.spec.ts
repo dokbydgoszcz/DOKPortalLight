@@ -1,39 +1,148 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { TestBed } from '@angular/core/testing';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CandidatesListComponent } from './candidates-list.component';
-import { environment } from '../../../environments/environment';
+import { Candidate } from './candidate.model';
+import { ToastService } from '../../core/notifications/toast.service';
+import { api, clickByText, paged, setInput, setSelect, setSelectByLabel, setup, textOf } from '../../testing/test-helpers';
+
+const lewandowska: Candidate = {
+  id: '1', personId: 'p1', personFullName: 'Agnieszka Lewandowska', parishName: null, year: 3,
+  attendancePercentage: 94, opinionsCollected: 2, opinionsRequired: 2, isRetreatCompleted: true
+};
+const nowak: Candidate = {
+  id: '2', personId: 'p2', personFullName: 'Karolina Nowak', parishName: null, year: 1,
+  attendancePercentage: 81, opinionsCollected: 0, opinionsRequired: 2, isRetreatCompleted: false
+};
+const people = [
+  { id: 'p1', firstName: 'Jan', lastName: 'Kowalski', fullName: 'Jan Kowalski', email: null, phone: null, birthDate: null, parishId: null, parishName: null, notes: null }
+];
+const url = api('/api/candidates');
+
+function boot(items: Candidate[] = [lewandowska, nowak], totalCount = items.length) {
+  const ctx = setup(CandidatesListComponent);
+  ctx.fixture.detectChanges();
+  const lists = ctx.http.match(r => r.url === url);
+  expect(lists.length).toBe(2);
+  lists.forEach(r => r.flush({ items, totalCount, page: 1, pageSize: 20 }));
+  ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
+  ctx.fixture.detectChanges();
+  return ctx;
+}
+
+const toastMessages = () => TestBed.inject(ToastService).toasts().map(t => t.message);
 
 describe('CandidatesListComponent', () => {
-  let fixture: ComponentFixture<CandidatesListComponent>;
-  let httpMock: HttpTestingController;
-
-  beforeEach(() => {
-    TestBed.configureTestingModule({
-      imports: [CandidatesListComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting()]
-    });
-    fixture = TestBed.createComponent(CandidatesListComponent);
-    httpMock = TestBed.inject(HttpTestingController);
-  });
+  afterEach(() => vi.restoreAllMocks());
 
   it('shows the per-year candidate count computed from the fetched list', () => {
-    fixture.detectChanges();
-    const candidatesReqs = httpMock.match(r => r.url === `${environment.apiBaseUrl}/api/candidates`);
-    expect(candidatesReqs.length).toBe(2);
-    const items = [
-      { id: '1', personId: 'p1', personFullName: 'Agnieszka Lewandowska', parishName: null, year: 3, attendancePercentage: 94, opinionsCollected: 2, opinionsRequired: 2, isRetreatCompleted: true },
-      { id: '2', personId: 'p2', personFullName: 'Karolina Nowak', parishName: null, year: 1, attendancePercentage: 81, opinionsCollected: 0, opinionsRequired: 2, isRetreatCompleted: false }
-    ];
-    for (const req of candidatesReqs) {
-      req.flush({ items, totalCount: 2, page: 1, pageSize: 20 });
-    }
-    httpMock.expectOne(r => r.url === `${environment.apiBaseUrl}/api/people`).flush({ items: [], totalCount: 0, page: 1, pageSize: 200 });
+    const { fixture, el } = boot();
+
+    expect(textOf(el)).toContain('Agnieszka Lewandowska');
+    expect(textOf(el)).toContain('Karolina Nowak');
+    const component = fixture.componentInstance;
+    expect([component.yearOneCount(), component.yearTwoCount(), component.yearThreeCount()]).toEqual([1, 0, 1]);
+    expect(component.missingOpinionsCount()).toBe(1);
+  });
+
+  it('shows a toast when the list cannot be loaded', () => {
+    const { fixture, http } = setup(CandidatesListComponent);
     fixture.detectChanges();
 
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Agnieszka Lewandowska');
-    expect(text).toContain('Karolina Nowak');
+    http.match(r => r.url === url)[0].flush('x', { status: 500, statusText: 'Server Error' });
+
+    expect(toastMessages()).toContain('Nie udało się wczytać listy kandydatów.');
+  });
+
+  it('loads the next page with the pagination', () => {
+    const ctx = boot([lewandowska], 45);
+
+    clickByText(ctx.el, 'Następna');
+
+    ctx.http.expectOne(r => r.url === url && r.params.get('page') === '2' && r.params.get('pageSize') === '20')
+      .flush({ items: [nowak], totalCount: 45, page: 2, pageSize: 20 });
+    ctx.fixture.detectChanges();
+    expect(textOf(ctx.el)).toContain('Karolina Nowak');
+  });
+
+  describe('adding a candidate', () => {
+    async function openForm() {
+      const ctx = boot();
+      clickByText(ctx.el, 'Nowy kandydat');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      return ctx;
+    }
+    const saveButton = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.modal-foot button')).find(b => b.textContent!.includes('Zapisz'))!;
+
+    it('requires a person and posts the typed values with the chosen year and retreat status', async () => {
+      const ctx = await openForm();
+      expect(saveButton(ctx.el).disabled).toBe(true);
+
+      setSelect(ctx.el, 'select[name="personId"]', 'p1');
+      setSelectByLabel(ctx.el, 'select[name="year"]', 'II ROK');
+      setInput(ctx.el, 'input[name="attendancePercentage"]', '85');
+      setInput(ctx.el, 'input[name="opinionsCollected"]', '1');
+      setSelectByLabel(ctx.el, 'select[name="isRetreatCompleted"]', 'zaliczone');
+      ctx.fixture.detectChanges();
+      expect(saveButton(ctx.el).disabled).toBe(false);
+
+      saveButton(ctx.el).click();
+      const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
+      expect(req.request.body).toEqual({ personId: 'p1', year: 2, attendancePercentage: 85, opinionsCollected: 1, isRetreatCompleted: true });
+      req.flush(nowak);
+      ctx.fixture.detectChanges();
+
+      expect(toastMessages()).toContain('Dodano kandydata.');
+      expect(ctx.el.querySelector('.modal')).toBeNull();
+      ctx.http.match(r => r.url === url && r.method === 'GET').forEach(r => r.flush({ items: [lewandowska], totalCount: 1, page: 1, pageSize: 20 }));
+    });
+
+    it('shows a toast when saving fails and closes the form on cancel', async () => {
+      const ctx = await openForm();
+      setSelect(ctx.el, 'select[name="personId"]', 'p1');
+      ctx.fixture.detectChanges();
+
+      saveButton(ctx.el).click();
+      ctx.http.expectOne(r => r.method === 'POST').flush('x', { status: 400, statusText: 'Bad Request' });
+      expect(toastMessages()).toContain('Nie udało się dodać kandydata.');
+
+      clickByText(ctx.el, 'Anuluj', '.modal-foot button');
+      ctx.fixture.detectChanges();
+      expect(ctx.el.querySelector('.modal')).toBeNull();
+    });
+  });
+
+  describe('deleting a candidate', () => {
+    it('deletes after confirmation and reloads the list and the statistics', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const ctx = boot();
+
+      clickByText(ctx.el, 'Usuń');
+      expect(confirmSpy).toHaveBeenCalledWith('Usunąć kandydata „Agnieszka Lewandowska”?');
+      ctx.http.expectOne(r => r.method === 'DELETE' && r.url === `${url}/1`).flush(null);
+
+      expect(toastMessages()).toContain('Kandydat usunięty.');
+      expect(ctx.http.match(r => r.method === 'GET' && r.url === url).length).toBe(2);
+    });
+
+    it('does nothing when the confirmation is cancelled', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+      const ctx = boot();
+
+      clickByText(ctx.el, 'Usuń');
+
+      ctx.http.expectNone(r => r.method === 'DELETE');
+    });
+
+    it('shows a toast when deleting fails', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const ctx = boot();
+
+      clickByText(ctx.el, 'Usuń');
+      ctx.http.expectOne(r => r.method === 'DELETE').flush('x', { status: 500, statusText: 'Server Error' });
+
+      expect(toastMessages()).toContain('Nie udało się usunąć kandydata.');
+    });
   });
 });

@@ -75,6 +75,15 @@ export function setSelect(el: HTMLElement, selector: string, value: string): voi
   select.dispatchEvent(new Event('change'));
 }
 
+export function setSelectByLabel(el: HTMLElement, selector: string, label: string): void {
+  const select = el.querySelector<HTMLSelectElement>(selector);
+  if (!select) throw new Error(`Brak listy: ${selector}`);
+  const option = Array.from(select.options).find(o => (o.textContent ?? '').trim() === label);
+  if (!option) throw new Error(`Brak opcji „${label}” w ${selector}`);
+  select.value = option.value;
+  select.dispatchEvent(new Event('change'));
+}
+
 export function textOf(el: HTMLElement): string {
   return (el.textContent ?? '').replace(/\s+/g, ' ').trim();
 }

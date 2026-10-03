@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { describe, it, expect } from 'vitest';
-import { api, click, clickByText, flushAll, paged, provideFakeAuth, setInput, setSelect, setup, textOf } from './test-helpers';
+import { api, click, clickByText, flushAll, paged, provideFakeAuth, setInput, setSelect, setSelectByLabel, setup, textOf } from './test-helpers';
 import { AuthService } from '../core/auth/auth.service';
 
 @Component({
@@ -69,6 +69,25 @@ describe('test helpers', () => {
     clickByText(el, 'Dokumenty');
 
     expect(fixture.componentInstance.hit).toBe('d');
+  });
+
+  it('selects an option by its label, also for lists bound with ngValue', () => {
+    @Component({
+      standalone: true,
+      imports: [FormsModule],
+      template: `<select id="n" [(ngModel)]="year"><option [ngValue]="1">I ROK</option><option [ngValue]="2">II ROK</option></select>`
+    })
+    class NgValueHost {
+      year = 1;
+    }
+    const { fixture, el } = setup(NgValueHost);
+    fixture.detectChanges();
+
+    setSelectByLabel(el, '#n', 'II ROK');
+
+    expect(fixture.componentInstance.year).toBe(2);
+    expect(() => setSelectByLabel(el, '#n', 'IV ROK')).toThrow('Brak opcji');
+    expect(() => setSelectByLabel(el, '#nope', 'II ROK')).toThrow('Brak listy');
   });
 
   it('throws a readable error for missing elements', () => {
