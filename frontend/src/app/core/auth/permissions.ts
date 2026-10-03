@@ -19,6 +19,7 @@ export const Permissions = {
   BudgetDokView: 'BudgetDok.View',
   BudgetDokManage: 'BudgetDok.Manage',
   DokCasesView: 'DokCases.View',
+  DokCasesViewAll: 'DokCases.ViewAll',
   DokCasesManage: 'DokCases.Manage',
   DokCasesExport: 'DokCases.Export',
   CaseDocumentsView: 'CaseDocuments.View',

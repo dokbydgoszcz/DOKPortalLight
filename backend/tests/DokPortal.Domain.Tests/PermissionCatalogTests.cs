@@ -16,8 +16,8 @@ public class PermissionCatalogTests
     [Fact]
     public void Catalog_HasExpectedNumberOfUniquePermissions()
     {
-        Assert.Equal(41, PermissionCatalog.All.Count);
-        Assert.Equal(41, PermissionCatalog.AllNames.Count);
+        Assert.Equal(42, PermissionCatalog.All.Count);
+        Assert.Equal(42, PermissionCatalog.AllNames.Count);
     }
 
     [Fact]
@@ -53,6 +53,26 @@ public class PermissionCatalogTests
             Assert.NotEqual(AppRoles.Administrator, role);
             Assert.Equal(permissions.Length, permissions.Distinct().Count());
             Assert.All(permissions, p => Assert.True(PermissionCatalog.IsKnown(p), $"{role}: nieznane uprawnienie {p}"));
+        }
+    }
+
+    [Fact]
+    public void DokCasesViewAll_IsGrantedToEveryRoleThatViewsCases_ExceptTheCatechist()
+    {
+        foreach (var (role, permissions) in DefaultRolePermissions.Grants)
+        {
+            var viewsCases = permissions.Contains(Permissions.DokCasesView);
+            var seesAll = permissions.Contains(Permissions.DokCasesViewAll);
+
+            if (role == AppRoles.KatechistaProwadzacy)
+            {
+                Assert.True(viewsCases);
+                Assert.False(seesAll, "Katechista ma widzieć tylko swoich podopiecznych.");
+            }
+            else
+            {
+                Assert.Equal(viewsCases, seesAll);
+            }
         }
     }
 }

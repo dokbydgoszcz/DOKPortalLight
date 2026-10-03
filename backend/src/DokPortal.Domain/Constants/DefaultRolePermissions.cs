@@ -6,7 +6,7 @@ public static class DefaultRolePermissions
     {
         [AppRoles.Biskup] = new[]
         {
-            Permissions.MissionsView, Permissions.DokCasesView, Permissions.CaseDocumentsView
+            Permissions.MissionsView, Permissions.DokCasesView, Permissions.DokCasesViewAll, Permissions.CaseDocumentsView
         },
         [AppRoles.DyrektorSKSP] = new[]
         {
@@ -23,7 +23,7 @@ public static class DefaultRolePermissions
         [AppRoles.DyrektorDOK] = new[]
         {
             Permissions.PeopleManage, Permissions.PeopleExport,
-            Permissions.DokCasesView, Permissions.DokCasesManage, Permissions.DokCasesExport,
+            Permissions.DokCasesView, Permissions.DokCasesViewAll, Permissions.DokCasesManage, Permissions.DokCasesExport,
             Permissions.CaseDocumentsView, Permissions.CaseDocumentsManage,
             Permissions.PastoralNotesView, Permissions.PastoralNotesWrite, Permissions.PastoralNotesReadAll,
             Permissions.MeetingsView, Permissions.MeetingsManage, Permissions.MeetingsExport,
@@ -35,7 +35,7 @@ public static class DefaultRolePermissions
         },
         [AppRoles.Superwizor] = new[]
         {
-            Permissions.DokCasesView, Permissions.CaseDocumentsView,
+            Permissions.DokCasesView, Permissions.DokCasesViewAll, Permissions.CaseDocumentsView,
             Permissions.SupervisionsView, Permissions.SupervisionsManage, Permissions.SupervisionsExport
         },
         [AppRoles.KatechistaProwadzacy] = new[]

@@ -22,6 +22,7 @@ public static class Permissions
     public const string BudgetDokView = "BudgetDok.View";
     public const string BudgetDokManage = "BudgetDok.Manage";
     public const string DokCasesView = "DokCases.View";
+    public const string DokCasesViewAll = "DokCases.ViewAll";
     public const string DokCasesManage = "DokCases.Manage";
     public const string DokCasesExport = "DokCases.Export";
     public const string CaseDocumentsView = "CaseDocuments.View";
@@ -71,6 +72,7 @@ public static class PermissionCatalog
         new(Permissions.BudgetDokView, "Budżet DOK", "Podgląd budżetu DOK"),
         new(Permissions.BudgetDokManage, "Budżet DOK", "Dodawanie i usuwanie wpisów budżetu DOK"),
         new(Permissions.DokCasesView, "Podopieczni DOK", "Podgląd spraw DOK"),
+        new(Permissions.DokCasesViewAll, "Podopieczni DOK", "Podgląd wszystkich spraw DOK i powiązanych dokumentów, notatek i spotkań (bez tego tylko własni podopieczni)"),
         new(Permissions.DokCasesManage, "Podopieczni DOK", "Dodawanie, edycja i usuwanie spraw DOK"),
         new(Permissions.DokCasesExport, "Podopieczni DOK", "Eksport spraw DOK do Excela"),
         new(Permissions.CaseDocumentsView, "Dokumenty spraw DOK", "Podgląd i pobieranie dokumentów sprawy"),
