@@ -25,7 +25,7 @@ public class CaseDocumentsController : ControllerBase
     public async Task<ActionResult<CaseDocumentDto>> Create(Guid caseId, CreateCaseDocumentRequest request, CancellationToken ct)
     {
         var created = await _caseDocumentService.CreateAsync(caseId, request, ct);
-        return CreatedAtAction(nameof(GetAll), new { caseId }, created);
+        return created is null ? NotFound() : CreatedAtAction(nameof(GetAll), new { caseId }, created);
     }
 
     [HttpPut("{id:guid}")]

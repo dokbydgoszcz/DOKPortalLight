@@ -34,12 +34,14 @@ public class PastoralNotesController : ControllerBase
     [HasPermission(Permissions.PastoralNotesView)]
     public async Task<ActionResult<IReadOnlyList<PastoralNoteDto>>> GetAll(Guid caseId, CancellationToken ct)
     {
+        var dokCase = await _dokCaseService.GetByIdAsync(caseId, ct);
+        if (dokCase is null) return NotFound();
+
         var currentUserId = GetCurrentUserId();
         var isPrivileged = (await _authorization.AuthorizeAsync(User, null, Permissions.PastoralNotesReadAll)).Succeeded;
         var notes = await _pastoralNoteService.GetVisibleForCaseAsync(caseId, currentUserId, isPrivileged, ct);
 
-        var dokCase = await _dokCaseService.GetByIdAsync(caseId, ct);
-        var objectDescription = dokCase?.PersonFullName ?? $"Sprawa {caseId}";
+        var objectDescription = dokCase.PersonFullName;
         var isBlocked = !isPrivileged && await _pastoralNoteService.HasNotesFromOthersAsync(caseId, currentUserId, ct);
         await _auditLogService.LogAsync(
             currentUserId, GetCurrentUserEmail(), "ReadPastoralNotes", objectDescription,
@@ -52,6 +54,8 @@ public class PastoralNotesController : ControllerBase
     [HasPermission(Permissions.PastoralNotesWrite)]
     public async Task<ActionResult<PastoralNoteDto>> Create(Guid caseId, CreatePastoralNoteRequest request, CancellationToken ct)
     {
+        if (await _dokCaseService.GetByIdAsync(caseId, ct) is null) return NotFound();
+
         var currentUserId = GetCurrentUserId();
         var created = await _pastoralNoteService.CreateAsync(caseId, currentUserId, request, ct);
         return CreatedAtAction(nameof(GetAll), new { caseId }, created);

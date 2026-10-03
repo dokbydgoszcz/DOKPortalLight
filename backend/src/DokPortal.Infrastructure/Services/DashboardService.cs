@@ -1,4 +1,5 @@
 using DokPortal.Application.Dashboard;
+using DokPortal.Application.DokCases;
 using DokPortal.Domain.Enums;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -10,15 +11,23 @@ public class DashboardService : IDashboardService
     private const int UpcomingMeetingsWindowDays = 7;
 
     private readonly AppDbContext _db;
+    private readonly ICaseScopeProvider _scope;
 
-    public DashboardService(AppDbContext db) => _db = db;
+    public DashboardService(AppDbContext db, ICaseScopeProvider? scope = null)
+    {
+        _db = db;
+        _scope = scope ?? new AllCasesScopeProvider();
+    }
 
     public async Task<DashboardSummaryDto> GetSummaryAsync(CancellationToken ct)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var windowEnd = today.AddDays(UpcomingMeetingsWindowDays);
 
-        var stageCounts = await _db.DokCases
+        var scope = await _scope.GetAsync(ct);
+        var cases = _db.DokCases.ForScope(scope);
+
+        var stageCounts = await cases
             .GroupBy(c => c.Stage)
             .Select(g => new { Stage = g.Key, Count = g.Count() })
             .ToListAsync(ct);
@@ -33,7 +42,7 @@ public class DashboardService : IDashboardService
 
         var missingDocumentsCasesCount = await (
             from doc in _db.CaseDocuments
-            join dokCase in _db.DokCases on doc.DokCaseId equals dokCase.Id
+            join dokCase in cases on doc.DokCaseId equals dokCase.Id
             where !doc.IsProvided
             select doc.DokCaseId
         ).Distinct().CountAsync(ct);
@@ -44,7 +53,7 @@ public class DashboardService : IDashboardService
             ParishCount = await _db.Parishes.CountAsync(ct),
             DokCasesByStage = dokCasesByStage,
             MissingDocumentsCasesCount = missingDocumentsCasesCount,
-            UpcomingMeetingsCount = await _db.Meetings
+            UpcomingMeetingsCount = await _db.Meetings.ForScope(_db, scope)
                 .CountAsync(m => m.MeetingDate >= today && m.MeetingDate <= windowEnd, ct),
             ActiveCandidatesCount = await _db.Candidates.CountAsync(ct)
         };

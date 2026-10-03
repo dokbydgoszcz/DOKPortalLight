@@ -117,9 +117,11 @@ public class PermissionAuthorizationTests : IntegrationTestBase
     [InlineData("Biskup", HttpStatusCode.Forbidden)]
     public async Task PastoralNotes_Read_RequiresViewPermission(string role, HttpStatusCode expected)
     {
-        var client = await CreateAuthenticatedClientAsync($"user-{Guid.NewGuid():N}@example.org", "Sekret123!", role);
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        var (caseId, catechistPersonId, _) = await SeedDokCaseAsync(admin);
+        var client = await CreateAuthenticatedClientForPersonAsync($"user-{Guid.NewGuid():N}@example.org", "Sekret123!", catechistPersonId, role);
 
-        var response = await client.GetAsync($"/api/dok-cases/{Guid.NewGuid()}/notes");
+        var response = await client.GetAsync($"/api/dok-cases/{caseId}/notes");
 
         Assert.Equal(expected, response.StatusCode);
     }

@@ -1,3 +1,4 @@
+using DokPortal.Application.DokCases;
 using DokPortal.Application.Meetings;
 using DokPortal.Domain.Entities;
 using DokPortal.Infrastructure.Persistence;
@@ -8,12 +9,35 @@ namespace DokPortal.Infrastructure.Services;
 public class MeetingService : IMeetingService
 {
     private readonly AppDbContext _db;
+    private readonly ICaseScopeProvider _scope;
 
-    public MeetingService(AppDbContext db) => _db = db;
+    public MeetingService(AppDbContext db, ICaseScopeProvider? scope = null)
+    {
+        _db = db;
+        _scope = scope ?? new AllCasesScopeProvider();
+    }
+
+    private async Task<IQueryable<Meeting>> VisibleAsync(CancellationToken ct)
+    {
+        var scope = await _scope.GetAsync(ct);
+        return _db.Meetings.ForScope(_db, scope);
+    }
+
+    /// <summary>Spotkanie można przypisać tylko do sprawy z własnego zakresu.</summary>
+    private async Task EnsureCaseAccessibleAsync(Guid? dokCaseId, CancellationToken ct)
+    {
+        if (dokCaseId is null) return;
+
+        var scope = await _scope.GetAsync(ct);
+        if (!await _db.DokCases.ForScope(scope).AnyAsync(c => c.Id == dokCaseId, ct))
+        {
+            throw new InvalidOperationException("Nie masz dostępu do wskazanej sprawy DOK.");
+        }
+    }
 
     public async Task<IReadOnlyList<MeetingDto>> GetAllAsync(CancellationToken ct)
     {
-        var meetings = await _db.Meetings.Include(m => m.DokCase).ThenInclude(c => c!.Person).AsNoTracking()
+        var meetings = await (await VisibleAsync(ct)).Include(m => m.DokCase).ThenInclude(c => c!.Person).AsNoTracking()
             .OrderByDescending(m => m.MeetingDate)
             .ToListAsync(ct);
         return meetings.Select(ToDto).ToList();
@@ -21,13 +45,15 @@ public class MeetingService : IMeetingService
 
     public async Task<MeetingDto?> GetByIdAsync(Guid id, CancellationToken ct)
     {
-        var meeting = await _db.Meetings.Include(m => m.DokCase).ThenInclude(c => c!.Person).AsNoTracking()
+        var meeting = await (await VisibleAsync(ct)).Include(m => m.DokCase).ThenInclude(c => c!.Person).AsNoTracking()
             .FirstOrDefaultAsync(m => m.Id == id, ct);
         return meeting is null ? null : ToDto(meeting);
     }
 
     public async Task<MeetingDto> CreateAsync(CreateMeetingRequest request, CancellationToken ct)
     {
+        await EnsureCaseAccessibleAsync(request.DokCaseId, ct);
+
         var meeting = new Meeting
         {
             Id = Guid.NewGuid(),
@@ -48,8 +74,9 @@ public class MeetingService : IMeetingService
 
     public async Task<MeetingDto?> UpdateAsync(Guid id, CreateMeetingRequest request, CancellationToken ct)
     {
-        var meeting = await _db.Meetings.FirstOrDefaultAsync(m => m.Id == id, ct);
+        var meeting = await (await VisibleAsync(ct)).FirstOrDefaultAsync(m => m.Id == id, ct);
         if (meeting is null) return null;
+        await EnsureCaseAccessibleAsync(request.DokCaseId, ct);
 
         meeting.DokCaseId = request.DokCaseId;
         meeting.GroupLabel = request.GroupLabel;
@@ -63,7 +90,7 @@ public class MeetingService : IMeetingService
 
     public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
     {
-        var meeting = await _db.Meetings.FirstOrDefaultAsync(m => m.Id == id, ct);
+        var meeting = await (await VisibleAsync(ct)).FirstOrDefaultAsync(m => m.Id == id, ct);
         if (meeting is null) return false;
 
         meeting.DeletedAtUtc = DateTime.UtcNow;

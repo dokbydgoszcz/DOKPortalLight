@@ -10,12 +10,18 @@ namespace DokPortal.Infrastructure.Services;
 public class DokCaseService : IDokCaseService
 {
     private readonly AppDbContext _db;
+    private readonly ICaseScopeProvider _scope;
 
-    public DokCaseService(AppDbContext db) => _db = db;
+    public DokCaseService(AppDbContext db, ICaseScopeProvider? scope = null)
+    {
+        _db = db;
+        _scope = scope ?? new AllCasesScopeProvider();
+    }
 
     public async Task<PagedResult<DokCaseDto>> SearchAsync(DokPath? path, int page, int pageSize, CancellationToken ct)
     {
-        var q = _db.DokCases
+        var scope = await _scope.GetAsync(ct);
+        var q = _db.DokCases.ForScope(scope)
             .Include(c => c.Person).ThenInclude(p => p!.Parish)
             .Include(c => c.CatechistPerson)
             .Include(c => c.MentorPerson)
@@ -76,7 +82,13 @@ public class DokCaseService : IDokCaseService
 
     public async Task<DokCaseDto?> GetByIdAsync(Guid id, CancellationToken ct)
     {
-        var dokCase = await _db.DokCases
+        var scope = await _scope.GetAsync(ct);
+        return await LoadAsync(_db.DokCases.ForScope(scope), id, ct);
+    }
+
+    private static async Task<DokCaseDto?> LoadAsync(IQueryable<DokCase> source, Guid id, CancellationToken ct)
+    {
+        var dokCase = await source
             .Include(c => c.Person).ThenInclude(p => p!.Parish)
             .Include(c => c.CatechistPerson)
             .Include(c => c.MentorPerson)
@@ -101,12 +113,13 @@ public class DokCaseService : IDokCaseService
         };
         _db.DokCases.Add(dokCase);
         await _db.SaveChangesAsync(ct);
-        return (await GetByIdAsync(dokCase.Id, ct))!;
+        return (await LoadAsync(_db.DokCases, dokCase.Id, ct))!;
     }
 
     public async Task<DokCaseDto?> UpdateAsync(Guid id, UpdateDokCaseRequest request, CancellationToken ct)
     {
-        var dokCase = await _db.DokCases.FirstOrDefaultAsync(c => c.Id == id, ct);
+        var scope = await _scope.GetAsync(ct);
+        var dokCase = await _db.DokCases.ForScope(scope).FirstOrDefaultAsync(c => c.Id == id, ct);
         if (dokCase is null) return null;
 
         var isNewlyGraduate = request.Stage == DokStage.Graduate && dokCase.Stage != DokStage.Graduate;
@@ -123,12 +136,13 @@ public class DokCaseService : IDokCaseService
         }
 
         await _db.SaveChangesAsync(ct);
-        return await GetByIdAsync(id, ct);
+        return await LoadAsync(_db.DokCases, id, ct);
     }
 
     public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
     {
-        var dokCase = await _db.DokCases.FirstOrDefaultAsync(c => c.Id == id, ct);
+        var scope = await _scope.GetAsync(ct);
+        var dokCase = await _db.DokCases.ForScope(scope).FirstOrDefaultAsync(c => c.Id == id, ct);
         if (dokCase is null) return false;
 
         dokCase.DeletedAtUtc = DateTime.UtcNow;

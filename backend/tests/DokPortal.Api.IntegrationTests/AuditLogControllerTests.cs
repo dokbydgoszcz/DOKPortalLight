@@ -18,21 +18,13 @@ public class AuditLogControllerTests : IntegrationTestBase
     public async Task ReadPastoralNotes_WhenFilteredByOtherAuthor_IsRecordedAsBlocked()
     {
         var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
-        var personResponse = await admin.PostAsJsonAsync("/api/people", new { FirstName = "Jan", LastName = "Kowalski" });
-        var person = await personResponse.Content.ReadFromJsonAsync<PersonDto>();
-        var catechistResponse = await admin.PostAsJsonAsync("/api/people", new { FirstName = "Anna", LastName = "Maj" });
-        var catechist = await catechistResponse.Content.ReadFromJsonAsync<PersonDto>();
-        var caseResponse = await admin.PostAsJsonAsync("/api/dok-cases", new
-        {
-            PersonId = person!.Id, Path = "Confirmation", Stage = "Formation", CatechistPersonId = catechist!.Id
-        });
-        var dokCase = await caseResponse.Content.ReadFromJsonAsync<DokCaseDto>(EnumJsonOptions);
+        var (caseId, catechistPersonId, _) = await SeedDokCaseAsync(admin);
 
-        var katechistaA = await CreateAuthenticatedClientAsync($"kat-a-{Guid.NewGuid():N}@example.org", "Sekret123!", "KatechistaProwadzacy");
-        await katechistaA.PostAsJsonAsync($"/api/dok-cases/{dokCase!.Id}/notes", new { Content = "Notatka poufna" });
+        var director = await CreateAuthenticatedClientAsync($"dyr-{Guid.NewGuid():N}@example.org", "Sekret123!", "DyrektorDOK");
+        await director.PostAsJsonAsync($"/api/dok-cases/{caseId}/notes", new { Content = "Notatka poufna" });
 
-        var katechistaB = await CreateAuthenticatedClientAsync($"kat-b-{Guid.NewGuid():N}@example.org", "Sekret123!", "KatechistaProwadzacy");
-        await katechistaB.GetAsync($"/api/dok-cases/{dokCase.Id}/notes");
+        var catechist = await CreateAuthenticatedClientForPersonAsync($"kat-{Guid.NewGuid():N}@example.org", "Sekret123!", catechistPersonId, "KatechistaProwadzacy");
+        await catechist.GetAsync($"/api/dok-cases/{caseId}/notes");
 
         var logResponse = await admin.GetAsync("/api/audit-log");
         var entries = await logResponse.Content.ReadFromJsonAsync<List<AuditLogEntryDto>>(EnumJsonOptions);

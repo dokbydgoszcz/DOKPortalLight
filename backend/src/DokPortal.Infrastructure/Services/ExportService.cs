@@ -1,4 +1,5 @@
 using ClosedXML.Excel;
+using DokPortal.Application.DokCases;
 using DokPortal.Application.Export;
 using DokPortal.Domain.Enums;
 using DokPortal.Infrastructure.Persistence;
@@ -9,8 +10,13 @@ namespace DokPortal.Infrastructure.Services;
 public class ExportService : IExportService
 {
     private readonly AppDbContext _db;
+    private readonly ICaseScopeProvider _scope;
 
-    public ExportService(AppDbContext db) => _db = db;
+    public ExportService(AppDbContext db, ICaseScopeProvider? scope = null)
+    {
+        _db = db;
+        _scope = scope ?? new AllCasesScopeProvider();
+    }
 
     public async Task<byte[]> ExportPeopleAsync(CancellationToken ct)
     {
@@ -48,7 +54,8 @@ public class ExportService : IExportService
 
     public async Task<byte[]> ExportDokCasesAsync(CancellationToken ct)
     {
-        var cases = await _db.DokCases.AsNoTracking()
+        var scope = await _scope.GetAsync(ct);
+        var cases = await _db.DokCases.ForScope(scope).AsNoTracking()
             .Include(c => c.Person).Include(c => c.CatechistPerson).Include(c => c.MentorPerson)
             .OrderBy(c => c.Person!.LastName).ThenBy(c => c.Person!.FirstName)
             .ToListAsync(ct);
@@ -133,7 +140,8 @@ public class ExportService : IExportService
 
     public async Task<byte[]> ExportMeetingsAsync(CancellationToken ct)
     {
-        var meetings = await _db.Meetings.AsNoTracking()
+        var scope = await _scope.GetAsync(ct);
+        var meetings = await _db.Meetings.ForScope(_db, scope).AsNoTracking()
             .Include(m => m.DokCase).ThenInclude(c => c!.Person)
             .OrderBy(m => m.MeetingDate)
             .ToListAsync(ct);

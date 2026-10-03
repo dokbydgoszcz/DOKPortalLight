@@ -87,6 +87,8 @@ builder.Services.AddScoped<IMissionService, MissionService>();
 builder.Services.AddScoped<IFormatorService, FormatorService>();
 builder.Services.AddScoped<IParishNeedService, ParishNeedService>();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICaseScopeProvider, HttpCaseScopeProvider>();
 builder.Services.AddScoped<IDokCaseService, DokCaseService>();
 builder.Services.AddScoped<ICaseDocumentService, CaseDocumentService>();
 builder.Services.AddScoped<IPastoralNoteService, PastoralNoteService>();
