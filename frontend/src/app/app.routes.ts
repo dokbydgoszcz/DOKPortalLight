@@ -95,6 +95,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin-users/users-list.component').then(m => m.UsersListComponent)
       },
       {
+        path: 'admin/permissions',
+        canActivate: [permissionGuard(Permissions.PermissionsManage)],
+        loadComponent: () => import('./features/admin-permissions/permissions-matrix.component').then(m => m.PermissionsMatrixComponent)
+      },
+      {
         path: 'audit-log',
         canActivate: [permissionGuard(Permissions.AuditLogView)],
         loadComponent: () => import('./features/audit-log/audit-log.component').then(m => m.AuditLogComponent)

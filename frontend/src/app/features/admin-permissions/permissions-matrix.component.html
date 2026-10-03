@@ -1,0 +1,62 @@
+<div class="page-heading">
+  <div><h2>Uprawnienia ról</h2><p>Co może każda rola. Administrator ma zawsze wszystkie uprawnienia.</p></div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="btn ghost" data-discard [disabled]="!hasChanges()" (click)="discard()">Cofnij zmiany</button>
+    <button class="btn primary" data-save [disabled]="!hasChanges() || saving()" (click)="save()">Zapisz zmiany</button>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="card-body" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+    <div class="field" style="margin:0">
+      <label>Nowa rola</label>
+      <input data-new-role [(ngModel)]="newRoleName" name="newRoleName" placeholder="np. Sekretariat" maxlength="50" />
+    </div>
+    <button class="btn primary" data-create-role [disabled]="!newRoleName.trim()" (click)="createRole()">＋ Dodaj rolę</button>
+  </div>
+</div>
+
+@if (matrix(); as m) {
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Uprawnienie</th>
+            @for (role of m.roles; track role.name) {
+              <th>
+                {{ role.name }}
+                @if (!role.isSystem) {
+                  <span class="link" style="color:var(--danger)" [attr.data-delete-role]="role.name" (click)="deleteRole(role.name)">Usuń</span>
+                }
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (group of modules(); track group.module) {
+            <tr class="module-row"><td [attr.colspan]="m.roles.length + 1"><b>{{ group.module }}</b></td></tr>
+            @for (permission of group.permissions; track permission.name) {
+              <tr>
+                <td>{{ permission.label }}<br /><span class="small-muted">{{ permission.name }}</span></td>
+                @for (role of m.roles; track role.name) {
+                  <td>
+                    <input type="checkbox"
+                           [attr.data-role]="role.name"
+                           [attr.data-permission]="permission.name"
+                           [checked]="isGranted(role.name, permission.name)"
+                           (change)="toggle(role.name, permission.name, $any($event.target).checked)" />
+                  </td>
+                }
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<p class="small-muted" style="margin-top:12px">
+  Zmiany obowiązują na backendzie od razu. Menu i przyciski użytkownik zobaczy po ponownym zalogowaniu.
+</p>
