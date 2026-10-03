@@ -5,6 +5,7 @@ import { DocumentsService } from './documents.service';
 import { DOCUMENT_TEMPLATE_LABELS, DocumentTemplate, GeneratedDocument, GenerateDocumentValue } from './generated-document.model';
 import { PeopleService } from '../people/people.service';
 import { Person } from '../people/person.model';
+import { ToastService } from '../../core/notifications/toast.service';
 
 @Component({
   selector: 'app-documents',
@@ -22,7 +23,8 @@ export class DocumentsComponent implements OnInit {
 
   constructor(
     private readonly documentsService: DocumentsService,
-    private readonly peopleService: PeopleService
+    private readonly peopleService: PeopleService,
+    private readonly toast: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -35,14 +37,17 @@ export class DocumentsComponent implements OnInit {
   }
 
   generate(): void {
-    this.documentsService.generate(this.form).subscribe(blob => {
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${this.form.template}.pdf`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-      this.load();
+    this.documentsService.generate(this.form).subscribe({
+      next: blob => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${this.form.template}.pdf`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się wygenerować dokumentu.')
     });
   }
 }
