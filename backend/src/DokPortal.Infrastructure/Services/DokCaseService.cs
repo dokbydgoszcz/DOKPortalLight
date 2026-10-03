@@ -41,7 +41,7 @@ public class DokCaseService : IDokCaseService
 
         return new PagedResult<DokCaseDto>
         {
-            Items = entities.Select(ToDto).ToList(),
+            Items = await ToDtosAsync(entities, ct),
             TotalCount = total,
             Page = page,
             PageSize = pageSize
@@ -73,7 +73,7 @@ public class DokCaseService : IDokCaseService
 
         return new PagedResult<DokCaseDto>
         {
-            Items = entities.Select(ToDto).ToList(),
+            Items = await ToDtosAsync(entities, ct),
             TotalCount = total,
             Page = page,
             PageSize = pageSize
@@ -86,7 +86,7 @@ public class DokCaseService : IDokCaseService
         return await LoadAsync(_db.DokCases.ForScope(scope), id, ct);
     }
 
-    private static async Task<DokCaseDto?> LoadAsync(IQueryable<DokCase> source, Guid id, CancellationToken ct)
+    private async Task<DokCaseDto?> LoadAsync(IQueryable<DokCase> source, Guid id, CancellationToken ct)
     {
         var dokCase = await source
             .Include(c => c.Person).ThenInclude(p => p!.Parish)
@@ -94,7 +94,23 @@ public class DokCaseService : IDokCaseService
             .Include(c => c.MentorPerson)
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == id, ct);
-        return dokCase is null ? null : ToDto(dokCase);
+        if (dokCase is null) return null;
+        return (await ToDtosAsync(new List<DokCase> { dokCase }, ct))[0];
+    }
+
+    /// <summary>Mapuje sprawy na DTO, doliczając frekwencję (jedno zapytanie zbiorcze dla całej listy).</summary>
+    private async Task<List<DokCaseDto>> ToDtosAsync(IReadOnlyCollection<DokCase> entities, CancellationToken ct)
+    {
+        var ids = entities.Select(e => e.Id).ToList();
+        var counts = await _db.Meetings.AsNoTracking()
+            .Where(m => m.DokCaseId != null && ids.Contains(m.DokCaseId.Value) && m.IsAttended != null)
+            .GroupBy(m => m.DokCaseId!.Value)
+            .Select(g => new { CaseId = g.Key, Recorded = g.Count(), Attended = g.Count(m => m.IsAttended == true) })
+            .ToDictionaryAsync(x => x.CaseId, ct);
+
+        return entities
+            .Select(e => counts.TryGetValue(e.Id, out var c) ? ToDto(e, c.Recorded, c.Attended) : ToDto(e, 0, 0))
+            .ToList();
     }
 
     public async Task<DokCaseDto> CreateAsync(CreateDokCaseRequest request, CancellationToken ct)
@@ -151,7 +167,7 @@ public class DokCaseService : IDokCaseService
         return true;
     }
 
-    private static DokCaseDto ToDto(DokCase c) => new()
+    private static DokCaseDto ToDto(DokCase c, int meetingsRecorded, int meetingsAttended) => new()
     {
         Id = c.Id,
         PersonId = c.PersonId,
@@ -164,6 +180,8 @@ public class DokCaseService : IDokCaseService
         MentorPersonId = c.MentorPersonId,
         MentorFullName = c.MentorPerson?.FullName,
         LastMeetingDate = c.LastMeetingDate,
-        CompletedAtUtc = c.CompletedAtUtc
+        CompletedAtUtc = c.CompletedAtUtc,
+        MeetingsRecorded = meetingsRecorded,
+        MeetingsAttended = meetingsAttended
     };
 }

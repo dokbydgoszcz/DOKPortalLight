@@ -88,6 +88,17 @@ public class MeetingService : IMeetingService
         return await GetByIdAsync(id, ct);
     }
 
+    public async Task<MeetingDto?> SetAttendanceAsync(Guid id, bool? isAttended, CancellationToken ct)
+    {
+        var meeting = await (await VisibleAsync(ct)).FirstOrDefaultAsync(m => m.Id == id, ct);
+        if (meeting is null) return null;
+
+        meeting.IsAttended = isAttended;
+        await _db.SaveChangesAsync(ct);
+
+        return await GetByIdAsync(id, ct);
+    }
+
     public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
     {
         var meeting = await (await VisibleAsync(ct)).FirstOrDefaultAsync(m => m.Id == id, ct);

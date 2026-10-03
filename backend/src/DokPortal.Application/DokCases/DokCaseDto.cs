@@ -16,4 +16,8 @@ public class DokCaseDto
     public string? MentorFullName { get; init; }
     public DateOnly? LastMeetingDate { get; init; }
     public DateTime? CompletedAtUtc { get; init; }
+    /// <summary>Spotkania sprawy z zapisaną obecnością (obecny lub nieobecny).</summary>
+    public int MeetingsRecorded { get; init; }
+    /// <summary>Spośród zapisanych spotkań – te, na których podopieczny był obecny.</summary>
+    public int MeetingsAttended { get; init; }
 }
