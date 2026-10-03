@@ -30,4 +30,5 @@ export interface PersonFormValue {
   notes?: string;
   nameDayMonth?: number;
   nameDayDay?: number;
+  confirmDuplicate?: boolean;
 }

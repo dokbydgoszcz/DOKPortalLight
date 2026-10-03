@@ -159,4 +159,88 @@ describe('PeopleListComponent', () => {
       expect(toastMessages()).toContain('Nie udało się usunąć osoby.');
     });
   });
+
+  describe('duplicate contact data', () => {
+    const emailTaken = { status: 409, title: 'Ten adres e-mail ma już: Anna Maj. Adres e-mail musi być unikalny.', code: 'EmailTaken', duplicates: [] };
+    const phoneDuplicate = { status: 409, title: 'Ten numer telefonu ma już: Anna Maj.', code: 'PhoneDuplicate', duplicates: [] };
+
+    async function openAddForm() {
+      const ctx = boot();
+      clickByText(ctx.el, 'Dodaj osobę');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      setInput(ctx.el, 'input[name="firstName"]', 'Ola');
+      setInput(ctx.el, 'input[name="lastName"]', 'Nowak');
+      setInput(ctx.el, 'input[name="phone"]', '600100200');
+      return ctx;
+    }
+
+    it('shows the server message and keeps the form open when the e-mail is already taken', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm');
+      const ctx = await openAddForm();
+
+      clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+      ctx.http.expectOne(r => r.method === 'POST' && r.url === peopleUrl).flush(emailTaken, { status: 409, statusText: 'Conflict' });
+      ctx.fixture.detectChanges();
+
+      expect(toastMessages()).toContain(emailTaken.title);
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(ctx.el.querySelector('.modal')).not.toBeNull();
+      ctx.http.expectNone(r => r.method === 'POST');
+    });
+
+    it('asks for confirmation on a duplicated phone and saves again with the confirmation', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const ctx = await openAddForm();
+
+      clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+      ctx.http.expectOne(r => r.method === 'POST' && r.url === peopleUrl).flush(phoneDuplicate, { status: 409, statusText: 'Conflict' });
+
+      expect(confirmSpy).toHaveBeenCalledWith(`${phoneDuplicate.title} Zapisać mimo to?`);
+      const retry = ctx.http.expectOne(r => r.method === 'POST' && r.url === peopleUrl);
+      expect(retry.request.body.confirmDuplicate).toBe(true);
+      expect(retry.request.body.phone).toBe('600100200');
+      retry.flush({ ...anna, id: '2' });
+      expect(toastMessages()).toContain('Dodano osobę.');
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === peopleUrl).flush({ items: [anna], totalCount: 1, page: 1, pageSize: 20 });
+    });
+
+    it('does not save when the confirmation is declined and leaves the form open', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+      const ctx = await openAddForm();
+
+      clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+      ctx.http.expectOne(r => r.method === 'POST' && r.url === peopleUrl).flush(phoneDuplicate, { status: 409, statusText: 'Conflict' });
+      ctx.fixture.detectChanges();
+
+      ctx.http.expectNone(r => r.method === 'POST');
+      expect(ctx.el.querySelector('.modal')).not.toBeNull();
+      expect(toastMessages()).not.toContain('Nie udało się zapisać osoby.');
+    });
+
+    it('also confirms a duplicated phone when editing a person', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const ctx = boot();
+      clickByText(ctx.el, 'Edytuj');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+
+      clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+      ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${peopleUrl}/1`).flush(phoneDuplicate, { status: 409, statusText: 'Conflict' });
+
+      const retry = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${peopleUrl}/1`);
+      expect(retry.request.body.confirmDuplicate).toBe(true);
+      retry.flush(anna);
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === peopleUrl).flush({ items: [anna], totalCount: 1, page: 1, pageSize: 20 });
+    });
+
+    it('keeps the generic message for other conflicts and errors', async () => {
+      const ctx = await openAddForm();
+
+      clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+      ctx.http.expectOne(r => r.method === 'POST').flush({ status: 409, title: 'Inny konflikt' }, { status: 409, statusText: 'Conflict' });
+
+      expect(toastMessages()).toContain('Nie udało się zapisać osoby.');
+    });
+  });
 });

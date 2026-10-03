@@ -1,6 +1,7 @@
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { PeopleService } from './people.service';
 import { Person, PersonFormValue } from './person.model';
 import { PersonFormComponent } from './person-form.component';
@@ -76,17 +77,32 @@ export class PeopleListComponent implements OnInit {
     this.isFormOpen.set(true);
   }
 
-  onSave(value: PersonFormValue): void {
+  onSave(value: PersonFormValue, confirmDuplicate = false): void {
     const id = this.editingId();
-    const request$ = id ? this.peopleService.update(id, value) : this.peopleService.create(value);
+    const payload = confirmDuplicate ? { ...value, confirmDuplicate: true } : value;
+    const request$ = id ? this.peopleService.update(id, payload) : this.peopleService.create(payload);
     request$.subscribe({
       next: () => {
         this.isFormOpen.set(false);
         this.toast.success(id ? 'Zapisano zmiany.' : 'Dodano osobę.');
         this.load();
       },
-      error: () => this.toast.error('Nie udało się zapisać osoby.')
+      error: (error: HttpErrorResponse) => this.handleSaveError(error, value)
     });
+  }
+
+  /** E-mail zajęty: komunikat serwera. Telefon już używany: pytamy, czy zapisać mimo to. */
+  private handleSaveError(error: HttpErrorResponse, value: PersonFormValue): void {
+    const problem = error.status === 409 ? error.error : null;
+    if (problem?.code === 'EmailTaken') {
+      this.toast.error(problem.title);
+    } else if (problem?.code === 'PhoneDuplicate') {
+      if (confirm(`${problem.title} Zapisać mimo to?`)) {
+        this.onSave(value, true);
+      }
+    } else {
+      this.toast.error('Nie udało się zapisać osoby.');
+    }
   }
 
   onCancel(): void {
