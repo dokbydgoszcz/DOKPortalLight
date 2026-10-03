@@ -31,16 +31,29 @@
 <div class="card">
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Data</th><th>Szablon</th><th>Osoba</th></tr></thead>
+      <thead><tr><th>Data</th><th>Szablon</th><th>Osoba</th><th>Pobrania</th><th></th></tr></thead>
       <tbody>
         @for (doc of history(); track doc.id) {
           <tr>
-            <td>{{ doc.createdAtUtc }}</td>
-            <td>{{ templateLabels[doc.template] }}</td>
+            <td>{{ doc.createdAtUtc | date: 'dd.MM.yyyy HH:mm' }}</td>
+            <td>
+              {{ templateLabels[doc.template] }}
+              @if (!doc.hasStoredFile) {
+                <br /><span class="small-muted">odtwarzane z aktualnych danych</span>
+              }
+            </td>
             <td>{{ doc.personFullName }}</td>
+            <td class="download-count">{{ doc.downloadCount }}</td>
+            <td>
+              <span class="link" (click)="download(doc)">Pobierz</span>
+              <ng-container *appHasPermission="'Documents.Generate'">
+                &nbsp;·&nbsp;
+                <span class="link" style="color:var(--danger)" (click)="remove(doc)">Usuń</span>
+              </ng-container>
+            </td>
           </tr>
         } @empty {
-          <tr><td colspan="3" class="empty">Brak wygenerowanych dokumentów.</td></tr>
+          <tr><td colspan="5" class="empty">Brak wygenerowanych dokumentów.</td></tr>
         }
       </tbody>
     </table>

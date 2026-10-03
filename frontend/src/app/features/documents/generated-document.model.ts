@@ -14,6 +14,8 @@ export interface GeneratedDocument {
   generatedByUserId: string;
   additionalNotes: string | null;
   createdAtUtc: string;
+  hasStoredFile: boolean;
+  downloadCount: number;
 }
 
 export interface GenerateDocumentValue {

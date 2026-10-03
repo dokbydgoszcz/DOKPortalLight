@@ -1,5 +1,6 @@
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { Component, OnInit, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DocumentsService } from './documents.service';
 import { DOCUMENT_TEMPLATE_LABELS, DocumentTemplate, GeneratedDocument, GenerateDocumentValue } from './generated-document.model';
@@ -10,7 +11,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 @Component({
   selector: 'app-documents',
   standalone: true,
-  imports: [HasPermissionDirective, FormsModule],
+  imports: [HasPermissionDirective, FormsModule, DatePipe],
   templateUrl: './documents.component.html',
   styleUrl: './documents.component.scss'
 })
@@ -39,15 +40,40 @@ export class DocumentsComponent implements OnInit {
   generate(): void {
     this.documentsService.generate(this.form).subscribe({
       next: blob => {
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${this.form.template}.pdf`;
-        link.click();
-        window.URL.revokeObjectURL(url);
+        this.saveBlob(blob, `${this.form.template}.pdf`);
         this.load();
       },
       error: () => this.toast.error('Nie udało się wygenerować dokumentu.')
     });
+  }
+
+  download(doc: GeneratedDocument): void {
+    this.documentsService.download(doc.id).subscribe({
+      next: blob => {
+        this.saveBlob(blob, `${doc.template}.pdf`);
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się pobrać dokumentu.')
+    });
+  }
+
+  remove(doc: GeneratedDocument): void {
+    if (!confirm(`Usunąć dokument „${this.templateLabels[doc.template]}” dla ${doc.personFullName}?`)) return;
+    this.documentsService.delete(doc.id).subscribe({
+      next: () => {
+        this.toast.success('Dokument usunięty.');
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się usunąć dokumentu.')
+    });
+  }
+
+  private saveBlob(blob: Blob, fileName: string): void {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    window.URL.revokeObjectURL(url);
   }
 }

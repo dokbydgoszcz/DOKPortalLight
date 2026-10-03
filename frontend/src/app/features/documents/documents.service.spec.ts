@@ -30,4 +30,31 @@ describe('DocumentsService', () => {
     req.flush(new Blob());
     httpMock.verify();
   });
+
+  it('downloads a stored document as a blob', () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const service = TestBed.inject(DocumentsService);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    service.download('d1').subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/documents/d1/download`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.responseType).toBe('blob');
+    req.flush(new Blob());
+    httpMock.verify();
+  });
+
+  it('deletes a document', () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const service = TestBed.inject(DocumentsService);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    service.delete('d1').subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/documents/d1`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+    httpMock.verify();
+  });
 });

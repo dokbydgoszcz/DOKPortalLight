@@ -13,6 +13,14 @@ export class DocumentsService {
     return this.http.get<GeneratedDocument[]>(this.baseUrl);
   }
 
+  download(id: string) {
+    return this.http.get(`${this.baseUrl}/${id}/download`, { responseType: 'blob' });
+  }
+
+  delete(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
   generate(value: GenerateDocumentValue) {
     return this.http.post(`${this.baseUrl}/generate`, value, { responseType: 'blob' });
   }
