@@ -40,7 +40,13 @@ export class MailingComponent implements OnInit {
     this.isFormOpen.set(true);
   }
 
+  /** Kampania bez tematu lub treści nie ma sensu, więc zapis czeka na oba pola. */
+  get canSave(): boolean {
+    return !!this.newCampaign.subject.trim() && !!this.newCampaign.body.trim();
+  }
+
   createCampaign(): void {
+    if (!this.canSave) return;
     this.mailingService.create(this.newCampaign).subscribe({
       next: () => {
         this.isFormOpen.set(false);

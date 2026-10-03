@@ -66,6 +66,7 @@ describe('MailingComponent', () => {
       setInput(ctx.el, 'input[name="subject"]', 'Rekolekcje');
       setSelect(ctx.el, 'select[name="group"]', 'Missionaries');
       setInput(ctx.el, 'textarea[name="body"]', 'Zapraszamy w sobotę.');
+      ctx.fixture.detectChanges();
       clickByText(ctx.el, 'Zapisz', '.modal-foot button');
 
       const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
@@ -78,8 +79,43 @@ describe('MailingComponent', () => {
       ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([draft]);
     });
 
+    const saveButton = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.modal-foot button')).find(b => b.textContent!.includes('Zapisz'))!;
+
+    it('keeps saving disabled, with a hint, until both the subject and the body have text', async () => {
+      const ctx = await openForm();
+
+      expect(saveButton(ctx.el).disabled).toBe(true);
+      expect(textOf(ctx.el)).toContain('Uzupełnij pola oznaczone *');
+      expect(ctx.el.querySelectorAll('.modal .field .required').length).toBe(2);
+      saveButton(ctx.el).click();
+      ctx.http.expectNone(r => r.method === 'POST');
+
+      setInput(ctx.el, 'input[name="subject"]', 'Rekolekcje');
+      ctx.fixture.detectChanges();
+      expect(saveButton(ctx.el).disabled).toBe(true);
+
+      setInput(ctx.el, 'textarea[name="body"]', '   ');
+      ctx.fixture.detectChanges();
+      expect(saveButton(ctx.el).disabled).toBe(true);
+
+      setInput(ctx.el, 'textarea[name="body"]', 'Zapraszamy.');
+      ctx.fixture.detectChanges();
+      expect(saveButton(ctx.el).disabled).toBe(false);
+      expect(textOf(ctx.el)).not.toContain('Uzupełnij pola oznaczone *');
+    });
+
+    it('limits the subject to 200 characters, as the server does', async () => {
+      const ctx = await openForm();
+
+      expect((ctx.el.querySelector('input[name="subject"]') as HTMLInputElement).maxLength).toBe(200);
+    });
+
     it('defaults to the candidates group, shows a toast when adding fails and closes on cancel', async () => {
       const ctx = await openForm();
+      setInput(ctx.el, 'input[name="subject"]', 'Temat');
+      setInput(ctx.el, 'textarea[name="body"]', 'Treść');
+      ctx.fixture.detectChanges();
 
       clickByText(ctx.el, 'Zapisz', '.modal-foot button');
       const req = ctx.http.expectOne(r => r.method === 'POST');

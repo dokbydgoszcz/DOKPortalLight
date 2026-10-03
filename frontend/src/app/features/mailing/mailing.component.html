@@ -44,7 +44,7 @@
       </div>
       <div class="modal-body">
         <div class="form-grid">
-          <div class="field"><label>Temat</label><input [(ngModel)]="newCampaign.subject" name="subject" /></div>
+          <div class="field"><label>Temat <span class="required">*</span></label><input [(ngModel)]="newCampaign.subject" name="subject" maxlength="200" /></div>
           <div class="field">
             <label>Grupa odbiorców</label>
             <select [(ngModel)]="newCampaign.group" name="group">
@@ -53,12 +53,15 @@
               }
             </select>
           </div>
-          <div class="field full"><label>Treść</label><textarea [(ngModel)]="newCampaign.body" name="body"></textarea></div>
+          <div class="field full"><label>Treść <span class="required">*</span></label><textarea [(ngModel)]="newCampaign.body" name="body"></textarea></div>
         </div>
       </div>
       <div class="modal-foot">
+        @if (!canSave) {
+          <span class="form-hint">Uzupełnij pola oznaczone *</span>
+        }
         <button class="btn ghost" (click)="cancel()">Anuluj</button>
-        <button class="btn primary" (click)="createCampaign()">Zapisz</button>
+        <button class="btn primary" [disabled]="!canSave" (click)="createCampaign()">Zapisz</button>
       </div>
     </div>
   </div>
