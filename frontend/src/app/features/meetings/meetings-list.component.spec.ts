@@ -434,4 +434,40 @@ describe('MeetingsListComponent', () => {
       });
     });
   });
+
+  describe('meeting notes', () => {
+    it('lets you type notes for a new meeting and posts them', async () => {
+      const ctx = boot();
+      clickByText(ctx.el, 'Dodaj spotkanie');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+
+      setInput(ctx.el, 'input[name="meetingDate"]', '2026-10-21');
+      setInput(ctx.el, 'textarea[name="notes"]', 'Omówiono rozdział 3; kolejne spotkanie za tydzień.');
+      ctx.fixture.detectChanges();
+      saveButton(ctx.el).click();
+
+      const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
+      expect(req.request.body.notes).toBe('Omówiono rozdział 3; kolejne spotkanie za tydzień.');
+      req.flush(groupMeeting);
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([groupMeeting]);
+    });
+
+    it('shows the existing notes in the edit form and saves a changed note', async () => {
+      const ctx = boot([caseMeeting]);
+      clickByText(ctx.el, 'Edytuj');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      expect((ctx.el.querySelector('textarea[name="notes"]') as HTMLTextAreaElement).value).toBe('ok');
+
+      setInput(ctx.el, 'textarea[name="notes"]', 'Zmieniona notatka');
+      ctx.fixture.detectChanges();
+      saveButton(ctx.el).click();
+
+      const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${url}/m2`);
+      expect(req.request.body.notes).toBe('Zmieniona notatka');
+      req.flush(caseMeeting);
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([caseMeeting]);
+    });
+  });
 });
