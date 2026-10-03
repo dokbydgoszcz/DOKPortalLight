@@ -11,4 +11,6 @@ public class GeneratedDocumentDto
     public required string GeneratedByUserId { get; init; }
     public string? AdditionalNotes { get; init; }
     public required DateTime CreatedAtUtc { get; init; }
+    public bool HasStoredFile { get; init; }
+    public int DownloadCount { get; init; }
 }

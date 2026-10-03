@@ -1,3 +1,4 @@
+using DokPortal.Application.Common;
 using DokPortal.Application.Documents;
 using DokPortal.Domain.Entities;
 using DokPortal.Domain.Enums;
@@ -21,13 +22,18 @@ public class DocumentService : IDocumentService
     };
 
     private readonly AppDbContext _db;
+    private readonly IFileStorageService? _storage;
 
     static DocumentService()
     {
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
-    public DocumentService(AppDbContext db) => _db = db;
+    public DocumentService(AppDbContext db, IFileStorageService? storage = null)
+    {
+        _db = db;
+        _storage = storage;
+    }
 
     public async Task<GeneratedDocumentResult?> GenerateAsync(GenerateDocumentRequest request, string generatedByUserId, CancellationToken ct)
     {
@@ -35,7 +41,8 @@ public class DocumentService : IDocumentService
             .FirstOrDefaultAsync(p => p.Id == request.PersonId, ct);
         if (person is null) return null;
 
-        var pdfBytes = RenderPdf(TemplateTitles[request.Template], person, request.AdditionalNotes);
+        var createdAt = DateTime.UtcNow;
+        var pdfBytes = RenderPdf(TemplateTitles[request.Template], person, request.AdditionalNotes, createdAt);
 
         var history = new GeneratedDocument
         {
@@ -44,8 +51,10 @@ public class DocumentService : IDocumentService
             PersonId = person.Id,
             GeneratedByUserId = generatedByUserId,
             AdditionalNotes = request.AdditionalNotes,
-            CreatedAtUtc = DateTime.UtcNow
+            CreatedAtUtc = createdAt,
+            DownloadCount = 1
         };
+        await TryStoreAsync(history, pdfBytes, ct);
         _db.GeneratedDocuments.Add(history);
         await _db.SaveChangesAsync(ct);
 
@@ -60,7 +69,82 @@ public class DocumentService : IDocumentService
         return docs.Select(d => ToDto(d, d.Person!.FullName)).ToList();
     }
 
-    private static byte[] RenderPdf(string title, Person person, string? additionalNotes)
+    public async Task<DocumentDownload?> DownloadAsync(Guid id, CancellationToken ct)
+    {
+        var history = await _db.GeneratedDocuments.FirstOrDefaultAsync(d => d.Id == id, ct);
+        if (history is null) return null;
+
+        var fileName = $"{history.Template}.pdf";
+        byte[]? bytes = null;
+        if (history.BlobPath is not null && _storage is not null)
+        {
+            var stored = await _storage.DownloadAsync(history.BlobPath, ct);
+            if (stored is not null)
+            {
+                await using var content = stored.Content;
+                using var buffer = new MemoryStream();
+                await content.CopyToAsync(buffer, ct);
+                bytes = buffer.ToArray();
+            }
+        }
+
+        var restored = bytes is null;
+        if (restored)
+        {
+            var person = await _db.People.Include(p => p.Parish).AsNoTracking().FirstOrDefaultAsync(p => p.Id == history.PersonId, ct)
+                ?? throw new InvalidOperationException("Nie można odtworzyć pisma: osoba została usunięta.");
+            bytes = RenderPdf(TemplateTitles[history.Template], person, history.AdditionalNotes, history.CreatedAtUtc);
+        }
+
+        history.DownloadCount++;
+        await _db.SaveChangesAsync(ct);
+        return new DocumentDownload { PdfBytes = bytes!, FileName = fileName, Restored = restored };
+    }
+
+    public async Task<GeneratedDocumentDto?> DeleteAsync(Guid id, CancellationToken ct)
+    {
+        var history = await _db.GeneratedDocuments.Include(d => d.Person).FirstOrDefaultAsync(d => d.Id == id, ct);
+        if (history is null) return null;
+
+        var dto = ToDto(history, history.Person!.FullName);
+        _db.GeneratedDocuments.Remove(history);
+        await _db.SaveChangesAsync(ct);
+
+        if (history.BlobPath is not null && _storage is not null)
+        {
+            try
+            {
+                await _storage.DeleteAsync(history.BlobPath, ct);
+            }
+            catch (Exception)
+            {
+                // Wpis już usunięty – osierocony plik nie powinien blokować użytkownika.
+            }
+        }
+        return dto;
+    }
+
+    /// <summary>Zapis egzemplarza PDF jest dodatkiem: gdy magazyn zawiedzie, pismo i tak trafia do użytkownika.</summary>
+    private async Task TryStoreAsync(GeneratedDocument history, byte[] pdfBytes, CancellationToken ct)
+    {
+        if (_storage is null) return;
+
+        var blobPath = $"generated-documents/{history.Id}/{history.Template}.pdf";
+        try
+        {
+            using var stream = new MemoryStream(pdfBytes);
+            await _storage.UploadAsync(blobPath, stream, "application/pdf", ct);
+            history.BlobPath = blobPath;
+            history.FileSizeBytes = pdfBytes.Length;
+        }
+        catch (Exception)
+        {
+            history.BlobPath = null;
+            history.FileSizeBytes = null;
+        }
+    }
+
+    private static byte[] RenderPdf(string title, Person person, string? additionalNotes, DateTime date)
     {
         var document = Document.Create(container =>
         {
@@ -71,7 +155,7 @@ public class DocumentService : IDocumentService
                 page.Content().Column(column =>
                 {
                     column.Spacing(10);
-                    column.Item().Text($"Data: {DateTime.UtcNow:yyyy-MM-dd}");
+                    column.Item().Text($"Data: {date:yyyy-MM-dd}");
                     column.Item().Text($"Imię i nazwisko: {person.FullName}");
                     column.Item().Text($"Data urodzenia: {(person.BirthDate.HasValue ? person.BirthDate.Value.ToString("yyyy-MM-dd") : "brak danych")}");
                     column.Item().Text($"Parafia: {person.Parish?.Name ?? "brak danych"}");
@@ -93,6 +177,8 @@ public class DocumentService : IDocumentService
         PersonFullName = personFullName,
         GeneratedByUserId = d.GeneratedByUserId,
         AdditionalNotes = d.AdditionalNotes,
-        CreatedAtUtc = d.CreatedAtUtc
+        CreatedAtUtc = d.CreatedAtUtc,
+        HasStoredFile = d.BlobPath is not null,
+        DownloadCount = d.DownloadCount
     };
 }
