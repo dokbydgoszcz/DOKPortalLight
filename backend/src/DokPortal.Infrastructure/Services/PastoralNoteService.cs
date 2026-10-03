@@ -1,5 +1,6 @@
 using DokPortal.Application.PastoralNotes;
 using DokPortal.Domain.Entities;
+using DokPortal.Domain.Enums;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,7 +27,9 @@ public class PastoralNoteService : IPastoralNoteService
             .Where(u => authorIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, u => u.Email, ct);
 
-        return notes.Select(n => ToDto(n, authorEmails.GetValueOrDefault(n.AuthorUserId))).ToList();
+        var attachments = await AttachmentLookup.ForOwnersAsync(_db, AttachmentOwnerType.PastoralNote, notes.Select(n => n.Id).ToList(), ct);
+
+        return notes.Select(n => ToDto(n, authorEmails.GetValueOrDefault(n.AuthorUserId), attachments.GetValueOrDefault(n.Id))).ToList();
     }
 
     public async Task<PastoralNoteDto> CreateAsync(Guid caseId, string authorUserId, CreatePastoralNoteRequest request, CancellationToken ct)
@@ -42,16 +45,27 @@ public class PastoralNoteService : IPastoralNoteService
         return ToDto(note, authorEmail);
     }
 
+    public async Task<PastoralNoteAccess> GetAccessAsync(Guid caseId, Guid noteId, string currentUserId, bool isPrivileged, CancellationToken ct)
+    {
+        var authorId = await _db.PastoralNotes.AsNoTracking()
+            .Where(n => n.Id == noteId && n.DokCaseId == caseId)
+            .Select(n => n.AuthorUserId)
+            .FirstOrDefaultAsync(ct);
+        if (authorId is null) return PastoralNoteAccess.NotFound;
+        return isPrivileged || authorId == currentUserId ? PastoralNoteAccess.Visible : PastoralNoteAccess.Hidden;
+    }
+
     public Task<bool> HasNotesFromOthersAsync(Guid caseId, string currentUserId, CancellationToken ct) =>
         _db.PastoralNotes.AnyAsync(n => n.DokCaseId == caseId && n.AuthorUserId != currentUserId, ct);
 
-    private static PastoralNoteDto ToDto(PastoralNote n, string? authorEmail) => new()
+    private static PastoralNoteDto ToDto(PastoralNote n, string? authorEmail, IReadOnlyList<DokPortal.Application.Attachments.AttachmentDto>? attachments = null) => new()
     {
         Id = n.Id,
         DokCaseId = n.DokCaseId,
         AuthorUserId = n.AuthorUserId,
         AuthorEmail = authorEmail,
         Content = n.Content,
-        CreatedAtUtc = n.CreatedAtUtc
+        CreatedAtUtc = n.CreatedAtUtc,
+        Attachments = attachments ?? Array.Empty<DokPortal.Application.Attachments.AttachmentDto>()
     };
 }

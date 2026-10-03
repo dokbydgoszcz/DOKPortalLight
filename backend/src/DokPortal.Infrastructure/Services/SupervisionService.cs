@@ -21,13 +21,15 @@ public class SupervisionService : ISupervisionService
         }
 
         var supervisions = await q.OrderByDescending(s => s.SupervisionDate).ToListAsync(ct);
-        return supervisions.Select(ToDto).ToList();
+        var attachments = await AttachmentLookup.ForOwnersAsync(_db, AttachmentOwnerType.Supervision, supervisions.Select(s => s.Id).ToList(), ct);
+        return supervisions.Select(s => ToDto(s, attachments.GetValueOrDefault(s.Id))).ToList();
     }
 
     public async Task<SupervisionDto?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         var supervision = await _db.Supervisions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id, ct);
-        return supervision is null ? null : ToDto(supervision);
+        if (supervision is null) return null;
+        return ToDto(supervision, await LoadAttachmentsAsync(id, ct));
     }
 
     public async Task<SupervisionDto> CreateAsync(CreateSupervisionRequest request, CancellationToken ct)
@@ -63,7 +65,7 @@ public class SupervisionService : ISupervisionService
         supervision.Conclusion = request.Conclusion;
         await _db.SaveChangesAsync(ct);
 
-        return ToDto(supervision);
+        return ToDto(supervision, await LoadAttachmentsAsync(id, ct));
     }
 
     public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
@@ -77,7 +79,11 @@ public class SupervisionService : ISupervisionService
         return true;
     }
 
-    private static SupervisionDto ToDto(Supervision s) => new()
+    private async Task<IReadOnlyList<DokPortal.Application.Attachments.AttachmentDto>> LoadAttachmentsAsync(Guid id, CancellationToken ct) =>
+        (await AttachmentLookup.ForOwnersAsync(_db, AttachmentOwnerType.Supervision, new[] { id }, ct)).GetValueOrDefault(id)
+        ?? new List<DokPortal.Application.Attachments.AttachmentDto>();
+
+    private static SupervisionDto ToDto(Supervision s, IReadOnlyList<DokPortal.Application.Attachments.AttachmentDto>? attachments = null) => new()
     {
         Id = s.Id,
         Institution = s.Institution,
@@ -86,6 +92,7 @@ public class SupervisionService : ISupervisionService
         AttendeesCount = s.AttendeesCount,
         ExpectedCount = s.ExpectedCount,
         Topic = s.Topic,
-        Conclusion = s.Conclusion
+        Conclusion = s.Conclusion,
+        Attachments = attachments ?? Array.Empty<DokPortal.Application.Attachments.AttachmentDto>()
     };
 }

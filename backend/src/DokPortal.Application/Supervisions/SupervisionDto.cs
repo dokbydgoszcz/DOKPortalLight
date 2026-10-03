@@ -1,3 +1,4 @@
+using DokPortal.Application.Attachments;
 using DokPortal.Domain.Enums;
 
 namespace DokPortal.Application.Supervisions;
@@ -12,4 +13,5 @@ public class SupervisionDto
     public int? ExpectedCount { get; init; }
     public string? Topic { get; init; }
     public string? Conclusion { get; init; }
+    public IReadOnlyList<AttachmentDto> Attachments { get; init; } = Array.Empty<AttachmentDto>();
 }

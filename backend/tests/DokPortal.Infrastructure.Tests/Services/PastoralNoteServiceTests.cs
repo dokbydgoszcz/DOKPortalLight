@@ -56,4 +56,47 @@ public class PastoralNoteServiceTests
 
         Assert.Equal(2, visibleToDirector.Count);
     }
+
+    [Fact]
+    public async Task GetAccessAsync_DistinguishesMissingHiddenAndVisibleNotes()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var caseId = await SeedCaseAsync(db);
+        var otherCaseId = await SeedCaseAsync(db);
+        var service = new PastoralNoteService(db);
+        var note = await service.CreateAsync(caseId, "author-a", new CreatePastoralNoteRequest { Content = "A" }, default);
+
+        Assert.Equal(PastoralNoteAccess.Visible, await service.GetAccessAsync(caseId, note.Id, "author-a", false, default));
+        Assert.Equal(PastoralNoteAccess.Visible, await service.GetAccessAsync(caseId, note.Id, "director", true, default));
+        Assert.Equal(PastoralNoteAccess.Hidden, await service.GetAccessAsync(caseId, note.Id, "author-b", false, default));
+        Assert.Equal(PastoralNoteAccess.NotFound, await service.GetAccessAsync(caseId, Guid.NewGuid(), "author-a", false, default));
+        Assert.Equal(PastoralNoteAccess.NotFound, await service.GetAccessAsync(otherCaseId, note.Id, "author-a", true, default));
+    }
+
+    [Fact]
+    public async Task GetVisibleForCaseAsync_ListsTheAttachmentsOfEachNote()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var caseId = await SeedCaseAsync(db);
+        var service = new PastoralNoteService(db);
+        var withFiles = await service.CreateAsync(caseId, "author-a", new CreatePastoralNoteRequest { Content = "Ze skanem" }, default);
+        var without = await service.CreateAsync(caseId, "author-a", new CreatePastoralNoteRequest { Content = "Bez" }, default);
+        Assert.Empty(withFiles.Attachments);
+        db.Attachments.Add(new Attachment
+        {
+            Id = Guid.NewGuid(), OwnerType = AttachmentOwnerType.PastoralNote, OwnerId = withFiles.Id, FileName = "kindle.pdf",
+            ContentType = "application/pdf", SizeBytes = 10, BlobPath = "x", UploadedByUserId = "author-a", UploadedAtUtc = DateTime.UtcNow
+        });
+        db.Attachments.Add(new Attachment
+        {
+            Id = Guid.NewGuid(), OwnerType = AttachmentOwnerType.Supervision, OwnerId = without.Id, FileName = "obcy.pdf",
+            ContentType = "application/pdf", SizeBytes = 10, BlobPath = "y", UploadedByUserId = "author-a", UploadedAtUtc = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var notes = await service.GetVisibleForCaseAsync(caseId, "author-a", false, default);
+
+        Assert.Equal("kindle.pdf", notes.Single(n => n.Id == withFiles.Id).Attachments.Single().FileName);
+        Assert.Empty(notes.Single(n => n.Id == without.Id).Attachments);
+    }
 }

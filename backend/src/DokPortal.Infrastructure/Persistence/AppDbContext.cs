@@ -26,6 +26,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<MeetingAttendee> MeetingAttendees => Set<MeetingAttendee>();
     public DbSet<Supervision> Supervisions => Set<Supervision>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<GeneratedDocument> GeneratedDocuments => Set<GeneratedDocument>();
     public DbSet<MailingCampaign> MailingCampaigns => Set<MailingCampaign>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
@@ -124,6 +125,15 @@ public class AppDbContext : IdentityDbContext<AppUser>
         builder.Entity<Supervision>(entity =>
         {
             entity.Property(s => s.GroupLabel).IsRequired().HasMaxLength(200);
+        });
+
+        builder.Entity<Attachment>(entity =>
+        {
+            entity.Property(a => a.FileName).IsRequired().HasMaxLength(260);
+            entity.Property(a => a.ContentType).IsRequired().HasMaxLength(150);
+            entity.Property(a => a.BlobPath).IsRequired().HasMaxLength(500);
+            entity.Property(a => a.UploadedByUserId).IsRequired().HasMaxLength(450);
+            entity.HasIndex(a => new { a.OwnerType, a.OwnerId });
         });
 
         builder.Entity<GeneratedDocument>(entity =>

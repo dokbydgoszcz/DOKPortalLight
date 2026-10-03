@@ -1,3 +1,4 @@
+using DokPortal.Application.Attachments;
 using DokPortal.Application.Auth;
 using DokPortal.Application.AuditLog;
 using DokPortal.Application.Budget;
@@ -94,6 +95,7 @@ builder.Services.AddScoped<ICaseDocumentService, CaseDocumentService>();
 builder.Services.AddScoped<IPastoralNoteService, PastoralNoteService>();
 builder.Services.AddScoped<IMeetingService, MeetingService>();
 builder.Services.AddScoped<ISupervisionService, SupervisionService>();
+builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 builder.Services.AddScoped<INameDayService, NameDayService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IMailingService, MailingService>();

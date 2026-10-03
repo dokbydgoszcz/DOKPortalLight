@@ -1,4 +1,5 @@
 using DokPortal.Api.Authorization;
+using DokPortal.Application.Attachments;
 using DokPortal.Application.CaseDocuments;
 using DokPortal.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
@@ -38,7 +39,7 @@ public class CaseDocumentsController : ControllerBase
 
     [HttpPost("{id:guid}/upload")]
     [HasPermission(Permissions.CaseDocumentsManage)]
-    [RequestSizeLimit(20_000_000)]
+    [RequestSizeLimit(AttachmentRules.MaxRequestBytes)]
     public async Task<ActionResult<CaseDocumentDto>> UploadFile(Guid caseId, Guid id, IFormFile file, CancellationToken ct)
     {
         if (file.Length == 0) return BadRequest(new { message = "Plik jest pusty." });

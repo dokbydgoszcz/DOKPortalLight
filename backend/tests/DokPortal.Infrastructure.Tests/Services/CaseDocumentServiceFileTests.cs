@@ -1,3 +1,4 @@
+using DokPortal.Application.Attachments;
 using System.Text;
 using DokPortal.Application.CaseDocuments;
 using DokPortal.Application.Common;
@@ -131,5 +132,44 @@ public class CaseDocumentServiceFileTests
         Assert.Null(await service.SetProvidedAsync(Guid.NewGuid(), documentId, true, default));
         var cleared = await service.SetProvidedAsync(caseId, documentId, false, default);
         Assert.False(cleared!.IsProvided);
+    }
+
+    [Fact]
+    public async Task UploadFileAsync_RejectsATypeTheRulesDoNotAllow_AndStoresNothing()
+    {
+        var (service, storage, caseId, documentId, db) = await SeedAsync();
+        using var content = Bytes("MZ");
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.UploadFileAsync(caseId, documentId, content, "arkusz.xlsx", "application/vnd.ms-excel", 2, default));
+
+        Assert.Contains("PDF", ex.Message);
+        Assert.Empty(storage.Files);
+        Assert.Null((await db.CaseDocuments.SingleAsync()).BlobPath);
+    }
+
+    [Fact]
+    public async Task UploadFileAsync_RejectsTooBigFiles()
+    {
+        var (service, storage, caseId, documentId, _) = await SeedAsync();
+        using var content = Bytes("x");
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.UploadFileAsync(caseId, documentId, content, "a.pdf", "application/pdf", AttachmentRules.MaxFileBytes + 1, default));
+
+        Assert.Contains("20 MB", ex.Message);
+        Assert.Empty(storage.Files);
+    }
+
+    [Fact]
+    public async Task UploadFileAsync_StoresAContentTypeFromTheExtension_NotFromTheClient()
+    {
+        var (service, storage, caseId, documentId, db) = await SeedAsync();
+        using var content = Bytes("x");
+
+        await service.UploadFileAsync(caseId, documentId, content, "zdjecie.JPG", "application/octet-stream", 1, default);
+
+        Assert.Equal("image/jpeg", (await db.CaseDocuments.SingleAsync()).ContentType);
+        Assert.Equal("image/jpeg", storage.Files.Single().Value.ContentType);
     }
 }

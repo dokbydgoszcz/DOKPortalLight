@@ -1,3 +1,4 @@
+using DokPortal.Application.Attachments;
 using DokPortal.Application.CaseDocuments;
 using DokPortal.Application.Common;
 using DokPortal.Application.DokCases;
@@ -71,12 +72,17 @@ public class CaseDocumentService : ICaseDocumentService
         var document = await _db.CaseDocuments.FirstOrDefaultAsync(d => d.Id == documentId && d.DokCaseId == caseId, ct);
         if (document is null) return null;
 
-        var blobPath = $"case-documents/{caseId}/{documentId}/{fileName}";
-        await _fileStorageService.UploadAsync(blobPath, content, contentType, ct);
+        var cleanName = AttachmentRules.CleanFileName(fileName);
+        var error = AttachmentRules.Validate(cleanName, fileSizeBytes);
+        if (error is not null) throw new InvalidOperationException(error);
+
+        var storedContentType = AttachmentRules.ContentTypeFor(cleanName);
+        var blobPath = $"case-documents/{caseId}/{documentId}/{cleanName}";
+        await _fileStorageService.UploadAsync(blobPath, content, storedContentType, ct);
 
         document.BlobPath = blobPath;
-        document.OriginalFileName = fileName;
-        document.ContentType = contentType;
+        document.OriginalFileName = cleanName;
+        document.ContentType = storedContentType;
         document.FileSizeBytes = fileSizeBytes;
         document.UploadedAtUtc = DateTime.UtcNow;
         document.IsProvided = true;

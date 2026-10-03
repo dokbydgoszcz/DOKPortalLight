@@ -1,5 +1,6 @@
 using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
+using DokPortal.Application.Attachments;
 using DokPortal.Application.Supervisions;
 using DokPortal.Domain.Constants;
 using DokPortal.Domain.Enums;
@@ -14,8 +15,13 @@ namespace DokPortal.Api.Controllers;
 public class SupervisionsController : ControllerBase
 {
     private readonly ISupervisionService _supervisionService;
+    private readonly IAttachmentService _attachmentService;
 
-    public SupervisionsController(ISupervisionService supervisionService) => _supervisionService = supervisionService;
+    public SupervisionsController(ISupervisionService supervisionService, IAttachmentService attachmentService)
+    {
+        _supervisionService = supervisionService;
+        _attachmentService = attachmentService;
+    }
 
     [HttpGet]
     [HasPermission(Permissions.SupervisionsView)]
@@ -52,6 +58,43 @@ public class SupervisionsController : ControllerBase
     {
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
         var deleted = await _supervisionService.DeleteAsync(id, currentUserId, ct);
+        return deleted ? NoContent() : NotFound();
+    }
+
+    [HttpPost("{id:guid}/attachments")]
+    [HasPermission(Permissions.SupervisionsManage)]
+    [RequestSizeLimit(AttachmentRules.MaxRequestBytes)]
+    public async Task<ActionResult<AttachmentDto>> AddAttachment(Guid id, IFormFile file, CancellationToken ct)
+    {
+        if (await _supervisionService.GetByIdAsync(id, ct) is null) return NotFound();
+
+        var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
+        await using var stream = file.OpenReadStream();
+        var attachment = await _attachmentService.AddAsync(
+            AttachmentOwnerType.Supervision, id, stream, file.FileName, file.Length, currentUserId, ct);
+        return Ok(attachment);
+    }
+
+    [HttpGet("{id:guid}/attachments/{attachmentId:guid}/download")]
+    [HasPermission(Permissions.SupervisionsView)]
+    public async Task<IActionResult> DownloadAttachment(Guid id, Guid attachmentId, CancellationToken ct)
+    {
+        if (await _supervisionService.GetByIdAsync(id, ct) is null) return NotFound();
+
+        var result = await _attachmentService.DownloadAsync(AttachmentOwnerType.Supervision, id, attachmentId, ct);
+        if (result is null) return NotFound();
+
+        var (file, fileName) = result.Value;
+        return File(file.Content, file.ContentType, fileName);
+    }
+
+    [HttpDelete("{id:guid}/attachments/{attachmentId:guid}")]
+    [HasPermission(Permissions.SupervisionsManage)]
+    public async Task<IActionResult> DeleteAttachment(Guid id, Guid attachmentId, CancellationToken ct)
+    {
+        if (await _supervisionService.GetByIdAsync(id, ct) is null) return NotFound();
+
+        var deleted = await _attachmentService.DeleteAsync(AttachmentOwnerType.Supervision, id, attachmentId, ct);
         return deleted ? NoContent() : NotFound();
     }
 }
