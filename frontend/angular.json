@@ -85,7 +85,13 @@
               "src/environments/**",
               "src/app/testing/**"
             ],
-            "coverageReporters": ["text-summary", "html"]
+            "coverageReporters": ["text-summary", "html"],
+            "coverageThresholds": {
+              "statements": 97,
+              "branches": 94,
+              "functions": 96,
+              "lines": 98
+            }
           }
         }
       }
