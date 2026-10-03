@@ -11,7 +11,7 @@ Zastąpić ~37 zahardkodowanych `[Authorize(Roles = "...")]` w kontrolerach, zdu
 - Model: uprawnienia w bazie + ekran admina; katalog uprawnień w kodzie, claimy `permission` w JWT dla frontendu.
 - Zakres: refaktor **z ujednoliceniem** — odczyty (GET), dziś otwarte dla każdego zalogowanego, są zaostrzone do widoczności w menu (tabela niżej); słowniki zostają otwarte.
 - Administrator zawsze ma wszystkie uprawnienia, nie jest edytowalny i nie jest zapisany w tabeli (ochrona przed zablokowaniem się z systemu).
-- Poza zakresem: ograniczanie wierszy (np. katechista widzi tylko swoich podopiecznych), zarządzanie rolami/użytkownikami (istnieje), zmiana modelu logowania.
+- Poza zakresem: ograniczanie wierszy (np. katechista widzi tylko swoich podopiecznych), zmiana modelu logowania, zmiana nazwy roli.
 
 ## Rozbicie na trzy części (każda z osobnym planem)
 
@@ -128,11 +128,37 @@ Mapa przydziałów jest cache'owana w `IMemoryCache` (jeden wpis, TTL 60 s, czys
 - Przyciski „Dodaj/Edytuj/Usuń" na listach ukryte bez odpowiedniego `*.Manage`.
 - Wpis w „Co nowego".
 
-## Część 3 — ekran „Uprawnienia ról"
+## Część 3 — ekran „Uprawnienia ról” i własne role
 
-- Backend: `PermissionsController` (`api/permissions`), oba endpointy z `[HasPermission(Permissions.PermissionsManage)]`: `GET matrix` (`{ roles: string[], permissions: [{ name, module, label }], grants: { [rola]: string[] } }`) oraz `PUT roles/{role}` (`{ permissions: string[] }`); zapis loguje do audytu akcję `UpdateRolePermissions` z opisem roli i różnicą (dodane/odebrane).
-- Frontend: komponent `permissions-matrix`, trasa `/admin/permissions` (`Permissions.Manage`), pozycja „Uprawnienia ról" w menu. Tabela: wiersze = uprawnienia pogrupowane po module, kolumny = role (bez Administratora), checkboxy, przycisk „Zapisz" per rola lub dla całości, toast po zapisie, informacja, że zmiany w menu użytkownika widać po ponownym zalogowaniu.
-- Testy: kontroler (200 dla Admina, 403 dla innych, walidacja nieznanej roli/uprawnienia, wpis audytu), spec komponentu.
+Zakres rozszerzony (decyzja z 2026-10-03): oprócz macierzy uprawnień Administrator może tworzyć i usuwać własne role.
+
+### Model ról
+
+- Lista ról pochodzi z bazy (`AspNetRoles` przez `AppDbContext.Roles`), nie ze stałej `AppRoles.All`. Seed nadal zakłada sześć ról systemowych (`AppRoles.All`).
+- **Role systemowe** (te sześć): nie można ich usunąć ani zmienić im nazwy. Administrator pozostaje niezmienny (zawsze wszystkie uprawnienia, brak kolumny w macierzy, brak wierszy w `RolePermissions`).
+- **Role własne:** tworzy Administrator. Nazwa 3–50 znaków (litery łącznie z polskimi, cyfry, spacja, myślnik), unikalna bez względu na wielkość liter także względem ról systemowych. Nowa rola startuje bez uprawnień. Zmiany nazwy nie ma (usuń i utwórz od nowa).
+- **Usuwanie:** tylko roli własnej i tylko gdy żaden użytkownik jej nie ma (komunikat z liczbą użytkowników); usunięcie czyści też jej wiersze w `RolePermissions` i cache.
+- `PermissionService` czyta role bezpośrednio z `AppDbContext` (bez `RoleManager`), nowa rola dostaje `Id = Guid`, `Name` i `NormalizedName = nazwa.ToUpperInvariant()` (spójnie z normalizacją Identity).
+- Claimy `role` w JWT i `PermissionAuthorizationHandler` bez zmian (role własne działają od razu, bo przydziały są po nazwie roli).
+- Uprawnienie `Permissions.Manage` zostaje tylko dla Administratora (nie występuje w domyślnych przydziałach); kto je dostanie, może nadać sobie wszystko.
+
+### Backend
+
+- `IPermissionService` rozszerzony o `CreateRoleAsync(string name, ct) : Task<RoleInfoDto>` i `DeleteRoleAsync(string role, ct) : Task`; `GetMatrixAsync` zwraca role z bazy jako `RoleInfoDto { Name, IsSystem }` (systemowe najpierw w kolejności `AppRoles.All`, potem własne alfabetycznie), a `UpdateRolePermissionsAsync` waliduje rolę względem bazy (nie `AppRoles.All`). Błędy walidacji to `InvalidOperationException` (400).
+- `PermissionsController` (`api/permissions`, `[HasPermission(Permissions.PermissionsManage)]`): `GET matrix` (`{ roles: [{ name, isSystem }], permissions: [{ name, module, label }], grants: { [rola]: string[] } }`), `PUT roles/{role}` (`{ permissions: string[] }`), `POST roles` (`{ name }`, 201), `DELETE roles/{role}` (204). Audyt: `UpdateRolePermissions` (opis: rola + dodane/odebrane), `CreateRole`, `DeleteRole`.
+- `UsersController`: `GET api/users/roles` (pod `Users.Manage`) zwraca nazwy wszystkich ról (z Administratorem) dla ekranu użytkowników.
+
+### Frontend
+
+- `PermissionsService` (`GET matrix`, `PUT/POST/DELETE roles`), komponent `permissions-matrix`, trasa `/admin/permissions` (`permissionGuard(Permissions.PermissionsManage)`), pozycja „Uprawnienia ról” w menu pod „Użytkownicy i role”.
+- Tabela: uprawnienia pogrupowane po module (wiersz nagłówka modułu), kolumny = role (bez Administratora), checkboxy; „Zapisz zmiany” (zapisuje tylko zmienione role) i „Cofnij”; pole „Dodaj rolę” z nazwą i przycisk; w nagłówku roli własnej przycisk „Usuń” (z `confirm`); toasty o powodzeniu/błędzie (komunikat z backendu); informacja, że Administrator ma zawsze wszystkie uprawnienia oraz że zmiany w menu i przyciskach użytkownik zobaczy po ponownym zalogowaniu.
+- `users-list`: lista ról z `GET api/users/roles` (sygnał) zamiast stałej `ALL_ROLES` (stała znika z `user.model.ts`).
+
+### Testy
+
+- Serwis (InMemory): tworzenie roli, walidacja nazwy (za krótka/za długa/niedozwolone znaki), duplikat (także w innej wielkości liter i nazwa roli systemowej), usunięcie roli własnej czyści przydziały, blokada usunięcia roli systemowej, blokada usunięcia roli z użytkownikami, macierz zawiera role własne z `IsSystem=false`, aktualizacja przydziałów roli własnej.
+- Integracyjne: `PermissionsController` (200/201/204 dla Administratora, 403 dla pozostałych, 400 przy błędach, wpisy w audycie), `GET api/users/roles`, nowa rola działa w autoryzacji po nadaniu uprawnienia (użytkownik z rolą własną dostaje 200 na endpoint objęty nadanym uprawnieniem).
+- Frontend: spec `permissions-matrix` (render, zmiana checkboxa, zapis tylko zmienionych ról, dodanie i usunięcie roli), spec `users-list` (lista ról z API), `app.routes.spec` i menu obejmują nową pozycję.
 
 ## Ryzyka i uwagi
 
