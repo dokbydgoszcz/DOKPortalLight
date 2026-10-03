@@ -33,7 +33,8 @@ public class CandidateServiceTests
 
         await service.CreateAsync(new CreateCandidateRequest
         {
-            PersonId = personId, Year = 3, AttendancePercentage = 94, OpinionsCollected = 2, IsRetreatCompleted = true
+            PersonId = personId, Year = 3, AttendancePercentage = 94, OpinionsCollected = 2,
+            Retreats = new[] { new CandidateRetreatDto { Year = 3, IsCompleted = true } }
         }, default);
 
         var yearThree = await service.SearchAsync(3, 1, 20, default);
@@ -52,7 +53,7 @@ public class CandidateServiceTests
 
         var result = await service.UpdateAsync(Guid.NewGuid(), new UpdateCandidateRequest
         {
-            PersonId = Guid.NewGuid(), Year = 1, OpinionsCollected = 0, IsRetreatCompleted = false
+            PersonId = Guid.NewGuid(), Year = 1, OpinionsCollected = 0
         }, default);
 
         Assert.Null(result);

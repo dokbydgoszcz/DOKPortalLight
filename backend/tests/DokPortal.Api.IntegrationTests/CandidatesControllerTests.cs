@@ -29,7 +29,7 @@ public class CandidatesControllerTests : IntegrationTestBase
 
         var createResponse = await admin.PostAsJsonAsync("/api/candidates", new
         {
-            PersonId = personId, Year = 1, AttendancePercentage = 81, OpinionsCollected = 0, IsRetreatCompleted = false
+            PersonId = personId, Year = 1, AttendancePercentage = 81, OpinionsCollected = 0
         });
 
         createResponse.EnsureSuccessStatusCode();
@@ -46,7 +46,7 @@ public class CandidatesControllerTests : IntegrationTestBase
     {
         var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
         var personId = await CreatePersonAsync(admin, "Tomasz", "Wisniewski");
-        await admin.PostAsJsonAsync("/api/candidates", new { PersonId = personId, Year = 2, OpinionsCollected = 1, IsRetreatCompleted = true });
+        await admin.PostAsJsonAsync("/api/candidates", new { PersonId = personId, Year = 2, OpinionsCollected = 1 });
 
         var response = await admin.GetAsync("/api/candidates?year=2");
 
@@ -61,8 +61,54 @@ public class CandidatesControllerTests : IntegrationTestBase
     {
         var client = await CreateAuthenticatedClientAsync($"kat-{Guid.NewGuid():N}@example.org", "Sekret123!", "KatechistaProwadzacy");
 
-        var response = await client.PostAsJsonAsync("/api/candidates", new { PersonId = Guid.NewGuid(), Year = 1, OpinionsCollected = 0, IsRetreatCompleted = false });
+        var response = await client.PostAsJsonAsync("/api/candidates", new { PersonId = Guid.NewGuid(), Year = 1, OpinionsCollected = 0 });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Retreats_AreSavedWithTheCandidate_AndReplacedOnUpdate()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        var personId = await CreatePersonAsync(admin, "Ewa", "Zielinska");
+        var created = await (await admin.PostAsJsonAsync("/api/candidates", new
+        {
+            PersonId = personId, Year = 2, OpinionsCollected = 0,
+            Retreats = new[] { new { Year = 1, IsCompleted = true }, new { Year = 2, IsCompleted = false } }
+        })).Content.ReadFromJsonAsync<CandidateDto>();
+        Assert.Equal(2, created!.Retreats.Count);
+
+        var updateResponse = await admin.PutAsJsonAsync($"/api/candidates/{created.Id}", new
+        {
+            PersonId = personId, Year = 2, OpinionsCollected = 1,
+            Retreats = new[] { new { Year = 2, IsCompleted = true } }
+        });
+        var updated = await updateResponse.Content.ReadFromJsonAsync<CandidateDto>();
+
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+        var retreat = Assert.Single(updated!.Retreats);
+        Assert.Equal((2, true), (retreat.Year, retreat.IsCompleted));
+        var fetched = await admin.GetFromJsonAsync<CandidateDto>($"/api/candidates/{created.Id}");
+        Assert.Single(fetched!.Retreats);
+    }
+
+    [Fact]
+    public async Task Retreats_WithAnInvalidYearOrTwoInOneYear_AreABadRequest()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        var personId = await CreatePersonAsync(admin, "Ewa", "Zielinska");
+
+        var badYear = await admin.PostAsJsonAsync("/api/candidates", new
+        {
+            PersonId = personId, Year = 1, OpinionsCollected = 0, Retreats = new[] { new { Year = 5, IsCompleted = true } }
+        });
+        var duplicate = await admin.PostAsJsonAsync("/api/candidates", new
+        {
+            PersonId = personId, Year = 1, OpinionsCollected = 0,
+            Retreats = new[] { new { Year = 1, IsCompleted = true }, new { Year = 1, IsCompleted = false } }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, badYear.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, duplicate.StatusCode);
     }
 }

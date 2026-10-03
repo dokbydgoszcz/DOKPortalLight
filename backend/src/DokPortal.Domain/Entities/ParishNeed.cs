@@ -9,9 +9,7 @@ public class ParishNeed : ISoftDeletable
     public Parish? Parish { get; set; }
     public required string Description { get; set; }
     public ParishNeedStatus Status { get; set; } = ParishNeedStatus.Open;
-    public Guid? AssignedPersonId { get; set; }
-    public Person? AssignedPerson { get; set; }
-    public DateTime? AssignedAtUtc { get; set; }
+    public ICollection<ParishNeedAssignment> Assignments { get; set; } = new List<ParishNeedAssignment>();
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
     public string? DeletedBy { get; set; }

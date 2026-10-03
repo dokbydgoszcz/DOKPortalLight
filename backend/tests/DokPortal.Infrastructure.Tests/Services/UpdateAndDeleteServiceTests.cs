@@ -271,21 +271,22 @@ public class UpdateAndDeleteServiceTests
             var service = new CandidateService(db);
             var created = await service.CreateAsync(new CreateCandidateRequest
             {
-                PersonId = person.Id, Year = 1, OpinionsCollected = 0, IsRetreatCompleted = false
+                PersonId = person.Id, Year = 1, OpinionsCollected = 0
             }, default);
 
             var updated = await service.UpdateAsync(created.Id, new UpdateCandidateRequest
             {
-                PersonId = person.Id, Year = 2, AttendancePercentage = 88, OpinionsCollected = 2, IsRetreatCompleted = true
+                PersonId = person.Id, Year = 2, AttendancePercentage = 88, OpinionsCollected = 2,
+                Retreats = new[] { new CandidateRetreatDto { Year = 2, IsCompleted = true } }
             }, default);
 
             Assert.Equal(2, updated!.Year);
             Assert.Equal(88, updated.AttendancePercentage);
             Assert.Equal(2, updated.OpinionsCollected);
-            Assert.True(updated.IsRetreatCompleted);
+            Assert.True(updated.Retreats.Single().IsCompleted);
             Assert.Null(await service.UpdateAsync(Guid.NewGuid(), new UpdateCandidateRequest
             {
-                PersonId = person.Id, Year = 1, OpinionsCollected = 0, IsRetreatCompleted = false
+                PersonId = person.Id, Year = 1, OpinionsCollected = 0
             }, default));
         }
 
@@ -297,7 +298,7 @@ public class UpdateAndDeleteServiceTests
             var service = new CandidateService(db);
             var created = await service.CreateAsync(new CreateCandidateRequest
             {
-                PersonId = person.Id, Year = 1, OpinionsCollected = 0, IsRetreatCompleted = false
+                PersonId = person.Id, Year = 1, OpinionsCollected = 0
             }, default);
 
             Assert.True(await service.DeleteAsync(created.Id, "user-1", default));

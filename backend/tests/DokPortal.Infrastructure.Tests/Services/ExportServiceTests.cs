@@ -99,7 +99,13 @@ public class ExportServiceTests
             new Candidate
             {
                 Id = Guid.NewGuid(), PersonId = person.Id, Year = 2, AttendancePercentage = 85,
-                OpinionsCollected = 1, OpinionsRequired = 2, IsRetreatCompleted = true
+                OpinionsCollected = 1, OpinionsRequired = 2,
+                Retreats =
+                {
+                    new CandidateRetreat { Id = Guid.NewGuid(), Year = 2, IsCompleted = true },
+                    new CandidateRetreat { Id = Guid.NewGuid(), Year = 1, IsCompleted = true },
+                    new CandidateRetreat { Id = Guid.NewGuid(), Year = 3, IsCompleted = false }
+                }
             },
             new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, Year = 3, OpinionsCollected = 0, OpinionsRequired = 2 },
             new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, Year = 1, DeletedAtUtc = DateTime.UtcNow });
@@ -110,8 +116,8 @@ public class ExportServiceTests
         Assert.Equal(
             new[] { "Osoba", "Rok", "Frekwencja (%)", "Opinie zebrane", "Opinie wymagane", "Rekolekcje" },
             Row(sheet, 1, 6));
-        Assert.Equal(new[] { "Jan Kowalski", "2", "85", "1", "2", "Tak" }, Row(sheet, 2, 6));
-        Assert.Equal(new[] { "Jan Kowalski", "3", "", "0", "2", "Nie" }, Row(sheet, 3, 6));
+        Assert.Equal(new[] { "Jan Kowalski", "2", "85", "1", "2", "I, II" }, Row(sheet, 2, 6));
+        Assert.Equal(new[] { "Jan Kowalski", "3", "", "0", "2", "—" }, Row(sheet, 3, 6));
         Assert.Equal(3, sheet.LastRowUsed()!.RowNumber());
     }
 

@@ -10,5 +10,5 @@ public class CandidateDto
     public int? AttendancePercentage { get; init; }
     public required int OpinionsCollected { get; init; }
     public required int OpinionsRequired { get; init; }
-    public required bool IsRetreatCompleted { get; init; }
+    public required IReadOnlyList<CandidateRetreatDto> Retreats { get; init; }
 }

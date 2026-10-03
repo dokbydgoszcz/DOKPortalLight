@@ -29,11 +29,27 @@ public class ParishNeedsController : ControllerBase
         return CreatedAtAction(nameof(GetAll), created);
     }
 
+    [HttpPut("{id:guid}")]
+    [HasPermission(Permissions.ParishNeedsManage)]
+    public async Task<ActionResult<ParishNeedDto>> Update(Guid id, UpdateParishNeedRequest request, CancellationToken ct)
+    {
+        var updated = await _parishNeedService.UpdateAsync(id, request, ct);
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
     [HttpPut("{id:guid}/assign")]
     [HasPermission(Permissions.ParishNeedsManage)]
     public async Task<ActionResult<ParishNeedDto>> Assign(Guid id, AssignParishNeedRequest request, CancellationToken ct)
     {
         var updated = await _parishNeedService.AssignAsync(id, request.PersonId, ct);
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
+    [HttpDelete("{id:guid}/assign/{personId:guid}")]
+    [HasPermission(Permissions.ParishNeedsManage)]
+    public async Task<ActionResult<ParishNeedDto>> Unassign(Guid id, Guid personId, CancellationToken ct)
+    {
+        var updated = await _parishNeedService.UnassignAsync(id, personId, ct);
         return updated is null ? NotFound() : Ok(updated);
     }
 

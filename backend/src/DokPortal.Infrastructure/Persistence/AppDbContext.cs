@@ -16,9 +16,11 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<Person> People => Set<Person>();
     public DbSet<Parish> Parishes => Set<Parish>();
     public DbSet<Candidate> Candidates => Set<Candidate>();
+    public DbSet<CandidateRetreat> CandidateRetreats => Set<CandidateRetreat>();
     public DbSet<CanonicalMission> CanonicalMissions => Set<CanonicalMission>();
     public DbSet<Formator> Formators => Set<Formator>();
     public DbSet<ParishNeed> ParishNeeds => Set<ParishNeed>();
+    public DbSet<ParishNeedAssignment> ParishNeedAssignments => Set<ParishNeedAssignment>();
     public DbSet<BudgetEntry> BudgetEntries => Set<BudgetEntry>();
     public DbSet<DokCase> DokCases => Set<DokCase>();
     public DbSet<CaseDocument> CaseDocuments => Set<CaseDocument>();
@@ -60,6 +62,13 @@ public class AppDbContext : IdentityDbContext<AppUser>
             entity.HasOne(c => c.Person).WithMany().HasForeignKey(c => c.PersonId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        builder.Entity<CandidateRetreat>(entity =>
+        {
+            entity.HasOne(r => r.Candidate).WithMany(c => c.Retreats).HasForeignKey(r => r.CandidateId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(r => new { r.CandidateId, r.Year }).IsUnique();
+            entity.HasQueryFilter(r => r.Candidate!.DeletedAtUtc == null);
+        });
+
         builder.Entity<CanonicalMission>(entity =>
         {
             entity.Property(m => m.ServicePlace).IsRequired().HasMaxLength(200);
@@ -78,7 +87,14 @@ public class AppDbContext : IdentityDbContext<AppUser>
         {
             entity.Property(n => n.Description).IsRequired().HasMaxLength(500);
             entity.HasOne(n => n.Parish).WithMany().HasForeignKey(n => n.ParishId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(n => n.AssignedPerson).WithMany().HasForeignKey(n => n.AssignedPersonId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<ParishNeedAssignment>(entity =>
+        {
+            entity.HasOne(a => a.ParishNeed).WithMany(n => n.Assignments).HasForeignKey(a => a.ParishNeedId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(a => a.Person).WithMany().HasForeignKey(a => a.PersonId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(a => new { a.ParishNeedId, a.PersonId }).IsUnique();
+            entity.HasQueryFilter(a => a.ParishNeed!.DeletedAtUtc == null && a.Person!.DeletedAtUtc == null);
         });
 
         builder.Entity<BudgetEntry>(entity =>

@@ -74,6 +74,7 @@ public class ExportService : IExportService
     {
         var candidates = await _db.Candidates.AsNoTracking()
             .Include(c => c.Person)
+            .Include(c => c.Retreats)
             .OrderBy(c => c.Person!.LastName).ThenBy(c => c.Person!.FirstName).ThenBy(c => c.Year)
             .ToListAsync(ct);
 
@@ -82,8 +83,17 @@ public class ExportService : IExportService
             new[] { "Osoba", "Rok", "Frekwencja (%)", "Opinie zebrane", "Opinie wymagane", "Rekolekcje" },
             candidates.Select(c => new object?[]
             {
-                c.Person?.FullName, c.Year, c.AttendancePercentage, c.OpinionsCollected, c.OpinionsRequired, YesNo(c.IsRetreatCompleted)
+                c.Person?.FullName, c.Year, c.AttendancePercentage, c.OpinionsCollected, c.OpinionsRequired, CompletedRetreatYears(c)
             }));
+    }
+
+    private static readonly string[] RomanYears = { "", "I", "II", "III" };
+
+    /// <summary>Lata formacji z zaliczonymi rekolekcjami, np. "I, II"; "—" gdy żadnych.</summary>
+    private static string CompletedRetreatYears(DokPortal.Domain.Entities.Candidate c)
+    {
+        var years = c.Retreats.Where(r => r.IsCompleted && r.Year is >= 1 and <= 3).OrderBy(r => r.Year).Select(r => RomanYears[r.Year]).ToList();
+        return years.Count == 0 ? "—" : string.Join(", ", years);
     }
 
     private static readonly Dictionary<Institution, string> InstitutionLabels = new()

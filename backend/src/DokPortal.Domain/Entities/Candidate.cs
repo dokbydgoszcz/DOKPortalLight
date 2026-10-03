@@ -9,7 +9,7 @@ public class Candidate : ISoftDeletable
     public int? AttendancePercentage { get; set; }
     public int OpinionsCollected { get; set; }
     public int OpinionsRequired { get; set; } = 2;
-    public bool IsRetreatCompleted { get; set; }
+    public ICollection<CandidateRetreat> Retreats { get; set; } = new List<CandidateRetreat>();
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
