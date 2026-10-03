@@ -5,5 +5,6 @@ namespace DokPortal.Application.AuditLog;
 public interface IAuditLogService
 {
     Task LogAsync(string userId, string userEmail, string action, string objectDescription, AuditResult result, CancellationToken ct);
-    Task<IReadOnlyList<AuditLogEntryDto>> ListAsync(CancellationToken ct);
+    Task<IReadOnlyList<AuditLogEntryDto>> ListAsync(AuditLogFilter filter, CancellationToken ct);
+    Task<IReadOnlyList<string>> ListActionsAsync(CancellationToken ct);
 }

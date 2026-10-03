@@ -1,3 +1,4 @@
+using DokPortal.Application.AuditLog;
 using DokPortal.Domain.Enums;
 using DokPortal.Infrastructure.Persistence;
 using DokPortal.Infrastructure.Services;
@@ -20,7 +21,7 @@ public class AuditLogServiceTests
         await service.LogAsync("user-1", "user1@example.org", "ReadPastoralNotes", "Jan Kowalski", AuditResult.Blocked, default);
         await service.LogAsync("user-2", "user2@example.org", "AssignUserRoles", "target@example.org", AuditResult.Allowed, default);
 
-        var entries = await service.ListAsync(default);
+        var entries = await service.ListAsync(new AuditLogFilter(), default);
 
         Assert.Equal(2, entries.Count);
         Assert.Equal("AssignUserRoles", entries[0].Action);
