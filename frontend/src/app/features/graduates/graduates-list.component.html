@@ -3,6 +3,11 @@
 </div>
 
 <div class="card">
+  <div class="card-head">
+    <div class="search">
+      <input placeholder="Szukaj…" [value]="query()" (input)="onSearch($any($event.target).value)" />
+    </div>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Osoba</th><th>Ukończona ścieżka</th><th>Data ukończenia</th><th>Parafia</th><th>Opiekun grupy</th></tr></thead>
@@ -11,7 +16,7 @@
           <tr>
             <td><b>{{ graduate.personFullName }}</b></td>
             <td>{{ graduate.path }}</td>
-            <td>{{ graduate.completedAtUtc }}</td>
+            <td>{{ graduate.completedAtUtc | date: 'dd.MM.yyyy' }}</td>
             <td>{{ graduate.parishName }}</td>
             <td>{{ graduate.mentorFullName }}</td>
           </tr>
@@ -21,4 +26,5 @@
       </tbody>
     </table>
   </div>
+  <app-pagination [page]="page()" [pageSize]="pageSize" [totalCount]="totalCount()" (pageChange)="onPageChange($event)"></app-pagination>
 </div>

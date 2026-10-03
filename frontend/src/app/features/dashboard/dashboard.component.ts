@@ -19,6 +19,7 @@ export class DashboardComponent implements OnInit {
   };
 
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-03', text: 'Absolwenci — lista pokazuje teraz wszystkich absolwentów, a nie tylko tych z pierwszych 20 spraw DOK. Doszła wyszukiwarka po imieniu i nazwisku oraz stronicowanie, a data ukończenia wyświetla się czytelnie (dd.mm.rrrr). Ekran działa też dla ról, które mają uprawnienie „Absolwenci”, ale nie widzą listy spraw DOK.' },
     { date: '2026-10-03', text: 'Naprawiono dwa drobne błędy wykryte przy rozbudowie testów: eksport dziennika audytu do CSV nie rozjeżdża już kolumn, gdy opis zawiera przecinki lub cudzysłowy, a na ekranie Dokumenty pojawia się komunikat, gdy generowanie PDF się nie powiedzie.' },
     { date: '2026-10-03', text: 'Nowy ekran „Uprawnienia ról” (tylko Administrator): tabela, w której zaznaczasz, co może każda rola. Można też dodawać własne role (np. „Sekretariat”) i usuwać te, których nikt nie używa. Zmiany działają od razu na serwerze, a w menu i przyciskach użytkownik zobaczy je po ponownym zalogowaniu.' },
     { date: '2026-10-02', text: 'Uprawnienia — menu, ekrany i przyciski (Dodaj, Edytuj, Usuń, Eksport) pokazują się teraz zależnie od uprawnień przypisanych Twojej roli. Po wdrożeniu trzeba zalogować się ponownie. Zaostrzono też dostęp do odczytu: np. budżety, kandydaci SKŚP czy sprawy DOK widzą tylko role, które ich potrzebują.' },
