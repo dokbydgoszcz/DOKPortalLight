@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PermissionsMatrixComponent } from './permissions-matrix.component';
+import { ToastService } from '../../core/notifications/toast.service';
 import { environment } from '../../../environments/environment';
 
 const base = `${environment.apiBaseUrl}/api/permissions`;
@@ -110,6 +111,54 @@ describe('PermissionsMatrixComponent', () => {
     expect(req.request.body).toEqual({ name: 'Archiwum' });
     req.flush({ name: 'Archiwum', isSystem: false });
     httpMock.expectOne(`${base}/matrix`).flush(matrix);
+  });
+
+  it('shows a toast when the matrix cannot be loaded', () => {
+    fixture.detectChanges();
+
+    httpMock.expectOne(`${base}/matrix`).flush('x', { status: 500, statusText: 'Server Error' });
+
+    expect(TestBed.inject(ToastService).toasts().map(t => t.message)).toContain('Nie udało się wczytać uprawnień.');
+  });
+
+  it('shows the reason from the server when saving, creating or deleting fails, and reloads after a failed save', () => {
+    render();
+    const messages = () => TestBed.inject(ToastService).toasts().map(t => t.message);
+    const box = checkbox('Sekretariat', 'People.Manage');
+    box.checked = true;
+    box.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('button[data-save]') as HTMLButtonElement).click();
+    httpMock.expectOne(`${base}/roles/Sekretariat`).flush({ title: 'Nieznane uprawnienie: People.Manage.' }, { status: 400, statusText: 'Bad Request' });
+    expect(messages()).toContain('Nieznane uprawnienie: People.Manage.');
+    httpMock.expectOne(`${base}/matrix`).flush(matrix);
+    fixture.detectChanges();
+
+    const input = fixture.nativeElement.querySelector('input[data-new-role]') as HTMLInputElement;
+    input.value = 'Biskup';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('button[data-create-role]') as HTMLButtonElement).click();
+    httpMock.expectOne(`${base}/roles`).flush({ title: 'Rola „Biskup” już istnieje.' }, { status: 400, statusText: 'Bad Request' });
+    expect(messages()).toContain('Rola „Biskup” już istnieje.');
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    (fixture.nativeElement.querySelector('[data-delete-role="Sekretariat"]') as HTMLElement).click();
+    httpMock.expectOne(`${base}/roles/Sekretariat`).flush('x', { status: 500, statusText: 'Server Error' });
+    expect(messages()).toContain('Nie udało się usunąć roli.');
+  });
+
+  it('does not delete a role when the confirmation is cancelled and ignores an empty role name', () => {
+    render();
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    (fixture.nativeElement.querySelector('[data-delete-role="Sekretariat"]') as HTMLElement).click();
+    fixture.componentInstance.newRoleName = '   ';
+    fixture.componentInstance.createRole();
+    fixture.componentInstance.save();
+
+    httpMock.expectNone(r => r.method === 'DELETE' || r.method === 'POST' || r.method === 'PUT');
   });
 
   it('deletes a custom role after confirmation', () => {

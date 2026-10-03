@@ -88,6 +88,28 @@ describe('AuthService', () => {
     expect(fresh.isAuthenticated()).toBe(true);
   });
 
+  it('treats a malformed token as having no roles or permissions', () => {
+    localStorage.setItem('dokportal.permissionsAware', '1');
+    for (const broken of ['not-a-jwt', 'a.%%%.c', 'a.bm90LWpzb24.c']) {
+      localStorage.setItem('dokportal.token', broken);
+      const fresh = new AuthService(TestBed.inject(HttpClient), TestBed.inject(Router));
+
+      expect(fresh.roles()).toEqual([]);
+      expect(fresh.permissions()).toEqual([]);
+      expect(fresh.hasAnyRole(['Administrator'])).toBe(false);
+    }
+  });
+
+  it('checks roles one at a time and in groups', () => {
+    localStorage.setItem('dokportal.permissionsAware', '1');
+    localStorage.setItem('dokportal.token', createFakeJwt({ role: ['Biskup', 'Superwizor'], exp: 9999999999 }));
+    const fresh = new AuthService(TestBed.inject(HttpClient), TestBed.inject(Router));
+
+    expect(fresh.hasRole('Biskup')).toBe(true);
+    expect(fresh.hasRole('Administrator')).toBe(false);
+    expect(fresh.hasAnyRole(['Administrator', 'Superwizor'])).toBe(true);
+  });
+
   it('sets the flag on login and clears it on logout', async () => {
     const token = createFakeJwt({ role: 'Administrator', permission: 'People.Manage', exp: 9999999999 });
 

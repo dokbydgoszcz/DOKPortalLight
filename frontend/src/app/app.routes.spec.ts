@@ -16,6 +16,21 @@ describe('routes', () => {
     }
   });
 
+  it('lazy-loads a component class for every feature route and the login page', async () => {
+    const lazy = [routes.find(r => r.path === 'login')!, ...children].filter(r => r.loadComponent);
+
+    expect(lazy.length).toBeGreaterThan(15);
+    for (const route of lazy) {
+      const component = await (route.loadComponent as () => Promise<unknown>)();
+      expect(typeof component, `trasa ${route.path}`).toBe('function');
+    }
+  });
+
+  it('redirects unknown urls to the login page and the root to the dashboard', () => {
+    expect(routes.find(r => r.path === '**')?.redirectTo).toBe('login');
+    expect(children.find(r => r.path === '')?.redirectTo).toBe('dashboard');
+  });
+
   it('does not guard routes that are open to every authenticated user', () => {
     for (const item of NAV_ITEMS.filter(i => !i.permission)) {
       const route = children.find(r => r.path === item.path.replace(/^\//, ''))!;
