@@ -12,6 +12,11 @@ import { CaseDocumentsService } from './case-documents.service';
 import { CaseDocument } from './case-document.model';
 import { ToastService } from '../../core/notifications/toast.service';
 import { PaginationComponent } from '../../shared/pagination.component';
+import { AttachmentsComponent } from '../../shared/attachments/attachments.component';
+import { AttachmentsService } from '../../shared/attachments/attachments.service';
+import { ACCEPT_ATTRIBUTE, RULES_HINT, formatFileSize, saveBlob, validateFile } from '../../shared/attachments/attachment-rules';
+import { serverMessage } from '../../shared/attachments/upload-summary';
+import { environment } from '../../../environments/environment';
 
 const PATH_LABELS: Record<string, string> = {
   BaptismCandidate: 'Chrzest',
@@ -26,7 +31,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-dok-cases-list',
   standalone: true,
-  imports: [HasPermissionDirective, ExportButtonComponent, DokCaseFormComponent, PaginationComponent, FormsModule, DatePipe],
+  imports: [HasPermissionDirective, ExportButtonComponent, DokCaseFormComponent, PaginationComponent, AttachmentsComponent, FormsModule, DatePipe],
   templateUrl: './dok-cases-list.component.html',
   styleUrl: './dok-cases-list.component.scss'
 })
@@ -53,15 +58,22 @@ export class DokCasesListComponent implements OnInit {
   readonly notesCase = signal<DokCase | null>(null);
   readonly notes = signal<PastoralNote[]>([]);
   newNoteContent = '';
+  /** Pliki wybrane do nowej notatki; wysyłane zaraz po jej zapisaniu. */
+  readonly newNoteFiles = signal<File[]>([]);
 
   readonly documentsCase = signal<DokCase | null>(null);
   readonly documents = signal<CaseDocument[]>([]);
   newDocumentName = '';
 
+  readonly accept = ACCEPT_ATTRIBUTE;
+  readonly rulesHint = RULES_HINT;
+  readonly formatFileSize = formatFileSize;
+
   constructor(
     private readonly dokCasesService: DokCasesService,
     private readonly pastoralNotesService: PastoralNotesService,
     private readonly caseDocumentsService: CaseDocumentsService,
+    private readonly attachmentsService: AttachmentsService,
     private readonly toast: ToastService
   ) {}
 
@@ -135,29 +147,59 @@ export class DokCasesListComponent implements OnInit {
   openNotes(dokCase: DokCase): void {
     this.notesCase.set(dokCase);
     this.newNoteContent = '';
+    this.newNoteFiles.set([]);
     this.loadNotes(dokCase.id);
   }
 
   closeNotes(): void {
     this.notesCase.set(null);
     this.notes.set([]);
+    this.newNoteFiles.set([]);
   }
 
-  private loadNotes(caseId: string): void {
+  loadNotes(caseId: string): void {
     this.pastoralNotesService.list(caseId).subscribe({
       next: notes => this.notes.set(notes),
       error: () => this.toast.error('Nie udało się wczytać notatek.')
     });
   }
 
+  noteAttachmentsUrl(caseId: string, noteId: string): string {
+    return `${environment.apiBaseUrl}/api/dok-cases/${caseId}/notes/${noteId}/attachments`;
+  }
+
+  onNoteFilesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const accepted: File[] = [];
+    for (const file of Array.from(input.files ?? [])) {
+      const error = validateFile(file);
+      if (error) this.toast.error(`${file.name}: ${error}`);
+      else accepted.push(file);
+    }
+    this.newNoteFiles.update(files => [...files, ...accepted]);
+    input.value = '';
+  }
+
+  removeNoteFile(index: number): void {
+    this.newNoteFiles.update(files => files.filter((_, i) => i !== index));
+  }
+
   addNote(): void {
     const dokCase = this.notesCase();
-    if (!dokCase || !this.newNoteContent.trim()) return;
-    this.pastoralNotesService.create(dokCase.id, this.newNoteContent.trim()).subscribe({
-      next: () => {
+    const files = this.newNoteFiles();
+    if (!dokCase || (!this.newNoteContent.trim() && files.length === 0)) return;
+
+    // Notatka złożona wyłącznie z plików (np. skan z Kindle Scribe) dostaje opis z nazw plików.
+    const content = this.newNoteContent.trim() || `Załączono: ${files.map(f => f.name).join(', ')}`;
+    this.pastoralNotesService.create(dokCase.id, content).subscribe({
+      next: note => {
         this.newNoteContent = '';
+        this.newNoteFiles.set([]);
         this.toast.success('Dodano notatkę.');
-        this.loadNotes(dokCase.id);
+        this.attachmentsService.uploadMany(this.noteAttachmentsUrl(dokCase.id, note.id), files).subscribe(summary => {
+          summary.errors.forEach(message => this.toast.error(message));
+          this.loadNotes(dokCase.id);
+        });
       },
       error: () => this.toast.error('Nie udało się dodać notatki — sprawdź, czy masz uprawnienia.')
     });
@@ -199,13 +241,36 @@ export class DokCasesListComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!dokCase || !file) return;
+    const invalid = validateFile(file);
+    if (invalid) {
+      this.toast.error(invalid);
+      input.value = '';
+      return;
+    }
     this.caseDocumentsService.upload(dokCase.id, document.id, file).subscribe({
       next: () => {
         this.toast.success('Plik przesłany.');
         input.value = '';
         this.loadDocuments(dokCase.id);
       },
-      error: () => this.toast.error('Nie udało się przesłać pliku.')
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się przesłać pliku.'))
+    });
+  }
+
+  /** Każdy wybrany plik zakłada nową pozycję na liście (nazwa z nazwy pliku) i od razu się do niej wysyła. */
+  onBulkFilesSelected(event: Event): void {
+    const dokCase = this.documentsCase();
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    if (!dokCase || files.length === 0) return;
+
+    this.caseDocumentsService.uploadAsNewPositions(dokCase.id, files).subscribe(summary => {
+      input.value = '';
+      summary.errors.forEach(message => this.toast.error(message));
+      if (summary.uploaded > 0) {
+        this.toast.success(summary.uploaded === 1 ? 'Przesłano dokument.' : `Przesłano dokumenty: ${summary.uploaded}.`);
+      }
+      this.loadDocuments(dokCase.id);
     });
   }
 
@@ -216,23 +281,9 @@ export class DokCasesListComponent implements OnInit {
       next: response => {
         const blob = response.body;
         if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = caseDocument.originalFileName ?? caseDocument.name;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
+        saveBlob(blob, caseDocument.originalFileName ?? caseDocument.name);
       },
       error: () => this.toast.error('Nie udało się pobrać pliku.')
     });
-  }
-
-  formatFileSize(bytes: number | null): string {
-    if (bytes === null) return '';
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 }

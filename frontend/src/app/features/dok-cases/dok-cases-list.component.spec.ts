@@ -158,7 +158,8 @@ describe('DokCasesListComponent', () => {
 
   describe('pastoral notes', () => {
     const notesUrl = api('/api/dok-cases/1/notes');
-    const note = { id: 'n1', dokCaseId: '1', authorUserId: 'u1', authorEmail: 'kat@example.org', content: 'Pierwsza rozmowa', createdAtUtc: '2026-10-01T10:00:00Z' };
+    const note = { id: 'n1', dokCaseId: '1', authorUserId: 'u1', authorEmail: 'kat@example.org', content: 'Pierwsza rozmowa', createdAtUtc: '2026-10-01T10:00:00Z', attachments: [] };
+    const attachment = { id: 'a1', fileName: 'kindle.pdf', contentType: 'application/pdf', sizeBytes: 4096, uploadedAtUtc: '2026-10-02T08:00:00Z' };
 
     async function openNotes(notes: unknown[] = [note]) {
       const ctx = boot();
@@ -214,6 +215,125 @@ describe('DokCasesListComponent', () => {
 
       expect(toastMessages().some(m => m.startsWith('Nie udało się dodać notatki'))).toBe(true);
     });
+
+    describe('attachments', () => {
+      const noteWithFile = { ...note, id: 'n2', content: 'Skan z Kindle', attachments: [attachment] };
+      const pendingInput = (el: HTMLElement) => el.querySelector('input[name="newNoteFiles"]') as HTMLInputElement;
+
+      function choose(input: HTMLInputElement, files: File[]) {
+        Object.defineProperty(input, 'files', { value: files, configurable: true });
+        input.dispatchEvent(new Event('change'));
+      }
+
+      it('shows the files attached to each note and downloads them from the note address', async () => {
+        const ctx = await openNotes([note, noteWithFile]);
+        URL.createObjectURL = vi.fn(() => 'blob:test');
+        URL.revokeObjectURL = vi.fn();
+        vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+        expect(textOf(ctx.el)).toContain('kindle.pdf');
+        clickByText(ctx.el, 'Pobierz');
+
+        ctx.http.expectOne(r => r.method === 'GET' && r.url === `${notesUrl}/n2/attachments/a1/download`).flush(new Blob(['x']));
+        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test');
+      });
+
+      it('adds a file to an existing note and reloads the notes', async () => {
+        const ctx = await openNotes([note]);
+        const input = ctx.el.querySelector('.list input[name="attachmentFiles"]') as HTMLInputElement;
+
+        choose(input, [new File(['a'], 'kindle.pdf')]);
+        ctx.http.expectOne(r => r.method === 'POST' && r.url === `${notesUrl}/n1/attachments`).flush(attachment);
+
+        ctx.http.expectOne(r => r.method === 'GET' && r.url === notesUrl).flush([noteWithFile]);
+        expect(toastMessages()).toContain('Dodano plik.');
+      });
+
+      it('lets users without write permission see and download files, but not add them', async () => {
+        const ctx = setup(DokCasesListComponent, { granted: ['PastoralNotes.View'] });
+        ctx.fixture.detectChanges();
+        ctx.http.match(r => r.url === casesUrl).forEach(r => r.flush({ items: [dokCase], totalCount: 1, page: 1, pageSize: 20 }));
+        ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
+        ctx.fixture.detectChanges();
+        clickByText(ctx.el, 'Notatki', '.link');
+        ctx.http.expectOne(notesUrl).flush([noteWithFile]);
+        ctx.fixture.detectChanges();
+
+        expect(textOf(ctx.el)).toContain('kindle.pdf');
+        expect(textOf(ctx.el)).toContain('Pobierz');
+        expect(ctx.el.querySelector('input[type="file"]')).toBeNull();
+      });
+
+      it('attaches the files chosen for a new note right after the note is saved', async () => {
+        const ctx = await openNotes([]);
+        setInput(ctx.el, 'textarea', 'Skan z Kindle Scribe');
+
+        choose(pendingInput(ctx.el), [new File(['a'], 'kindle.pdf'), new File(['b'], 'zdjecie.png')]);
+        ctx.fixture.detectChanges();
+        expect(textOf(ctx.el)).toContain('kindle.pdf');
+        expect(textOf(ctx.el)).toContain('zdjecie.png');
+        clickByText(ctx.el, 'Dodaj notatkę');
+
+        const create = ctx.http.expectOne(r => r.method === 'POST' && r.url === notesUrl);
+        expect(create.request.body).toEqual({ content: 'Skan z Kindle Scribe' });
+        create.flush({ ...note, id: 'n9' });
+        const uploads = ctx.http.match(r => r.method === 'POST' && r.url === `${notesUrl}/n9/attachments`);
+        expect(uploads).toHaveLength(1);
+        uploads[0].flush(attachment);
+        ctx.http.expectOne(r => r.method === 'POST' && r.url === `${notesUrl}/n9/attachments`).flush(attachment);
+
+        ctx.http.expectOne(r => r.method === 'GET' && r.url === notesUrl).flush([noteWithFile]);
+        ctx.fixture.detectChanges();
+        expect(toastMessages()).toContain('Dodano notatkę.');
+        expect(textOf(ctx.el)).not.toContain('zdjecie.png');
+      });
+
+      it('lets a note consist only of files, describing it by the file names', async () => {
+        const ctx = await openNotes([]);
+
+        choose(pendingInput(ctx.el), [new File(['a'], 'kindle.pdf')]);
+        ctx.fixture.detectChanges();
+        clickByText(ctx.el, 'Dodaj notatkę');
+
+        const create = ctx.http.expectOne(r => r.method === 'POST' && r.url === notesUrl);
+        expect(create.request.body).toEqual({ content: 'Załączono: kindle.pdf' });
+        create.flush({ ...note, id: 'n9' });
+        ctx.http.expectOne(r => r.url === `${notesUrl}/n9/attachments`).flush(attachment);
+        ctx.http.expectOne(r => r.method === 'GET' && r.url === notesUrl).flush([]);
+      });
+
+      it('refuses a forbidden file straight away and lets you drop a chosen one', async () => {
+        const ctx = await openNotes([]);
+
+        choose(pendingInput(ctx.el), [new File(['MZ'], 'virus.exe'), new File(['a'], 'kindle.pdf')]);
+        ctx.fixture.detectChanges();
+
+        expect(toastMessages().some(m => m.startsWith('virus.exe: Niedozwolony typ pliku'))).toBe(true);
+        expect(textOf(ctx.el)).toContain('kindle.pdf');
+        expect(textOf(ctx.el)).not.toContain('virus.exe');
+
+        (ctx.el.querySelector('.pending-file .link') as HTMLElement).click();
+        ctx.fixture.detectChanges();
+        expect(textOf(ctx.el)).not.toContain('kindle.pdf');
+        clickByText(ctx.el, 'Dodaj notatkę');
+        ctx.http.expectNone(r => r.method === 'POST');
+      });
+
+      it('keeps the saved note and reports the files that failed to upload', async () => {
+        const ctx = await openNotes([]);
+        setInput(ctx.el, 'textarea', 'Notatka');
+        choose(pendingInput(ctx.el), [new File(['a'], 'kindle.pdf')]);
+        ctx.fixture.detectChanges();
+
+        clickByText(ctx.el, 'Dodaj notatkę');
+        ctx.http.expectOne(r => r.method === 'POST' && r.url === notesUrl).flush({ ...note, id: 'n9' });
+        ctx.http.expectOne(r => r.url === `${notesUrl}/n9/attachments`).flush({ title: 'Plik jest za duży – maksymalny rozmiar to 20 MB.' }, { status: 400, statusText: 'Bad Request' });
+
+        ctx.http.expectOne(r => r.method === 'GET' && r.url === notesUrl).flush([note]);
+        expect(toastMessages()).toContain('kindle.pdf: Plik jest za duży – maksymalny rozmiar to 20 MB.');
+        expect(toastMessages()).toContain('Dodano notatkę.');
+      });
+    });
   });
 
   describe('case documents', () => {
@@ -258,7 +378,7 @@ describe('DokCasesListComponent', () => {
 
     it('uploads the chosen file as form data and reloads the list', async () => {
       const ctx = await openDocuments();
-      const input = ctx.el.querySelector('input[type="file"]') as HTMLInputElement;
+      const input = ctx.el.querySelector('input[type="file"]:not([name="bulkFiles"])') as HTMLInputElement;
       const file = new File(['abc'], 'metryka.pdf', { type: 'application/pdf' });
       Object.defineProperty(input, 'files', { value: [file] });
 
@@ -274,7 +394,7 @@ describe('DokCasesListComponent', () => {
 
     it('ignores a file selection that has no file and reports upload errors', async () => {
       const ctx = await openDocuments();
-      const input = ctx.el.querySelector('input[type="file"]') as HTMLInputElement;
+      const input = ctx.el.querySelector('input[type="file"]:not([name="bulkFiles"])') as HTMLInputElement;
 
       Object.defineProperty(input, 'files', { value: [], configurable: true });
       input.dispatchEvent(new Event('change'));
@@ -328,6 +448,120 @@ describe('DokCasesListComponent', () => {
       ctx.http.expectOne(docsUrl).flush('x', { status: 500, statusText: 'Server Error' });
 
       expect(toastMessages()).toContain('Nie udało się wczytać listy dokumentów.');
+    });
+
+    describe('uploading files straight away', () => {
+      const bulkInput = (el: HTMLElement) => el.querySelector('input[name="bulkFiles"]') as HTMLInputElement;
+
+      function choose(input: HTMLInputElement, files: File[]) {
+        Object.defineProperty(input, 'files', { value: files, configurable: true });
+        input.dispatchEvent(new Event('change'));
+      }
+
+      it('offers the button even when the list is still empty, and explains it', async () => {
+        const ctx = await openDocuments([]);
+
+        expect(bulkInput(ctx.el)).not.toBeNull();
+        expect(bulkInput(ctx.el).multiple).toBe(true);
+        expect(bulkInput(ctx.el).accept).toBe('.pdf,.jpg,.jpeg,.png,.docx,.doc,.txt');
+        expect(textOf(ctx.el)).toContain('Prześlij pliki');
+        expect(textOf(ctx.el)).toContain('PDF, JPG/JPEG, PNG, DOCX, DOC, TXT');
+      });
+
+      it('creates a position named after each file and uploads the file to it', async () => {
+        const ctx = await openDocuments([]);
+        const metryka = new File(['a'], 'Metryka chrztu.pdf');
+        const zdjecie = new File(['b'], 'Zdjęcie.PNG');
+
+        choose(bulkInput(ctx.el), [metryka, zdjecie]);
+
+        const first = ctx.http.expectOne(r => r.method === 'POST' && r.url === docsUrl);
+        expect(first.request.body).toEqual({ name: 'Metryka chrztu' });
+        first.flush({ ...missing, id: 'n1', name: 'Metryka chrztu' });
+        const firstUpload = ctx.http.expectOne(r => r.method === 'POST' && r.url === `${docsUrl}/n1/upload`);
+        expect((firstUpload.request.body as FormData).get('file')).toBe(metryka);
+        firstUpload.flush(provided);
+
+        const second = ctx.http.expectOne(r => r.method === 'POST' && r.url === docsUrl);
+        expect(second.request.body).toEqual({ name: 'Zdjęcie' });
+        second.flush({ ...missing, id: 'n2', name: 'Zdjęcie' });
+        ctx.http.expectOne(r => r.method === 'POST' && r.url === `${docsUrl}/n2/upload`).flush(provided);
+
+        ctx.http.expectOne(r => r.method === 'GET' && r.url === docsUrl).flush([provided]);
+        expect(toastMessages()).toContain('Przesłano dokumenty: 2.');
+      });
+
+      it('confirms a single file in the singular', async () => {
+        const ctx = await openDocuments([]);
+
+        choose(bulkInput(ctx.el), [new File(['a'], 'metryka.pdf')]);
+        ctx.http.expectOne(r => r.method === 'POST' && r.url === docsUrl).flush({ ...missing, id: 'n1' });
+        ctx.http.expectOne(r => r.url === `${docsUrl}/n1/upload`).flush(provided);
+        ctx.http.expectOne(r => r.method === 'GET' && r.url === docsUrl).flush([provided]);
+
+        expect(toastMessages()).toContain('Przesłano dokument.');
+      });
+
+      it('refuses a forbidden file without creating any position', async () => {
+        const ctx = await openDocuments([]);
+
+        choose(bulkInput(ctx.el), [new File(['x'], 'arkusz.xlsx')]);
+
+        ctx.http.expectNone(r => r.method === 'POST');
+        expect(toastMessages().some(m => m.startsWith('arkusz.xlsx: Niedozwolony typ pliku'))).toBe(true);
+      });
+
+      it('does nothing when no file was chosen', async () => {
+        const ctx = await openDocuments([]);
+
+        choose(bulkInput(ctx.el), []);
+
+        ctx.http.expectNone(r => r.method === 'POST');
+      });
+
+      it('reports a failed upload (the position stays) and a failed creation, and still reloads', async () => {
+        const ctx = await openDocuments([]);
+
+        choose(bulkInput(ctx.el), [new File(['a'], 'a.pdf'), new File(['b'], 'b.pdf')]);
+        ctx.http.expectOne(r => r.method === 'POST' && r.url === docsUrl).flush({ ...missing, id: 'n1' });
+        ctx.http.expectOne(r => r.url === `${docsUrl}/n1/upload`).flush({ title: 'Plik jest za duży – maksymalny rozmiar to 20 MB.' }, { status: 400, statusText: 'Bad Request' });
+        ctx.http.expectOne(r => r.method === 'POST' && r.url === docsUrl).flush('x', { status: 500, statusText: 'Server Error' });
+
+        ctx.http.expectOne(r => r.method === 'GET' && r.url === docsUrl).flush([missing]);
+        expect(toastMessages()).toContain('a.pdf: Plik jest za duży – maksymalny rozmiar to 20 MB.');
+        expect(toastMessages()).toContain('b.pdf: Nie udało się przesłać pliku.');
+      });
+
+      it('is hidden from users who cannot manage the documents', () => {
+        const ctx = setup(DokCasesListComponent, { granted: ['CaseDocuments.View'] });
+        ctx.fixture.detectChanges();
+        ctx.http.match(r => r.url === casesUrl).forEach(r => r.flush({ items: [dokCase], totalCount: 1, page: 1, pageSize: 20 }));
+        ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
+        ctx.fixture.detectChanges();
+        clickByText(ctx.el, 'Dokumenty', '.link');
+        ctx.http.expectOne(docsUrl).flush([provided]);
+        ctx.fixture.detectChanges();
+
+        expect(ctx.el.querySelector('input[type="file"]')).toBeNull();
+        expect(textOf(ctx.el)).not.toContain('Prześlij pliki');
+      });
+    });
+
+    describe('replacing the file of a position', () => {
+      it('checks the file against the rules before sending and shows the server message on failure', async () => {
+        const ctx = await openDocuments();
+        const input = ctx.el.querySelector('input[type="file"]:not([name="bulkFiles"])') as HTMLInputElement;
+
+        Object.defineProperty(input, 'files', { value: [new File(['x'], 'arkusz.xlsx')], configurable: true });
+        input.dispatchEvent(new Event('change'));
+        ctx.http.expectNone(r => r.method === 'POST');
+        expect(toastMessages().some(m => m.startsWith('Niedozwolony typ pliku'))).toBe(true);
+
+        Object.defineProperty(input, 'files', { value: [new File(['x'], 'a.pdf')], configurable: true });
+        input.dispatchEvent(new Event('change'));
+        ctx.http.expectOne(r => r.method === 'POST').flush({ title: 'Plik jest za duży – maksymalny rozmiar to 20 MB.' }, { status: 400, statusText: 'Bad Request' });
+        expect(toastMessages()).toContain('Plik jest za duży – maksymalny rozmiar to 20 MB.');
+      });
     });
   });
 

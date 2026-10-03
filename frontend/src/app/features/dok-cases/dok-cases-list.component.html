@@ -67,6 +67,12 @@
               <div class="list-main">
                 <div class="list-title" style="white-space:normal">{{ note.content }}</div>
                 <div class="list-sub">{{ note.authorEmail ?? note.authorUserId }} · {{ note.createdAtUtc | date:'short' }}</div>
+                <app-attachments
+                  [attachments]="note.attachments"
+                  [baseUrl]="noteAttachmentsUrl(dokCase.id, note.id)"
+                  managePermission="PastoralNotes.Write"
+                  [showHint]="false"
+                  (changed)="loadNotes(dokCase.id)" />
               </div>
             </div>
           } @empty {
@@ -76,6 +82,19 @@
         <div *appHasPermission="'PastoralNotes.Write'" class="field full">
           <label>Nowa notatka</label>
           <textarea [(ngModel)]="newNoteContent" name="newNoteContent" placeholder="Treść notatki…"></textarea>
+          <div class="note-files">
+            <label class="btn ghost small" style="cursor:pointer">
+              ＋ Dołącz pliki (np. z Kindle Scribe)
+              <input type="file" multiple name="newNoteFiles" style="display:none" [accept]="accept" (change)="onNoteFilesSelected($event)">
+            </label>
+            <span class="form-hint" style="margin-right:0">{{ rulesHint }}</span>
+          </div>
+          @for (file of newNoteFiles(); track $index) {
+            <div class="pending-file">
+              📎 {{ file.name }} ({{ formatFileSize(file.size) }})
+              <span class="link" style="color:var(--danger)" (click)="removeNoteFile($index)">usuń</span>
+            </div>
+          }
         </div>
       </div>
       <div class="modal-foot">
@@ -94,6 +113,13 @@
         <button class="close" (click)="closeDocuments()">×</button>
       </div>
       <div class="modal-body">
+        <div *appHasPermission="'CaseDocuments.Manage'" class="bulk-upload">
+          <label class="btn primary" style="cursor:pointer">
+            ＋ Prześlij pliki
+            <input type="file" multiple name="bulkFiles" style="display:none" [accept]="accept" (change)="onBulkFilesSelected($event)">
+          </label>
+          <span class="form-hint" style="margin-right:0">Każdy plik tworzy pozycję na liście (nazwa z nazwy pliku). {{ rulesHint }}</span>
+        </div>
         <div class="list" style="margin-bottom:16px">
           @for (document of documents(); track document.id) {
             <div class="list-row" style="align-items:flex-start">
@@ -113,12 +139,12 @@
                 }
                 <label *appHasPermission="'CaseDocuments.Manage'" class="btn ghost" style="cursor:pointer">
                   {{ document.hasFile ? 'Zamień plik' : 'Prześlij plik' }}
-                  <input type="file" style="display:none" (change)="onFileSelected(document, $event)">
+                  <input type="file" style="display:none" [accept]="accept" (change)="onFileSelected(document, $event)">
                 </label>
               </div>
             </div>
           } @empty {
-            <div class="empty">Brak pozycji na liście dokumentów.</div>
+            <div class="empty">Brak pozycji na liście dokumentów. Użyj „Prześlij pliki”, aby dodać dokument od razu z plikiem.</div>
           }
         </div>
         <div *appHasPermission="'CaseDocuments.Manage'" class="field full">

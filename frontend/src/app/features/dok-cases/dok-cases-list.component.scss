@@ -2,3 +2,22 @@
   display: inline-flex;
   gap: 14px;
 }
+
+.note-files,
+.bulk-upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 8px;
+}
+
+.bulk-upload {
+  margin: 0 0 16px;
+}
+
+.pending-file {
+  margin-top: 6px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}

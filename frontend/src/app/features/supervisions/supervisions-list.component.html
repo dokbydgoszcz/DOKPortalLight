@@ -32,7 +32,9 @@
           <div class="list-title">{{ supervision.groupLabel }} — {{ supervision.supervisionDate | date: 'dd.MM.yyyy' }}</div>
           <div class="list-sub">{{ supervision.institution }} @if (supervision.attendeesCount !== null) { • {{ supervision.attendeesCount }}/{{ supervision.expectedCount }} obecnych }</div>
         </div>
+        <span class="link" (click)="openAttachments(supervision)">Załączniki@if (supervision.attachments.length > 0) { ({{ supervision.attachments.length }})}</span>
         <ng-container *appHasPermission="'Supervisions.Manage'">
+          &nbsp;·&nbsp;
           <span class="link" (click)="openEditForm(supervision)">Edytuj</span>
           &nbsp;·&nbsp;
           <span class="link" style="color:var(--danger)" (click)="deleteSupervision(supervision)">Usuń</span>
@@ -72,6 +74,28 @@
         }
         <button class="btn ghost" (click)="cancel()">Anuluj</button>
         <button class="btn primary" [disabled]="!newSupervision.supervisionDate" (click)="createSupervision()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (attachmentsSupervision(); as supervision) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Załączniki — {{ supervision.groupLabel }}</h3>
+        <button class="close" (click)="closeAttachments()">×</button>
+      </div>
+      <div class="modal-body">
+        <app-attachments
+          [attachments]="supervision.attachments"
+          [baseUrl]="attachmentsUrl(supervision)"
+          managePermission="Supervisions.Manage"
+          [showEmpty]="true"
+          (changed)="load()" />
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="closeAttachments()">Zamknij</button>
       </div>
     </div>
   </div>

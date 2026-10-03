@@ -6,13 +6,15 @@ import { FormsModule } from '@angular/forms';
 import { SupervisionsService } from './supervisions.service';
 import { CreateSupervisionValue, Institution, Supervision } from './supervision.model';
 import { ToastService } from '../../core/notifications/toast.service';
+import { AttachmentsComponent } from '../../shared/attachments/attachments.component';
+import { environment } from '../../../environments/environment';
 
 export type SupervisionSort = 'dateDesc' | 'dateAsc' | 'institution';
 
 @Component({
   selector: 'app-supervisions-list',
   standalone: true,
-  imports: [HasPermissionDirective, ExportButtonComponent, FormsModule, DatePipe],
+  imports: [HasPermissionDirective, ExportButtonComponent, AttachmentsComponent, FormsModule, DatePipe],
   templateUrl: './supervisions-list.component.html',
   styleUrl: './supervisions-list.component.scss'
 })
@@ -33,6 +35,9 @@ export class SupervisionsListComponent implements OnInit {
         return items.sort((a, b) => byDate(b, a));
     }
   });
+  /** Superwizja, której okno załączników jest otwarte; dane bierze z listy, więc odświeżają się po każdym przeładowaniu. */
+  readonly attachmentsSupervisionId = signal<string | null>(null);
+  readonly attachmentsSupervision = computed(() => this.supervisions().find(s => s.id === this.attachmentsSupervisionId()) ?? null);
   readonly isFormOpen = signal(false);
   readonly editingId = signal<string | null>(null);
   newSupervision: CreateSupervisionValue = { institution: 'DOK', groupLabel: '', supervisionDate: '' };
@@ -61,6 +66,18 @@ export class SupervisionsListComponent implements OnInit {
       next: supervisions => this.supervisions.set(supervisions),
       error: () => this.toast.error('Nie udało się wczytać listy superwizji.')
     });
+  }
+
+  attachmentsUrl(supervision: Supervision): string {
+    return `${environment.apiBaseUrl}/api/supervisions/${supervision.id}/attachments`;
+  }
+
+  openAttachments(supervision: Supervision): void {
+    this.attachmentsSupervisionId.set(supervision.id);
+  }
+
+  closeAttachments(): void {
+    this.attachmentsSupervisionId.set(null);
   }
 
   openAddForm(): void {

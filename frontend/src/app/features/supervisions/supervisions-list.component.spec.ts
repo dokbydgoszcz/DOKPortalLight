@@ -7,7 +7,7 @@ import { api, clickByText, setInput, setSelect, setup, textOf } from '../../test
 
 const supervision: Supervision = {
   id: 's1', institution: 'DOK', groupLabel: 'Grupa A', supervisionDate: '2026-09-30',
-  attendeesCount: 8, expectedCount: 10, topic: 'Modlitwa', conclusion: 'Spotkać się częściej'
+  attendeesCount: 8, expectedCount: 10, topic: 'Modlitwa', conclusion: 'Spotkać się częściej', attachments: []
 };
 const url = api('/api/supervisions');
 
@@ -254,6 +254,90 @@ describe('SupervisionsListComponent', () => {
 
       expect(textOf(el)).toContain('Grupa A — 30.09.2026');
       expect(el.querySelector('.list-sub')!.textContent).toContain('DOK');
+    });
+  });
+
+  describe('attachments', () => {
+    const file = { id: 'a1', fileName: 'protokol.pdf', contentType: 'application/pdf', sizeBytes: 2048, uploadedAtUtc: '2026-10-03T10:00:00Z' };
+    const withFile: Supervision = { ...supervision, attachments: [file] };
+    const filesUrl = `${url}/s1/attachments`;
+    const modalText = (el: HTMLElement) => textOf(el.querySelector('.modal') as HTMLElement);
+
+    it('shows the number of files in the row and opens the files window', () => {
+      const { fixture, el } = boot([withFile]);
+
+      expect(textOf(el)).toContain('Załączniki (1)');
+      clickByText(el, 'Załączniki (1)');
+      fixture.detectChanges();
+
+      expect(modalText(el)).toContain('Załączniki — Grupa A');
+      expect(modalText(el)).toContain('protokol.pdf');
+    });
+
+    it('offers the files window also when there are no files yet', () => {
+      const { fixture, el } = boot([supervision]);
+
+      expect(textOf(el)).toContain('Załączniki');
+      expect(textOf(el)).not.toContain('Załączniki (');
+      clickByText(el, 'Załączniki');
+      fixture.detectChanges();
+
+      expect(modalText(el)).toContain('Brak załączników.');
+    });
+
+    it('downloads a file from the supervision address', () => {
+      const { fixture, http, el } = boot([withFile]);
+      URL.createObjectURL = vi.fn(() => 'blob:test');
+      URL.revokeObjectURL = vi.fn();
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      clickByText(el, 'Załączniki (1)');
+      fixture.detectChanges();
+
+      clickByText(el.querySelector('.modal') as HTMLElement, 'Pobierz');
+
+      http.expectOne(r => r.method === 'GET' && r.url === `${filesUrl}/a1/download`).flush(new Blob(['x']));
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test');
+    });
+
+    it('uploads a file, reloads the list and shows the new file and count in the open window', () => {
+      const { fixture, http, el } = boot([supervision]);
+      clickByText(el, 'Załączniki');
+      fixture.detectChanges();
+      const input = el.querySelector('.modal input[name="attachmentFiles"]') as HTMLInputElement;
+      Object.defineProperty(input, 'files', { value: [new File(['a'], 'protokol.pdf')], configurable: true });
+
+      input.dispatchEvent(new Event('change'));
+      http.expectOne(r => r.method === 'POST' && r.url === filesUrl).flush(file);
+      http.expectOne(r => r.method === 'GET' && r.url === url).flush([withFile]);
+      fixture.detectChanges();
+
+      expect(modalText(el)).toContain('protokol.pdf');
+      expect(textOf(el)).toContain('Załączniki (1)');
+    });
+
+    it('closes the files window', () => {
+      const { fixture, el } = boot([withFile]);
+      clickByText(el, 'Załączniki (1)');
+      fixture.detectChanges();
+
+      clickByText(el, 'Zamknij', '.modal-foot button');
+      fixture.detectChanges();
+
+      expect(el.querySelector('.modal')).toBeNull();
+    });
+
+    it('lets users who can only view supervisions download files but not add or delete them', () => {
+      const ctx = setup(SupervisionsListComponent, { granted: ['Supervisions.View'] });
+      ctx.fixture.detectChanges();
+      ctx.http.expectOne(r => r.url === url).flush([withFile]);
+      ctx.fixture.detectChanges();
+
+      clickByText(ctx.el, 'Załączniki (1)');
+      ctx.fixture.detectChanges();
+
+      expect(modalText(ctx.el)).toContain('Pobierz');
+      expect(ctx.el.querySelector('.modal input[type="file"]')).toBeNull();
+      expect(modalText(ctx.el)).not.toContain('Usuń');
     });
   });
 });

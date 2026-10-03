@@ -1,3 +1,5 @@
+import { Attachment } from '../../shared/attachments/attachment.model';
+
 export type Institution = 'SKSP' | 'DOK';
 
 export interface Supervision {
@@ -9,6 +11,7 @@ export interface Supervision {
   expectedCount: number | null;
   topic: string | null;
   conclusion: string | null;
+  attachments: Attachment[];
 }
 
 export interface CreateSupervisionValue {
