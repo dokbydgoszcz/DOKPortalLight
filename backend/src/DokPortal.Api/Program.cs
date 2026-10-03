@@ -41,6 +41,12 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+{
+    builder.Services.AddApplicationInsightsTelemetry();
+    builder.Services.AddApplicationInsightsTelemetryProcessor<DokPortal.Api.Telemetry.HealthTelemetryFilter>();
+}
+
 builder.Services.AddControllers(options => options.Filters.Add<ValidationActionFilter>())
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddValidatorsFromAssemblyContaining<DokPortal.Application.Auth.LoginRequestValidator>();
