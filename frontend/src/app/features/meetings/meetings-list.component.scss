@@ -7,3 +7,15 @@
   background: var(--green);
   color: white;
 }
+
+.attendee-row td {
+  background: #f7faf8;
+  font-size: 13px;
+}
+
+.attendee-picker label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: normal;
+}

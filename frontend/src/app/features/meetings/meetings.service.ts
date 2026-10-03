@@ -25,6 +25,10 @@ export class MeetingsService {
     return this.http.put<Meeting>(`${this.baseUrl}/${id}/attendance`, { isAttended });
   }
 
+  setAttendeeAttendance(id: string, dokCaseId: string, isAttended: boolean | null) {
+    return this.http.put<Meeting>(`${this.baseUrl}/${id}/attendees/${dokCaseId}`, { isAttended });
+  }
+
   delete(id: string) {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }

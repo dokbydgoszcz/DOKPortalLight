@@ -14,7 +14,12 @@
         @for (meeting of meetings(); track meeting.id) {
           <tr>
             <td>{{ meeting.meetingDate }}</td>
-            <td>{{ meeting.caseLabel ?? meeting.groupLabel }}</td>
+            <td>
+              {{ meeting.caseLabel ?? meeting.groupLabel }}
+              @if (meeting.attendees.length > 0) {
+                <br /><span class="link" (click)="toggleExpanded(meeting.id)">Uczestnicy ({{ meeting.attendees.length }})</span>
+              }
+            </td>
             <td>
               @if (meeting.isAttended === true) {
                 <span class="pill green">obecny</span>
@@ -25,17 +30,41 @@
             <td>{{ meeting.notes }}</td>
             <td>
               <ng-container *appHasPermission="'Meetings.Manage'">
-                <span class="attendance-toggle">
-                  <button type="button" class="btn ghost small" [class.active]="meeting.isAttended === true" (click)="setAttendance(meeting, true)">Obecny</button>
-                  <button type="button" class="btn ghost small" [class.active]="meeting.isAttended === false" (click)="setAttendance(meeting, false)">Nieobecny</button>
-                </span>
-                &nbsp;·&nbsp;
+                @if (meeting.attendees.length === 0) {
+                  <span class="attendance-toggle">
+                    <button type="button" class="btn ghost small" [class.active]="meeting.isAttended === true" (click)="setAttendance(meeting, true)">Obecny</button>
+                    <button type="button" class="btn ghost small" [class.active]="meeting.isAttended === false" (click)="setAttendance(meeting, false)">Nieobecny</button>
+                  </span>
+                  &nbsp;·&nbsp;
+                }
                 <span class="link" (click)="openEditForm(meeting)">Edytuj</span>
                 &nbsp;·&nbsp;
                 <span class="link" style="color:var(--danger)" (click)="deleteMeeting(meeting)">Usuń</span>
               </ng-container>
             </td>
           </tr>
+          @if (isExpanded(meeting.id)) {
+            @for (attendee of meeting.attendees; track attendee.dokCaseId) {
+              <tr class="attendee-row">
+                <td></td>
+                <td>↳ {{ attendee.personFullName }}</td>
+                <td>
+                  @if (attendee.isAttended === true) {
+                    <span class="pill green">obecny</span>
+                  } @else if (attendee.isAttended === false) {
+                    <span class="pill red">nieobecny</span>
+                  }
+                </td>
+                <td></td>
+                <td>
+                  <span *appHasPermission="'Meetings.Manage'" class="attendance-toggle">
+                    <button type="button" class="btn ghost small" [class.active]="attendee.isAttended === true" (click)="setAttendeeAttendance(meeting, attendee, true)">Obecny</button>
+                    <button type="button" class="btn ghost small" [class.active]="attendee.isAttended === false" (click)="setAttendeeAttendance(meeting, attendee, false)">Nieobecny</button>
+                  </span>
+                </td>
+              </tr>
+            }
+          }
         } @empty {
           <tr><td colspan="5" class="empty">Brak spotkań.</td></tr>
         }
@@ -56,14 +85,31 @@
           <div class="field"><label>Data</label><input type="date" [(ngModel)]="newMeeting.meetingDate" name="meetingDate" /></div>
           <div class="field"><label>Grupa / opis</label><input [(ngModel)]="newMeeting.groupLabel" name="groupLabel" /></div>
           <div class="field">
-            <label>Podopieczny DOK (opcjonalnie)</label>
-            <select [ngModel]="newMeeting.dokCaseId ?? ''" (ngModelChange)="onDokCaseChange($event)" name="dokCaseId">
-              <option value="">— spotkanie grupowe —</option>
-              @for (dokCase of dokCases(); track dokCase.id) {
-                <option [value]="dokCase.id">{{ dokCase.personFullName }}</option>
-              }
-            </select>
+            <label><input type="checkbox" name="useAttendees" [checked]="useAttendees()" (change)="onUseAttendeesChange($any($event.target).checked)" /> Zajęcia z listą uczestników</label>
           </div>
+          @if (useAttendees()) {
+            <div class="field attendee-picker">
+              <label>Uczestnicy</label>
+              @for (dokCase of dokCases(); track dokCase.id) {
+                <label>
+                  <input type="checkbox" [checked]="isAttendeeSelected(dokCase.id)" (change)="toggleAttendeeSelection(dokCase.id, $any($event.target).checked)" />
+                  {{ dokCase.personFullName }}
+                </label>
+              } @empty {
+                <span class="small-muted">Brak podopiecznych do wyboru.</span>
+              }
+            </div>
+          } @else {
+            <div class="field">
+              <label>Podopieczny DOK (opcjonalnie)</label>
+              <select [ngModel]="newMeeting.dokCaseId ?? ''" (ngModelChange)="onDokCaseChange($event)" name="dokCaseId">
+                <option value="">— spotkanie grupowe —</option>
+                @for (dokCase of dokCases(); track dokCase.id) {
+                  <option [value]="dokCase.id">{{ dokCase.personFullName }}</option>
+                }
+              </select>
+            </div>
+          }
         </div>
       </div>
       <div class="modal-foot">
