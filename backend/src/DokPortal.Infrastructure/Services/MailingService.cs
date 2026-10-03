@@ -52,6 +52,20 @@ public class MailingService : IMailingService
         return ToDto(campaign);
     }
 
+    public async Task<bool> DeleteDraftAsync(Guid id, CancellationToken ct)
+    {
+        var campaign = await _db.MailingCampaigns.FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (campaign is null) return false;
+        if (campaign.Status != CampaignStatus.Draft)
+        {
+            throw new InvalidOperationException("Wysłanej kampanii nie można usunąć – zostaje w historii.");
+        }
+
+        _db.MailingCampaigns.Remove(campaign);
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<MailingCampaignDto?> SendAsync(Guid id, CancellationToken ct)
     {
         var campaign = await _db.MailingCampaigns.FirstOrDefaultAsync(c => c.Id == id, ct);

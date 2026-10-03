@@ -25,6 +25,17 @@ public class ParishService : IParishService
         return new ParishDto { Id = parish.Id, Name = parish.Name, City = parish.City };
     }
 
+    public async Task<ParishDto?> UpdateAsync(Guid id, UpdateParishRequest request, CancellationToken ct)
+    {
+        var parish = await _db.Parishes.FirstOrDefaultAsync(p => p.Id == id, ct);
+        if (parish is null) return null;
+
+        parish.Name = request.Name;
+        parish.City = request.City;
+        await _db.SaveChangesAsync(ct);
+        return new ParishDto { Id = parish.Id, Name = parish.Name, City = parish.City };
+    }
+
     public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
     {
         var parish = await _db.Parishes.FirstOrDefaultAsync(p => p.Id == id, ct);

@@ -28,6 +28,14 @@ public class ParishesController : ControllerBase
         return CreatedAtAction(nameof(GetAll), created);
     }
 
+    [HttpPut("{id:guid}")]
+    [HasPermission(Permissions.ParishesManage)]
+    public async Task<ActionResult<ParishDto>> Update(Guid id, UpdateParishRequest request, CancellationToken ct)
+    {
+        var updated = await _parishService.UpdateAsync(id, request, ct);
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
     [HttpDelete("{id:guid}")]
     [HasPermission(Permissions.ParishesManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)

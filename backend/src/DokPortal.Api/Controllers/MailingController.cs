@@ -25,6 +25,11 @@ public class MailingController : ControllerBase
     public async Task<ActionResult<MailingCampaignDto>> Create(CreateMailingCampaignRequest request, CancellationToken ct)
         => Ok(await _mailingService.CreateAsync(request, ct));
 
+    [HttpDelete("{id:guid}")]
+    [HasPermission(Permissions.MailingManage)]
+    public async Task<IActionResult> DeleteDraft(Guid id, CancellationToken ct)
+        => await _mailingService.DeleteDraftAsync(id, ct) ? NoContent() : NotFound();
+
     [HttpPost("{id:guid}/send")]
     [HasPermission(Permissions.MailingManage)]
     public async Task<ActionResult<MailingCampaignDto>> Send(Guid id, CancellationToken ct)
