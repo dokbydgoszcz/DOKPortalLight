@@ -22,6 +22,7 @@ export class MissionsListComponent implements OnInit {
   readonly totalCount = signal(0);
   readonly pageSize = PAGE_SIZE;
   readonly isFormOpen = signal(false);
+  readonly editingId = signal<string | null>(null);
   formValue: MissionFormValue = { personId: '', servicePlace: '', missionStartDate: '', missionEndDate: '', sentToDok: false };
 
   constructor(
@@ -49,18 +50,36 @@ export class MissionsListComponent implements OnInit {
   }
 
   openAddForm(): void {
+    this.editingId.set(null);
     this.formValue = { personId: '', servicePlace: '', missionStartDate: '', missionEndDate: '', sentToDok: false };
     this.isFormOpen.set(true);
   }
 
+  openEditForm(mission: Mission): void {
+    this.editingId.set(mission.id);
+    this.formValue = {
+      personId: mission.personId,
+      servicePlace: mission.servicePlace,
+      missionStartDate: mission.missionStartDate,
+      missionEndDate: mission.missionEndDate,
+      grantedDate: mission.grantedDate ?? undefined,
+      grantedPlace: mission.grantedPlace ?? undefined,
+      supervisionGroup: mission.supervisionGroup ?? undefined,
+      sentToDok: mission.sentToDok
+    };
+    this.isFormOpen.set(true);
+  }
+
   onSave(value: MissionFormValue): void {
-    this.missionsService.create(value).subscribe({
+    const id = this.editingId();
+    const request$ = id ? this.missionsService.update(id, value) : this.missionsService.create(value);
+    request$.subscribe({
       next: () => {
         this.isFormOpen.set(false);
-        this.toast.success('Dodano misję.');
+        this.toast.success(id ? 'Zapisano zmiany.' : 'Dodano misję.');
         this.load();
       },
-      error: () => this.toast.error('Nie udało się dodać misji.')
+      error: () => this.toast.error(id ? 'Nie udało się zapisać zmian.' : 'Nie udało się dodać misji.')
     });
   }
 

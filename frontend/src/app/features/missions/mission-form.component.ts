@@ -15,6 +15,7 @@ import { MissionFormValue } from './mission.model';
 })
 export class MissionFormComponent implements OnInit {
   @Input() open = false;
+  @Input() editing = false;
   @Input() value: MissionFormValue = { personId: '', servicePlace: '', missionStartDate: '', missionEndDate: '' };
   @Output() save = new EventEmitter<MissionFormValue>();
   @Output() cancel = new EventEmitter<void>();

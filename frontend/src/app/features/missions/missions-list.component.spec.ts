@@ -162,4 +162,89 @@ describe('MissionsListComponent', () => {
       expect(toastMessages()).toContain('Nie udało się usunąć misji.');
     });
   });
+
+  describe('editing a mission', () => {
+    const detailed: Mission = {
+      ...mission, grantedDate: '2023-10-01', grantedPlace: 'Bydgoszcz', supervisionGroup: 'Grupa A', sentToDok: false
+    };
+    const saveButton = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.modal-foot button')).find(b => b.textContent!.includes('Zapisz'))!;
+
+    async function openEdit() {
+      const ctx = boot([detailed]);
+      clickByText(ctx.el, 'Edytuj');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      return ctx;
+    }
+
+    it('opens the form filled with the mission, including the DOK flag', async () => {
+      const ctx = await openEdit();
+
+      expect(textOf(ctx.el)).toContain('Edytuj misję');
+      expect((ctx.el.querySelector('select[name="personId"]') as HTMLSelectElement).value).toBe('p1');
+      expect((ctx.el.querySelector('input[name="servicePlace"]') as HTMLInputElement).value).toBe('Parafia św. Mateusza');
+      expect((ctx.el.querySelector('input[name="missionStartDate"]') as HTMLInputElement).value).toBe('2023-10-15');
+      expect((ctx.el.querySelector('input[name="missionEndDate"]') as HTMLInputElement).value).toBe('2026-10-14');
+      expect((ctx.el.querySelector('input[name="grantedDate"]') as HTMLInputElement).value).toBe('2023-10-01');
+      expect((ctx.el.querySelector('input[name="grantedPlace"]') as HTMLInputElement).value).toBe('Bydgoszcz');
+      expect((ctx.el.querySelector('input[name="sentToDok"]') as HTMLInputElement).checked).toBe(false);
+    });
+
+    it('saves the change with PUT, including the DOK flag, and reloads', async () => {
+      const ctx = await openEdit();
+
+      setInput(ctx.el, 'input[name="servicePlace"]', 'Parafia św. Jana');
+      (ctx.el.querySelector('input[name="sentToDok"]') as HTMLInputElement).click();
+      ctx.fixture.detectChanges();
+      saveButton(ctx.el).click();
+
+      const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${url}/1`);
+      expect(req.request.body).toEqual({
+        personId: 'p1', servicePlace: 'Parafia św. Jana', missionStartDate: '2023-10-15', missionEndDate: '2026-10-14',
+        grantedDate: '2023-10-01', grantedPlace: 'Bydgoszcz', supervisionGroup: 'Grupa A', sentToDok: true
+      });
+      req.flush({ ...detailed, servicePlace: 'Parafia św. Jana', sentToDok: true });
+      ctx.fixture.detectChanges();
+
+      expect(toastMessages()).toContain('Zapisano zmiany.');
+      expect(ctx.el.querySelector('.modal')).toBeNull();
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush({ items: [detailed], totalCount: 1, page: 1, pageSize: 20 });
+    });
+
+    it('shows a toast when saving the change fails and keeps the form open', async () => {
+      const ctx = await openEdit();
+
+      saveButton(ctx.el).click();
+      ctx.http.expectOne(r => r.method === 'PUT').flush('x', { status: 400, statusText: 'Bad Request' });
+      ctx.fixture.detectChanges();
+
+      expect(toastMessages()).toContain('Nie udało się zapisać zmian.');
+      expect(ctx.el.querySelector('.modal')).not.toBeNull();
+    });
+
+    it('switches back to adding after an edit was cancelled', async () => {
+      const ctx = await openEdit();
+      clickByText(ctx.el, 'Anuluj', '.modal-foot button');
+      ctx.fixture.detectChanges();
+
+      clickByText(ctx.el, 'Dodaj misję');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+
+      expect(textOf(ctx.el)).toContain('Nowa misja');
+      expect((ctx.el.querySelector('input[name="servicePlace"]') as HTMLInputElement).value).toBe('');
+    });
+
+    it('is not offered to users who cannot manage missions', () => {
+      const ctx = setup(MissionsListComponent, { granted: ['Missions.View'] });
+      ctx.fixture.detectChanges();
+      ctx.http.expectOne(r => r.url === url).flush({ items: [detailed], totalCount: 1, page: 1, pageSize: 20 });
+      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
+      ctx.http.expectOne(r => r.url === api('/api/parishes')).flush([]);
+      ctx.fixture.detectChanges();
+
+      expect(textOf(ctx.el)).not.toContain('Edytuj');
+    });
+  });
 });

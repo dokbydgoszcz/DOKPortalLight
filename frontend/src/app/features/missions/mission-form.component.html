@@ -2,7 +2,7 @@
   <div class="overlay show">
     <div class="modal">
       <div class="modal-head">
-        <h3>Nowa misja kanoniczna</h3>
+        <h3>{{ editing ? 'Edytuj misję kanoniczną' : 'Nowa misja kanoniczna' }}</h3>
         <button class="close" (click)="cancel.emit()">×</button>
       </div>
       <div class="modal-body">

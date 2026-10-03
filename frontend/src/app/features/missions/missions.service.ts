@@ -18,6 +18,10 @@ export class MissionsService {
     return this.http.post<Mission>(this.baseUrl, value);
   }
 
+  update(id: string, value: MissionFormValue) {
+    return this.http.put<Mission>(`${this.baseUrl}/${id}`, value);
+  }
+
   delete(id: string) {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
