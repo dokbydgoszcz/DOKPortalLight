@@ -24,6 +24,7 @@ using DokPortal.Application.Users;
 using DokPortal.Api.Authorization;
 using DokPortal.Api.ErrorHandling;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using DokPortal.Api.Filters;
 using DokPortal.Infrastructure.Auth;
 using DokPortal.Infrastructure.Identity;
@@ -50,6 +51,9 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("database", tags: new[] { "ready" });
 
 builder.Services
     .AddIdentityCore<AppUser>(options =>
@@ -168,6 +172,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
 
 app.Run();
 
