@@ -56,7 +56,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn ghost" (click)="cancel()">Anuluj</button>
-        <button class="btn primary" (click)="createEntry()">Zapisz</button>
+        <button class="btn primary" [disabled]="!newEntry.entryDate" (click)="createEntry()">Zapisz</button>
       </div>
     </div>
   </div>

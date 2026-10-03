@@ -105,6 +105,8 @@ describe('MissionsListComponent', () => {
     it('shows a toast when saving fails and closes the form on cancel', async () => {
       const ctx = await openForm();
       setSelect(ctx.el, 'select[name="personId"]', 'p1');
+      setInput(ctx.el, 'input[name="missionStartDate"]', '2026-01-01');
+      setInput(ctx.el, 'input[name="missionEndDate"]', '2029-01-01');
       ctx.fixture.detectChanges();
 
       saveButton(ctx.el).click();

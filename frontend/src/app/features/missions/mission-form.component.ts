@@ -26,6 +26,7 @@ export class MissionFormComponent implements OnInit {
   }
 
   submit(): void {
-    this.save.emit(this.value);
+    // Wyczyszczone pole daty daje pusty tekst, którego API nie przyjmie jako daty – opcjonalną datę pomijamy.
+    this.save.emit({ ...this.value, grantedDate: this.value.grantedDate || undefined });
   }
 }

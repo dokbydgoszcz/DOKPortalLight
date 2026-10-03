@@ -60,6 +60,7 @@ describe('SupervisionsListComponent', () => {
       setInput(ctx.el, 'input[name="supervisionDate"]', '2026-10-10');
       setInput(ctx.el, 'textarea[name="topic"]', 'Liturgia');
       setInput(ctx.el, 'textarea[name="conclusion"]', 'Kontynuować');
+      ctx.fixture.detectChanges();
       saveButton(ctx.el).click();
 
       const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
@@ -74,8 +75,22 @@ describe('SupervisionsListComponent', () => {
       ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([supervision]);
     });
 
+    it('keeps saving disabled until a date is chosen, so an empty date is never sent', async () => {
+      const ctx = await openForm();
+      expect(saveButton(ctx.el).disabled).toBe(true);
+
+      saveButton(ctx.el).click();
+      ctx.http.expectNone(r => r.method === 'POST');
+
+      setInput(ctx.el, 'input[name="supervisionDate"]', '2026-10-10');
+      ctx.fixture.detectChanges();
+      expect(saveButton(ctx.el).disabled).toBe(false);
+    });
+
     it('shows a toast when adding fails and closes the form on cancel', async () => {
       const ctx = await openForm();
+      setInput(ctx.el, 'input[name="supervisionDate"]', '2026-10-10');
+      ctx.fixture.detectChanges();
 
       saveButton(ctx.el).click();
       ctx.http.expectOne(r => r.method === 'POST').flush('x', { status: 400, statusText: 'Bad Request' });

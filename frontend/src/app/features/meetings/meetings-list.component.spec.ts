@@ -83,6 +83,7 @@ describe('MeetingsListComponent', () => {
 
       setInput(ctx.el, 'input[name="meetingDate"]', '2026-10-15');
       setInput(ctx.el, 'input[name="groupLabel"]', 'Grupa wieczorna');
+      ctx.fixture.detectChanges();
       saveButton(ctx.el).click();
 
       const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
@@ -102,6 +103,7 @@ describe('MeetingsListComponent', () => {
 
       setInput(ctx.el, 'input[name="meetingDate"]', '2026-10-16');
       setSelect(ctx.el, 'select[name="dokCaseId"]', 'c1');
+      ctx.fixture.detectChanges();
       saveButton(ctx.el).click();
 
       const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
@@ -110,8 +112,22 @@ describe('MeetingsListComponent', () => {
       ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([caseMeeting]);
     });
 
+    it('keeps saving disabled until a date is chosen, so an empty date is never sent', async () => {
+      const ctx = await openForm();
+      expect(saveButton(ctx.el).disabled).toBe(true);
+
+      saveButton(ctx.el).click();
+      ctx.http.expectNone(r => r.method === 'POST');
+
+      setInput(ctx.el, 'input[name="meetingDate"]', '2026-10-10');
+      ctx.fixture.detectChanges();
+      expect(saveButton(ctx.el).disabled).toBe(false);
+    });
+
     it('shows a toast when adding fails and closes the form on cancel', async () => {
       const ctx = await openForm();
+      setInput(ctx.el, 'input[name="meetingDate"]', '2026-10-10');
+      ctx.fixture.detectChanges();
 
       saveButton(ctx.el).click();
       ctx.http.expectOne(r => r.method === 'POST').flush('x', { status: 400, statusText: 'Bad Request' });
@@ -376,6 +392,7 @@ describe('MeetingsListComponent', () => {
 
       it('unchecking an attendee removes them from the request', async () => {
         const ctx = await openForm();
+        setInput(ctx.el, 'input[name="meetingDate"]', '2026-10-20');
         (ctx.el.querySelector('input[name="useAttendees"]') as HTMLInputElement).click();
         ctx.fixture.detectChanges();
         attendeeCheckbox(ctx.el, 'Jan Kowalski').click();

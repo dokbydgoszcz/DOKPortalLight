@@ -82,6 +82,7 @@ export function describeBudgetScreen({ name, component, fund, withExpenseStructu
         setInput(ctx.el, 'input[name="description"]', 'Ofiara');
         setInput(ctx.el, 'input[name="category"]', 'Dotacja');
         setInput(ctx.el, 'input[name="amount"]', '150');
+        ctx.fixture.detectChanges();
         clickByText(ctx.el, 'Zapisz', '.modal-foot button');
 
         const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
@@ -94,8 +95,24 @@ export function describeBudgetScreen({ name, component, fund, withExpenseStructu
         ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([income]);
       });
 
+      it('keeps saving disabled until a date is chosen, so an empty date is never sent', async () => {
+        const ctx = await openForm();
+        const save = () =>
+          Array.from(ctx.el.querySelectorAll<HTMLButtonElement>('.modal-foot button')).find(b => b.textContent!.includes('Zapisz'))!;
+        expect(save().disabled).toBe(true);
+
+        save().click();
+        ctx.http.expectNone(r => r.method === 'POST');
+
+        setInput(ctx.el, 'input[name="entryDate"]', '2026-10-01');
+        ctx.fixture.detectChanges();
+        expect(save().disabled).toBe(false);
+      });
+
       it('shows a toast when adding fails and closes the form on cancel', async () => {
         const ctx = await openForm();
+        setInput(ctx.el, 'input[name="entryDate"]', '2026-10-01');
+        ctx.fixture.detectChanges();
 
         clickByText(ctx.el, 'Zapisz', '.modal-foot button');
         ctx.http.expectOne(r => r.method === 'POST').flush('x', { status: 400, statusText: 'Bad Request' });

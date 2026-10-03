@@ -50,7 +50,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn ghost" (click)="cancel()">Anuluj</button>
-        <button class="btn primary" (click)="createSupervision()">Zapisz</button>
+        <button class="btn primary" [disabled]="!newSupervision.supervisionDate" (click)="createSupervision()">Zapisz</button>
       </div>
     </div>
   </div>

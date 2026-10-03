@@ -49,6 +49,39 @@ describe('MissionFormComponent', () => {
     expect(saved).toEqual([{ personId: 'p1', servicePlace: 'Parafia św. Jana', missionStartDate: '2026-01-01', missionEndDate: '2029-01-01' }]);
   });
 
+  it('keeps saving disabled until both mission dates are chosen', async () => {
+    const { fixture, el, saved } = render(true);
+    await fixture.whenStable();
+    setSelect(el, 'select[name="personId"]', 'p1');
+    fixture.detectChanges();
+    expect(saveButton(el).disabled).toBe(true);
+
+    setInput(el, 'input[name="missionStartDate"]', '2026-01-01');
+    fixture.detectChanges();
+    expect(saveButton(el).disabled).toBe(true);
+
+    setInput(el, 'input[name="missionEndDate"]', '2029-01-01');
+    fixture.detectChanges();
+    expect(saveButton(el).disabled).toBe(false);
+    expect(saved).toEqual([]);
+  });
+
+  it('does not send an emptied optional grant date as an empty string', async () => {
+    const { fixture, el, saved } = render(true);
+    await fixture.whenStable();
+    setSelect(el, 'select[name="personId"]', 'p1');
+    setInput(el, 'input[name="missionStartDate"]', '2026-01-01');
+    setInput(el, 'input[name="missionEndDate"]', '2029-01-01');
+    setInput(el, 'input[name="grantedDate"]', '2025-12-20');
+    setInput(el, 'input[name="grantedDate"]', '');
+    fixture.detectChanges();
+
+    saveButton(el).click();
+
+    expect(saved).toHaveLength(1);
+    expect(saved[0].grantedDate).toBeUndefined();
+  });
+
   it('emits cancel from the footer button and the close icon', () => {
     const { el, cancelled } = render(true);
 

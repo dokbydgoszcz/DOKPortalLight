@@ -26,4 +26,18 @@ public class SupervisionsControllerTests : IntegrationTestBase
         var supervisions = await getResponse.Content.ReadFromJsonAsync<List<SupervisionDto>>(EnumJsonOptions);
         Assert.Contains(supervisions!, s => s.GroupLabel == "Grupa A");
     }
+
+    [Fact]
+    public async Task Create_WithEmptyDateString_ReturnsBadRequestNamingTheDateField()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+
+        var response = await admin.PostAsJsonAsync("/api/supervisions", new
+        {
+            Institution = "DOK", GroupLabel = "test", SupervisionDate = "", Topic = "ttttt", Conclusion = "ttttt"
+        });
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("supervisionDate", await response.Content.ReadAsStringAsync());
+    }
 }
