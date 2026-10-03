@@ -11,6 +11,7 @@
   <div class="card stat"><div class="stat-label">II ROK</div><div class="stat-value">{{ yearTwoCount() }}</div></div>
   <div class="card stat"><div class="stat-label">III ROK</div><div class="stat-value">{{ yearThreeCount() }}</div></div>
   <div class="card stat"><div class="stat-label">Brakujące opinie</div><div class="stat-value">{{ missingOpinionsCount() }}</div></div>
+  <div class="card stat"><div class="stat-label">Ukończyli formację</div><div class="stat-value">{{ completedCount() }}</div></div>
 </div>
 
 <div class="card">
@@ -20,8 +21,19 @@
       <tbody>
         @for (candidate of candidates(); track candidate.id) {
           <tr>
-            <td><b>{{ candidate.personFullName }}</b></td>
-            <td><span class="pill blue">{{ candidate.year }} ROK</span></td>
+            <td>
+              <b>{{ candidate.personFullName }}</b>
+              @if (candidate.isFormationStopped && candidate.formationStopNote) {
+                <div class="list-sub">{{ candidate.formationStopNote }}</div>
+              }
+            </td>
+            <td>
+              @switch (candidate.status) {
+                @case ('Completed') { <span class="pill green">Ukończył formację</span> }
+                @case ('Stopped') { <span class="pill gold">Formacja zatrzymana</span> }
+                @default { <span class="pill blue">{{ candidate.year }} ROK</span> }
+              }
+            </td>
             <td>{{ candidate.parishName }}</td>
             <td>{{ candidate.attendancePercentage }}%</td>
             <td>{{ candidate.opinionsCollected }} / {{ candidate.opinionsRequired }}</td>

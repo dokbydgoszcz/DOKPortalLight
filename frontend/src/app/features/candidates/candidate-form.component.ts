@@ -45,11 +45,22 @@ export class CandidateFormComponent implements OnInit {
     this.peopleService.search('', 1, 200).subscribe(result => (this.people = result.items));
   }
 
+  /** Wymagana osoba, a przy zatrzymanej formacji także powód. */
+  get canSave(): boolean {
+    return !!this.value.personId && (!this.value.isFormationStopped || !!this.value.formationStopNote?.trim());
+  }
+
   submit(): void {
     const retreats: CandidateRetreat[] = YEARS.filter(year => this.retreatStatus[year] !== '').map(year => ({
       year,
       isCompleted: this.retreatStatus[year] === 'done'
     }));
-    this.save.emit({ ...this.value, retreats });
+    const stopped = !!this.value.isFormationStopped;
+    this.save.emit({
+      ...this.value,
+      retreats,
+      isFormationStopped: this.value.isFormationStopped,
+      formationStopNote: stopped ? this.value.formationStopNote : undefined
+    });
   }
 }

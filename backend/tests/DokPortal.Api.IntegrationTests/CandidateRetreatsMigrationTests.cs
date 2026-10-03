@@ -20,6 +20,7 @@ public class CandidateRetreatsMigrationTests
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options);
         await db.Database.EnsureCreatedAsync();
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE Candidates ADD COLUMN IsRetreatCompleted INTEGER NOT NULL DEFAULT 0");
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE Candidates ADD COLUMN [Year] INTEGER NOT NULL DEFAULT 1");
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE ParishNeeds ADD COLUMN AssignedPersonId TEXT NULL");
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE ParishNeeds ADD COLUMN AssignedAtUtc TEXT NULL");
         return (connection, db);
@@ -36,10 +37,12 @@ public class CandidateRetreatsMigrationTests
         await using var __ = db;
         var person = NewPerson("Kowalski");
         db.People.Add(person);
-        var done = new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, Year = 2, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
-        var pending = new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, Year = 3, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
+        var done = new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
+        var pending = new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
         db.Candidates.AddRange(done, pending);
         await db.SaveChangesAsync();
+        await db.Database.ExecuteSqlRawAsync("UPDATE Candidates SET [Year] = 2 WHERE Id = {0}", done.Id.ToString().ToUpper());
+        await db.Database.ExecuteSqlRawAsync("UPDATE Candidates SET [Year] = 3 WHERE Id = {0}", pending.Id.ToString().ToUpper());
         await db.Database.ExecuteSqlRawAsync("UPDATE Candidates SET IsRetreatCompleted = 1 WHERE Id = {0}", done.Id.ToString().ToUpper());
 
         await db.Database.ExecuteSqlRawAsync(AddCandidateRetreatsAndNeedAssignments.RetreatsUpSql);
@@ -89,7 +92,7 @@ public class CandidateRetreatsMigrationTests
         var parish = new Parish { Id = Guid.NewGuid(), Name = "św. Jana" };
         var first = NewPerson("Zielinski");
         var second = NewPerson("Maj");
-        var candidate = new Candidate { Id = Guid.NewGuid(), PersonId = first.Id, Year = 2, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
+        var candidate = new Candidate { Id = Guid.NewGuid(), PersonId = first.Id, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
         var need = new ParishNeed { Id = Guid.NewGuid(), ParishId = parish.Id, Description = "x", CreatedAtUtc = DateTime.UtcNow };
         db.Parishes.Add(parish);
         db.People.AddRange(first, second);
@@ -102,6 +105,7 @@ public class CandidateRetreatsMigrationTests
             new ParishNeedAssignment { Id = Guid.NewGuid(), ParishNeedId = need.Id, PersonId = second.Id, AssignedAtUtc = new DateTime(2026, 9, 12, 0, 0, 0, DateTimeKind.Utc) },
             new ParishNeedAssignment { Id = Guid.NewGuid(), ParishNeedId = need.Id, PersonId = first.Id, AssignedAtUtc = new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc) });
         await db.SaveChangesAsync();
+        await db.Database.ExecuteSqlRawAsync("UPDATE Candidates SET [Year] = 2");
 
         await db.Database.ExecuteSqlRawAsync(AddCandidateRetreatsAndNeedAssignments.RetreatsDownSql);
         await db.Database.ExecuteSqlRawAsync(AddCandidateRetreatsAndNeedAssignments.AssignmentsDownSql);

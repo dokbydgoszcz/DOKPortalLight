@@ -7,12 +7,21 @@ import { api, clickByText, paged, setInput, setSelect, setSelectByLabel, setup, 
 
 const lewandowska: Candidate = {
   id: '1', personId: 'p1', personFullName: 'Agnieszka Lewandowska', parishName: null, year: 3,
-  attendancePercentage: 94, opinionsCollected: 2, opinionsRequired: 2,
+  attendancePercentage: 94, opinionsCollected: 2, opinionsRequired: 2, status: 'InFormation', isFormationStopped: false, formationStopNote: null,
   retreats: [{ year: 1, isCompleted: true }, { year: 2, isCompleted: true }, { year: 3, isCompleted: false }]
 };
 const nowak: Candidate = {
   id: '2', personId: 'p2', personFullName: 'Karolina Nowak', parishName: null, year: 1,
-  attendancePercentage: 81, opinionsCollected: 0, opinionsRequired: 2, retreats: []
+  attendancePercentage: 81, opinionsCollected: 0, opinionsRequired: 2, status: 'InFormation', isFormationStopped: false, formationStopNote: null, retreats: []
+};
+const finished: Candidate = {
+  id: '3', personId: 'p3', personFullName: 'Ewa Absolwentka', parishName: null, year: 3,
+  attendancePercentage: 99, opinionsCollected: 2, opinionsRequired: 2, status: 'Completed', isFormationStopped: false, formationStopNote: null, retreats: []
+};
+const stoppedCandidate: Candidate = {
+  id: '4', personId: 'p4', personFullName: 'Adam Wycofany', parishName: null, year: 1,
+  attendancePercentage: null, opinionsCollected: 0, opinionsRequired: 2, status: 'Stopped', isFormationStopped: true,
+  formationStopNote: 'Zrezygnował po rozmowie', retreats: []
 };
 const people = [
   { id: 'p1', firstName: 'Jan', lastName: 'Kowalski', fullName: 'Jan Kowalski', email: null, phone: null, birthDate: null, parishId: null, parishName: null, notes: null }
@@ -191,7 +200,7 @@ describe('CandidatesListComponent', () => {
 
       const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${url}/1`);
       expect(req.request.body).toEqual({
-        personId: 'p1', year: 3, attendancePercentage: 94, opinionsCollected: 1,
+        personId: 'p1', year: 3, attendancePercentage: 94, opinionsCollected: 1, isFormationStopped: false,
         retreats: [{ year: 1, isCompleted: true }, { year: 2, isCompleted: true }, { year: 3, isCompleted: true }]
       });
       req.flush(lewandowska);
@@ -237,6 +246,98 @@ describe('CandidatesListComponent', () => {
       ctx.fixture.detectChanges();
 
       expect(textOf(ctx.el)).not.toContain('Edytuj');
+    });
+  });
+
+  describe('formation status', () => {
+    const rowOf = (el: HTMLElement, name: string) =>
+      Array.from(el.querySelectorAll('tbody tr')).find(r => r.textContent!.includes(name)) as HTMLElement;
+
+    it('counts only those still in formation in the per-year cards, and shows how many finished', () => {
+      const { fixture } = boot([lewandowska, nowak, finished, stoppedCandidate]);
+      const component = fixture.componentInstance;
+
+      expect([component.yearOneCount(), component.yearTwoCount(), component.yearThreeCount()]).toEqual([1, 0, 1]);
+      expect(component.missingOpinionsCount()).toBe(1);
+      expect(component.completedCount()).toBe(1);
+    });
+
+    it('labels each candidate: the year, finished formation, or stopped with the reason', () => {
+      const { el } = boot([lewandowska, finished, stoppedCandidate]);
+
+      expect(textOf(rowOf(el, 'Agnieszka'))).toContain('3 ROK');
+      expect(textOf(rowOf(el, 'Ewa Absolwentka'))).toContain('Ukończył formację');
+      expect(textOf(rowOf(el, 'Ewa Absolwentka'))).not.toContain('3 ROK');
+      expect(textOf(rowOf(el, 'Adam Wycofany'))).toContain('Formacja zatrzymana');
+      expect(textOf(rowOf(el, 'Adam Wycofany'))).toContain('Zrezygnował po rozmowie');
+    });
+  });
+
+  describe('stopping the formation', () => {
+    const saveButton = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.modal-foot button')).find(b => b.textContent!.includes('Zapisz'))!;
+
+    async function openEdit(candidate: Candidate = lewandowska) {
+      const ctx = boot([candidate]);
+      (Array.from(ctx.el.querySelectorAll<HTMLElement>('tbody .link')).find(l => l.textContent!.trim() === 'Edytuj'))!.click();
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      return ctx;
+    }
+
+    it('shows the reason field only after ticking the checkbox, and needs the reason to save', async () => {
+      const ctx = await openEdit();
+      const checkbox = () => ctx.el.querySelector('input[name="isFormationStopped"]') as HTMLInputElement;
+
+      expect(ctx.el.querySelector('textarea[name="formationStopNote"]')).toBeNull();
+      expect(saveButton(ctx.el).disabled).toBe(false);
+
+      checkbox().click();
+      ctx.fixture.detectChanges();
+      expect(ctx.el.querySelector('textarea[name="formationStopNote"]')).not.toBeNull();
+      expect(saveButton(ctx.el).disabled).toBe(true);
+      expect(textOf(ctx.el)).toContain('Uzupełnij pola oznaczone *');
+
+      setInput(ctx.el, 'textarea[name="formationStopNote"]', '   ');
+      ctx.fixture.detectChanges();
+      expect(saveButton(ctx.el).disabled).toBe(true);
+
+      setInput(ctx.el, 'textarea[name="formationStopNote"]', 'Zrezygnowała');
+      ctx.fixture.detectChanges();
+      expect(saveButton(ctx.el).disabled).toBe(false);
+    });
+
+    it('sends the stop flag with the reason', async () => {
+      const ctx = await openEdit();
+      (ctx.el.querySelector('input[name="isFormationStopped"]') as HTMLInputElement).click();
+      ctx.fixture.detectChanges();
+      setInput(ctx.el, 'textarea[name="formationStopNote"]', 'Zrezygnowała');
+      ctx.fixture.detectChanges();
+
+      saveButton(ctx.el).click();
+
+      const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${url}/1`);
+      expect(req.request.body.isFormationStopped).toBe(true);
+      expect(req.request.body.formationStopNote).toBe('Zrezygnowała');
+      req.flush(lewandowska);
+      ctx.http.match(r => r.method === 'GET' && r.url === url).forEach(r => r.flush({ items: [lewandowska], totalCount: 1, page: 1, pageSize: 20 }));
+    });
+
+    it('shows the saved stop in the edit form, and unticking it drops the reason', async () => {
+      const ctx = await openEdit(stoppedCandidate);
+      const checkbox = () => ctx.el.querySelector('input[name="isFormationStopped"]') as HTMLInputElement;
+
+      expect(checkbox().checked).toBe(true);
+      expect((ctx.el.querySelector('textarea[name="formationStopNote"]') as HTMLTextAreaElement).value).toBe('Zrezygnował po rozmowie');
+
+      checkbox().click();
+      ctx.fixture.detectChanges();
+      saveButton(ctx.el).click();
+
+      const req = ctx.http.expectOne(r => r.method === 'PUT');
+      expect(req.request.body.isFormationStopped).toBe(false);
+      req.flush(nowak);
+      ctx.http.match(r => r.method === 'GET' && r.url === url).forEach(r => r.flush({ items: [nowak], totalCount: 1, page: 1, pageSize: 20 }));
     });
   });
 });

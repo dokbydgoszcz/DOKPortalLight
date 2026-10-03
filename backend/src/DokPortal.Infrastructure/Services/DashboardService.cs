@@ -12,16 +12,18 @@ public class DashboardService : IDashboardService
 
     private readonly AppDbContext _db;
     private readonly ICaseScopeProvider _scope;
+    private readonly TimeProvider _time;
 
-    public DashboardService(AppDbContext db, ICaseScopeProvider? scope = null)
+    public DashboardService(AppDbContext db, ICaseScopeProvider? scope = null, TimeProvider? time = null)
     {
         _db = db;
         _scope = scope ?? new AllCasesScopeProvider();
+        _time = time ?? TimeProvider.System;
     }
 
     public async Task<DashboardSummaryDto> GetSummaryAsync(CancellationToken ct)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = _time.Today();
         var windowEnd = today.AddDays(UpcomingMeetingsWindowDays);
 
         var scope = await _scope.GetAsync(ct);
@@ -55,7 +57,7 @@ public class DashboardService : IDashboardService
             MissingDocumentsCasesCount = missingDocumentsCasesCount,
             UpcomingMeetingsCount = await _db.Meetings.ForScope(_db, scope)
                 .CountAsync(m => m.MeetingDate >= today && m.MeetingDate <= windowEnd, ct),
-            ActiveCandidatesCount = await _db.Candidates.CountAsync(ct)
+            ActiveCandidatesCount = await _db.Candidates.InFormation(today).CountAsync(ct)
         };
     }
 }

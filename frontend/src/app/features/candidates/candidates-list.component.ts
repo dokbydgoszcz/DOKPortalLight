@@ -31,6 +31,7 @@ export class CandidatesListComponent implements OnInit {
   readonly yearTwoCount = signal(0);
   readonly yearThreeCount = signal(0);
   readonly missingOpinionsCount = signal(0);
+  readonly completedCount = signal(0);
 
   constructor(
     private readonly candidatesService: CandidatesService,
@@ -55,10 +56,12 @@ export class CandidatesListComponent implements OnInit {
   private loadStats(): void {
     this.candidatesService.search(undefined, 1, 1000).subscribe(result => {
       const all = result.items;
-      this.yearOneCount.set(all.filter(c => c.year === 1).length);
-      this.yearTwoCount.set(all.filter(c => c.year === 2).length);
-      this.yearThreeCount.set(all.filter(c => c.year === 3).length);
-      this.missingOpinionsCount.set(all.filter(c => c.opinionsCollected < c.opinionsRequired).length);
+      const inFormation = all.filter(c => c.status === 'InFormation');
+      this.yearOneCount.set(inFormation.filter(c => c.year === 1).length);
+      this.yearTwoCount.set(inFormation.filter(c => c.year === 2).length);
+      this.yearThreeCount.set(inFormation.filter(c => c.year === 3).length);
+      this.missingOpinionsCount.set(inFormation.filter(c => c.opinionsCollected < c.opinionsRequired).length);
+      this.completedCount.set(all.filter(c => c.status === 'Completed').length);
     });
   }
 
@@ -80,7 +83,9 @@ export class CandidatesListComponent implements OnInit {
       year: candidate.year,
       attendancePercentage: candidate.attendancePercentage ?? undefined,
       opinionsCollected: candidate.opinionsCollected,
-      retreats: candidate.retreats.map(r => ({ ...r }))
+      retreats: candidate.retreats.map(r => ({ ...r })),
+      isFormationStopped: candidate.isFormationStopped,
+      formationStopNote: candidate.formationStopNote ?? undefined
     };
     this.isFormOpen.set(true);
   }

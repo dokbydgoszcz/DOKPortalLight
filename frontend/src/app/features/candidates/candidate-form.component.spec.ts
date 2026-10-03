@@ -129,4 +129,17 @@ describe('CandidateFormComponent', () => {
       expect(retreatSelect(ctx.el, 1).value).toBe('');
     });
   });
+
+  it('does not send a leftover reason when the formation is not stopped', async () => {
+    const { fixture, el, saved } = render(true);
+    await fixture.whenStable();
+    setSelect(el, 'select[name="personId"]', 'p1');
+    fixture.componentInstance.value.formationStopNote = 'stara notatka';
+    fixture.detectChanges();
+
+    saveButton(el).click();
+
+    expect(saved[0].isFormationStopped).toBeFalsy();
+    expect(saved[0].formationStopNote).toBeUndefined();
+  });
 });

@@ -111,4 +111,47 @@ public class CandidatesControllerTests : IntegrationTestBase
         Assert.Equal(HttpStatusCode.BadRequest, badYear.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, duplicate.StatusCode);
     }
+
+    [Fact]
+    public async Task ANewCandidate_IsInFormationInTheChosenYear()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        var personId = await CreatePersonAsync(admin, "Iga", "Lis");
+
+        var created = await (await admin.PostAsJsonAsync("/api/candidates", new { PersonId = personId, Year = 2, OpinionsCollected = 0 }))
+            .Content.ReadFromJsonAsync<CandidateDto>();
+
+        Assert.Equal((2, "InFormation", false), (created!.Year, created.Status, created.IsFormationStopped));
+    }
+
+    [Fact]
+    public async Task StoppingTheFormation_NeedsAReason_AndShowsInTheStatus()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        var personId = await CreatePersonAsync(admin, "Iga", "Lis");
+        var created = await (await admin.PostAsJsonAsync("/api/candidates", new { PersonId = personId, Year = 1, OpinionsCollected = 0 }))
+            .Content.ReadFromJsonAsync<CandidateDto>();
+
+        var withoutReason = await admin.PutAsJsonAsync($"/api/candidates/{created!.Id}", new { PersonId = personId, Year = 1, OpinionsCollected = 0, IsFormationStopped = true });
+        var stopped = await admin.PutAsJsonAsync($"/api/candidates/{created.Id}", new
+        {
+            PersonId = personId, Year = 1, OpinionsCollected = 0, IsFormationStopped = true, FormationStopNote = "Zrezygnowała"
+        });
+        var dto = await stopped.Content.ReadFromJsonAsync<CandidateDto>();
+
+        Assert.Equal(HttpStatusCode.BadRequest, withoutReason.StatusCode);
+        Assert.Contains("powód", await withoutReason.Content.ReadAsStringAsync());
+        Assert.Equal(("Stopped", "Zrezygnowała"), (dto!.Status, dto.FormationStopNote));
+    }
+
+    [Fact]
+    public async Task AYearOutsideOneToThree_IsABadRequest()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        var personId = await CreatePersonAsync(admin, "Iga", "Lis");
+
+        var response = await admin.PostAsJsonAsync("/api/candidates", new { PersonId = personId, Year = 4, OpinionsCollected = 0 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }

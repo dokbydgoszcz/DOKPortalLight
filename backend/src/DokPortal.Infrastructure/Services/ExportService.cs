@@ -2,6 +2,7 @@ using ClosedXML.Excel;
 using DokPortal.Application.DokCases;
 using DokPortal.Application.Export;
 using DokPortal.Domain.Enums;
+using DokPortal.Domain.Formation;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,11 +12,13 @@ public class ExportService : IExportService
 {
     private readonly AppDbContext _db;
     private readonly ICaseScopeProvider _scope;
+    private readonly TimeProvider _time;
 
-    public ExportService(AppDbContext db, ICaseScopeProvider? scope = null)
+    public ExportService(AppDbContext db, ICaseScopeProvider? scope = null, TimeProvider? time = null)
     {
         _db = db;
         _scope = scope ?? new AllCasesScopeProvider();
+        _time = time ?? TimeProvider.System;
     }
 
     public async Task<byte[]> ExportPeopleAsync(CancellationToken ct)
@@ -75,17 +78,27 @@ public class ExportService : IExportService
         var candidates = await _db.Candidates.AsNoTracking()
             .Include(c => c.Person)
             .Include(c => c.Retreats)
-            .OrderBy(c => c.Person!.LastName).ThenBy(c => c.Person!.FirstName).ThenBy(c => c.Year)
+            .OrderBy(c => c.Person!.LastName).ThenBy(c => c.Person!.FirstName).ThenByDescending(c => c.FormationStartYear)
             .ToListAsync(ct);
+        var today = _time.Today();
 
         return BuildWorkbook(
             "Kandydaci SKŚP",
-            new[] { "Osoba", "Rok", "Frekwencja (%)", "Opinie zebrane", "Opinie wymagane", "Rekolekcje" },
+            new[] { "Osoba", "Rok", "Status", "Frekwencja (%)", "Opinie zebrane", "Opinie wymagane", "Rekolekcje" },
             candidates.Select(c => new object?[]
             {
-                c.Person?.FullName, c.Year, c.AttendancePercentage, c.OpinionsCollected, c.OpinionsRequired, CompletedRetreatYears(c)
+                c.Person?.FullName, Math.Min(FormationCalendar.YearOf(c.FormationStartYear, today), FormationCalendar.YearsOfFormation),
+                CandidateStatusLabels[FormationCalendar.StatusOf(c.FormationStartYear, c.IsFormationStopped, today)],
+                c.AttendancePercentage, c.OpinionsCollected, c.OpinionsRequired, CompletedRetreatYears(c)
             }));
     }
+
+    private static readonly Dictionary<CandidateFormationStatus, string> CandidateStatusLabels = new()
+    {
+        [CandidateFormationStatus.InFormation] = "W formacji",
+        [CandidateFormationStatus.Completed] = "Ukończył formację",
+        [CandidateFormationStatus.Stopped] = "Formacja zatrzymana"
+    };
 
     private static readonly string[] RomanYears = { "", "I", "II", "III" };
 

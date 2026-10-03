@@ -98,7 +98,7 @@ public class ExportServiceTests
         db.Candidates.AddRange(
             new Candidate
             {
-                Id = Guid.NewGuid(), PersonId = person.Id, Year = 2, AttendancePercentage = 85,
+                Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2025, AttendancePercentage = 85,
                 OpinionsCollected = 1, OpinionsRequired = 2,
                 Retreats =
                 {
@@ -107,18 +107,20 @@ public class ExportServiceTests
                     new CandidateRetreat { Id = Guid.NewGuid(), Year = 3, IsCompleted = false }
                 }
             },
-            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, Year = 3, OpinionsCollected = 0, OpinionsRequired = 2 },
-            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, Year = 1, DeletedAtUtc = DateTime.UtcNow });
+            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2022, OpinionsCollected = 0, OpinionsRequired = 2 },
+            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2024, IsFormationStopped = true, FormationStopNote = "x" },
+            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2026, DeletedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var sheet = OpenSheet(await new ExportService(db).ExportCandidatesAsync(default));
+        var sheet = OpenSheet(await new ExportService(db, null, new FixedTimeProvider(2026, 10, 3)).ExportCandidatesAsync(default));
 
         Assert.Equal(
-            new[] { "Osoba", "Rok", "Frekwencja (%)", "Opinie zebrane", "Opinie wymagane", "Rekolekcje" },
-            Row(sheet, 1, 6));
-        Assert.Equal(new[] { "Jan Kowalski", "2", "85", "1", "2", "I, II" }, Row(sheet, 2, 6));
-        Assert.Equal(new[] { "Jan Kowalski", "3", "", "0", "2", "—" }, Row(sheet, 3, 6));
-        Assert.Equal(3, sheet.LastRowUsed()!.RowNumber());
+            new[] { "Osoba", "Rok", "Status", "Frekwencja (%)", "Opinie zebrane", "Opinie wymagane", "Rekolekcje" },
+            Row(sheet, 1, 7));
+        Assert.Equal(new[] { "Jan Kowalski", "2", "W formacji", "85", "1", "2", "I, II" }, Row(sheet, 2, 7));
+        Assert.Equal(new[] { "Jan Kowalski", "3", "Formacja zatrzymana", "", "0", "2", "—" }, Row(sheet, 3, 7));
+        Assert.Equal(new[] { "Jan Kowalski", "3", "Ukończył formację", "", "0", "2", "—" }, Row(sheet, 4, 7));
+        Assert.Equal(4, sheet.LastRowUsed()!.RowNumber());
     }
 
     [Fact]

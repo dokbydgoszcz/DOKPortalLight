@@ -1,3 +1,4 @@
+using DokPortal.Domain.Formation;
 using DokPortal.Application.Common;
 using DokPortal.Application.Mailing;
 using DokPortal.Domain.Entities;
@@ -44,7 +45,7 @@ public class MailingServiceTests
         await using var db = CreateContext(Guid.NewGuid().ToString());
         var person = NewPerson();
         db.People.Add(person);
-        db.Candidates.Add(new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, Year = 1, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+        db.Candidates.Add(new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = FormationCalendar.StartYearFor(1, DateOnly.FromDateTime(DateTime.UtcNow)), CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
         var service = new MailingService(db, new NullEmailSender());
@@ -82,8 +83,8 @@ public class MailingServiceTests
         var withoutEmail = NewPerson();
         db.People.AddRange(withEmail, withoutEmail);
         db.Candidates.AddRange(
-            new Candidate { Id = Guid.NewGuid(), PersonId = withEmail.Id, Year = 1, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
-            new Candidate { Id = Guid.NewGuid(), PersonId = withoutEmail.Id, Year = 1, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+            new Candidate { Id = Guid.NewGuid(), PersonId = withEmail.Id, FormationStartYear = FormationCalendar.StartYearFor(1, DateOnly.FromDateTime(DateTime.UtcNow)), CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new Candidate { Id = Guid.NewGuid(), PersonId = withoutEmail.Id, FormationStartYear = FormationCalendar.StartYearFor(1, DateOnly.FromDateTime(DateTime.UtcNow)), CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
@@ -97,6 +98,31 @@ public class MailingServiceTests
         Assert.Equal(1, sent!.RecipientCount);
         Assert.Single(emailSender.SentTo);
         Assert.Equal("jan.kowalski@example.org", emailSender.SentTo[0]);
+    }
+
+    [Fact]
+    public async Task RecipientCounts_CandidatesAreOnlyThoseInFormation_AndCatechistsIncludeThoseAwaitingTheMission()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var inFormation = NewPerson();
+        var stopped = NewPerson();
+        var finished = NewPerson();
+        var finishedAndSent = NewPerson();
+        var oldMissionary = NewPerson();
+        db.People.AddRange(inFormation, stopped, finished, finishedAndSent, oldMissionary);
+        db.Candidates.AddRange(
+            new Candidate { Id = Guid.NewGuid(), PersonId = inFormation.Id, FormationStartYear = 2026, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new Candidate { Id = Guid.NewGuid(), PersonId = stopped.Id, FormationStartYear = 2026, IsFormationStopped = true, FormationStopNote = "x", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new Candidate { Id = Guid.NewGuid(), PersonId = finished.Id, FormationStartYear = 2022, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new Candidate { Id = Guid.NewGuid(), PersonId = finishedAndSent.Id, FormationStartYear = 2022, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+        db.CanonicalMissions.AddRange(
+            new CanonicalMission { Id = Guid.NewGuid(), PersonId = finishedAndSent.Id, ServicePlace = "x", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new CanonicalMission { Id = Guid.NewGuid(), PersonId = oldMissionary.Id, ServicePlace = "y", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+        var service = new MailingService(db, new NullEmailSender(), new FixedTimeProvider(2026, 10, 3));
+
+        Assert.Equal(1, await service.GetRecipientCountAsync(MailingGroup.CandidatesSksp, default));
+        Assert.Equal(3, await service.GetRecipientCountAsync(MailingGroup.Missionaries, default));
     }
 
     private class RecordingEmailSender : IEmailSender

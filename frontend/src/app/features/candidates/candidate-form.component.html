@@ -8,7 +8,7 @@
       <div class="modal-body">
         <div class="form-grid">
           <div class="field">
-            <label>Osoba</label>
+            <label>Osoba <span class="required">*</span></label>
             <select [(ngModel)]="value.personId" name="personId">
               <option value="">— wybierz —</option>
               @for (person of people; track person.id) {
@@ -36,11 +36,23 @@
               </select>
             </div>
           }
+          <div class="field full">
+            <label class="checkbox-label"><input type="checkbox" [(ngModel)]="value.isFormationStopped" name="isFormationStopped" /> Formacja zatrzymana (rezygnacja, nieukończona formacja)</label>
+          </div>
+          @if (value.isFormationStopped) {
+            <div class="field full">
+              <label>Powód zatrzymania <span class="required">*</span></label>
+              <textarea [(ngModel)]="value.formationStopNote" name="formationStopNote"></textarea>
+            </div>
+          }
         </div>
       </div>
       <div class="modal-foot">
+        @if (!canSave) {
+          <span class="form-hint">Uzupełnij pola oznaczone *</span>
+        }
         <button class="btn ghost" (click)="cancel.emit()">Anuluj</button>
-        <button class="btn primary" [disabled]="!value.personId" (click)="submit()">Zapisz</button>
+        <button class="btn primary" [disabled]="!canSave" (click)="submit()">Zapisz</button>
       </div>
     </div>
   </div>

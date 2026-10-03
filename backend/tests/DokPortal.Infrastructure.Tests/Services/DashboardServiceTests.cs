@@ -1,3 +1,4 @@
+using DokPortal.Domain.Formation;
 using DokPortal.Domain.Entities;
 using DokPortal.Domain.Enums;
 using DokPortal.Infrastructure.Persistence;
@@ -117,13 +118,33 @@ public class DashboardServiceTests
         var person = NewPerson();
         db.People.Add(person);
         db.Candidates.AddRange(
-            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, Year = 1, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
-            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, Year = 2, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
-            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, Year = 3, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow, DeletedAtUtc = DateTime.UtcNow });
+            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = FormationCalendar.StartYearFor(1, DateOnly.FromDateTime(DateTime.UtcNow)), CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = FormationCalendar.StartYearFor(2, DateOnly.FromDateTime(DateTime.UtcNow)), CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = FormationCalendar.StartYearFor(3, DateOnly.FromDateTime(DateTime.UtcNow)), CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow, DeletedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
         var summary = await new DashboardService(db).GetSummaryAsync(default);
 
         Assert.Equal(2, summary.ActiveCandidatesCount);
+    }
+
+    [Fact]
+    public async Task GetSummaryAsync_ActiveCandidates_ExcludesThoseWhoFinishedOrWereStopped()
+    {
+        await using var db = CreateContext();
+        var person = NewPerson();
+        db.People.Add(person);
+        db.Candidates.AddRange(
+            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2026, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2024, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2023, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2026, IsFormationStopped = true, FormationStopNote = "x", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var before = await new DashboardService(db, null, new FixedTimeProvider(2027, 8, 31)).GetSummaryAsync(default);
+        var after = await new DashboardService(db, null, new FixedTimeProvider(2027, 9, 1)).GetSummaryAsync(default);
+
+        Assert.Equal(2, before.ActiveCandidatesCount);
+        Assert.Equal(1, after.ActiveCandidatesCount);
     }
 }

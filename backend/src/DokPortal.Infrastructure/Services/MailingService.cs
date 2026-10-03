@@ -12,16 +12,27 @@ public class MailingService : IMailingService
     private readonly AppDbContext _db;
     private readonly IEmailSender _emailSender;
 
-    public MailingService(AppDbContext db, IEmailSender emailSender)
+    private readonly TimeProvider _time;
+
+    public MailingService(AppDbContext db, IEmailSender emailSender, TimeProvider? time = null)
     {
         _db = db;
         _emailSender = emailSender;
+        _time = time ?? TimeProvider.System;
+    }
+
+    /// <summary>Katechiści: osoby z misją oraz te, które ukończyły formację i czekają na udzielenie posługi.</summary>
+    private IQueryable<Guid> CatechistPersonIds()
+    {
+        var withMission = _db.CanonicalMissions.Select(m => m.PersonId);
+        var awaiting = _db.Candidates.Completed(_time.Today()).Select(c => c.PersonId);
+        return withMission.Union(awaiting);
     }
 
     public async Task<int> GetRecipientCountAsync(MailingGroup group, CancellationToken ct) => group switch
     {
-        MailingGroup.CandidatesSksp => await _db.Candidates.CountAsync(ct),
-        MailingGroup.Missionaries => await _db.CanonicalMissions.Select(m => m.PersonId).Distinct().CountAsync(ct),
+        MailingGroup.CandidatesSksp => await _db.Candidates.InFormation(_time.Today()).CountAsync(ct),
+        MailingGroup.Missionaries => await CatechistPersonIds().CountAsync(ct),
         MailingGroup.DokGraduates => await _db.DokCases.CountAsync(c => c.Stage == DokStage.Graduate, ct),
         MailingGroup.DokCases => await _db.DokCases.CountAsync(ct),
         _ => throw new ArgumentOutOfRangeException(nameof(group))
@@ -88,8 +99,8 @@ public class MailingService : IMailingService
     {
         var personIds = group switch
         {
-            MailingGroup.CandidatesSksp => _db.Candidates.Select(c => c.PersonId),
-            MailingGroup.Missionaries => _db.CanonicalMissions.Select(m => m.PersonId).Distinct(),
+            MailingGroup.CandidatesSksp => _db.Candidates.InFormation(_time.Today()).Select(c => c.PersonId),
+            MailingGroup.Missionaries => CatechistPersonIds(),
             MailingGroup.DokGraduates => _db.DokCases.Where(c => c.Stage == DokStage.Graduate).Select(c => c.PersonId),
             MailingGroup.DokCases => _db.DokCases.Select(c => c.PersonId),
             _ => throw new ArgumentOutOfRangeException(nameof(group))
