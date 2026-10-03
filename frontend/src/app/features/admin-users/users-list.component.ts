@@ -1,7 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { UsersService } from './users.service';
-import { ALL_ROLES, AppUserAccount, CreateUserValue } from './user.model';
+import { AppUserAccount, CreateUserValue } from './user.model';
 import { PeopleService } from '../people/people.service';
 import { Person } from '../people/person.model';
 import { ToastService } from '../../core/notifications/toast.service';
@@ -15,7 +15,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 })
 export class UsersListComponent implements OnInit {
   readonly users = signal<AppUserAccount[]>([]);
-  readonly allRoles = ALL_ROLES;
+  readonly allRoles = signal<string[]>([]);
 
   newUser: Omit<CreateUserValue, 'personId'> = { email: '', password: '', roles: [] };
   confirmPassword = '';
@@ -48,6 +48,10 @@ export class UsersListComponent implements OnInit {
     this.usersService.list().subscribe({
       next: users => this.users.set(users),
       error: () => this.toast.error('Nie udało się wczytać listy użytkowników.')
+    });
+    this.usersService.listRoles().subscribe({
+      next: roles => this.allRoles.set(roles),
+      error: () => this.toast.error('Nie udało się wczytać listy ról.')
     });
   }
 

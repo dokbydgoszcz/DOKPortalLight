@@ -74,12 +74,12 @@
 <div class="card">
   <div class="table-wrap">
     <table>
-      <thead><tr><th>E-mail</th>@for (role of allRoles; track role) {<th>{{ role }}</th>}<th></th></tr></thead>
+      <thead><tr><th>E-mail</th>@for (role of allRoles(); track role) {<th>{{ role }}</th>}<th></th></tr></thead>
       <tbody>
         @for (user of users(); track user.id) {
           <tr>
             <td>{{ user.email }}</td>
-            @for (role of allRoles; track role) {
+            @for (role of allRoles(); track role) {
               <td>
                 <input type="checkbox" [checked]="user.roles.includes(role)"
                        (change)="toggleRole(user, role, $any($event.target).checked)" />

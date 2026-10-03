@@ -26,4 +26,16 @@ describe('UsersListComponent', () => {
 
     expect((fixture.nativeElement.textContent as string)).toContain('admin@dokportal.local');
   });
+
+  it('renders one role column per role returned by the API', () => {
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/users`)
+      .flush([{ id: '1', email: 'admin@dokportal.local', personId: null, roles: ['Administrator'] }]);
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/users/roles`).flush(['Administrator', 'Sekretariat']);
+    fixture.detectChanges();
+
+    const headers = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('thead th')).map(th => th.textContent!.trim());
+    expect(headers).toContain('Sekretariat');
+    expect(fixture.nativeElement.querySelectorAll('tbody input[type="checkbox"]').length).toBe(2);
+  });
 });

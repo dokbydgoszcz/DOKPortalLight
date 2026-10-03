@@ -13,6 +13,10 @@ export class UsersService {
     return this.http.get<AppUserAccount[]>(this.baseUrl);
   }
 
+  listRoles() {
+    return this.http.get<string[]>(`${this.baseUrl}/roles`);
+  }
+
   create(value: CreateUserValue) {
     return this.http.post<AppUserAccount>(this.baseUrl, value);
   }

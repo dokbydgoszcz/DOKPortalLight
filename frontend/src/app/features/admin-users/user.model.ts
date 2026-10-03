@@ -1,7 +1,3 @@
-export const ALL_ROLES = [
-  'Administrator', 'Biskup', 'DyrektorSKSP', 'DyrektorDOK', 'Superwizor', 'KatechistaProwadzacy'
-] as const;
-
 export interface AppUserAccount {
   id: string;
   email: string;
