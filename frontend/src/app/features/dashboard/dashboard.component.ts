@@ -19,6 +19,11 @@ export class DashboardComponent implements OnInit {
   };
 
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-03', text: 'Audit log — nad tabelą są teraz wyszukiwarka (użytkownik, akcja lub obiekt) oraz filtry: akcja, wynik (dozwolono / zablokowano) i zakres dat. Data jest czytelna (dd.mm.rrrr gg:mm:ss), a „Wyczyść filtry” wraca do pełnej listy. Wyświetlane jest do 500 najnowszych wpisów — zawęź filtry, aby zobaczyć starsze.' },
+    { date: '2026-10-03', text: 'Superwizje — nad listą są filtr po instytucji (SKŚP / DOK) i sortowanie: po dacie (najnowsze lub najstarsze) albo po instytucji, a w niej po dacie. Data wyświetla się jako dd.mm.rrrr.' },
+    { date: '2026-10-03', text: 'Harmonogram i obecności — w formularzu spotkania jest pole „Notatki” (przy dodawaniu i edycji); notatki widać w tabeli spotkań.' },
+    { date: '2026-10-03', text: 'Mailing — szkic kampanii można usunąć („Usuń” przy szkicu, z potwierdzeniem). Wysłanych kampanii nie da się usunąć, zostają w historii.' },
+    { date: '2026-10-03', text: 'Parafie — w rejestrze parafii jest „Edytuj” (nazwa i miejscowość). Przyciski dodawania, edycji i usuwania widzą tylko osoby z uprawnieniem do zarządzania parafiami.' },
     { date: '2026-10-03', text: 'Dokumenty i pisma — w historii wygenerowanych pism jest teraz „Pobierz” (ponowne pobranie tego samego pliku PDF) i „Usuń” (z potwierdzeniem; tylko dla osób, które mogą generować pisma). Historia pokazuje czytelną datę (dd.mm.rrrr gg:mm) oraz liczbę pobrań każdego pisma. Od teraz egzemplarz PDF jest zapisywany; przy starszych pismach, wygenerowanych wcześniej, pobranie odtwarza je z aktualnych danych osoby (z oznaczeniem).' },
     { date: '2026-10-03', text: 'Misje — w wierszu misji jest teraz „Edytuj”: można poprawić miejsce posługi, daty, grupę superwizyjną i zaznaczenie „Posłany do DOK” bez usuwania i dodawania misji od nowa.' },
     { date: '2026-10-03', text: 'Użytkownicy — w tabeli kont jest nowa kolumna „Osoba”. Istniejące konto można powiązać z osobą („Powiąż”), zmienić tę osobę („Zmień”) albo odpiąć („Odepnij”). Jedna osoba może mieć jedno konto. Katechista widzi podopiecznych dopiero po powiązaniu jego konta z jego osobą; konta katechistów bez osoby są oznaczone ostrzeżeniem.' },

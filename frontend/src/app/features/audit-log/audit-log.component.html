@@ -4,13 +4,42 @@
 </div>
 
 <div class="card">
+  <div class="card-head" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+    <div class="field" style="min-width:220px">
+      <label>Szukaj</label>
+      <input name="auditSearch" [(ngModel)]="filter.search" (ngModelChange)="onSearchChange()" placeholder="użytkownik, akcja lub obiekt…" />
+    </div>
+    <div class="field" style="min-width:200px">
+      <label>Akcja</label>
+      <select name="auditAction" [(ngModel)]="filter.action" (ngModelChange)="load()">
+        <option value="">Wszystkie</option>
+        @for (action of actions(); track action) {
+          <option [value]="action">{{ action }}</option>
+        }
+      </select>
+    </div>
+    <div class="field" style="min-width:150px">
+      <label>Wynik</label>
+      <select name="auditResult" [(ngModel)]="filter.result" (ngModelChange)="load()">
+        <option value="">Wszystkie</option>
+        <option value="Allowed">Dozwolono</option>
+        <option value="Blocked">Zablokowano</option>
+      </select>
+    </div>
+    <div class="field"><label>Od</label><input type="date" name="auditFrom" [(ngModel)]="filter.from" (ngModelChange)="load()" /></div>
+    <div class="field"><label>Do</label><input type="date" name="auditTo" [(ngModel)]="filter.to" (ngModelChange)="load()" /></div>
+    <div class="field"><button class="btn ghost" type="button" (click)="clearFilters()">Wyczyść filtry</button></div>
+  </div>
+  <div class="small-muted" style="padding:0 20px 8px">
+    Wyświetlono {{ entries().length }} {{ entries().length === 1 ? 'wpis' : 'wpisy' }}@if (entries().length >= take) { (najnowsze {{ take }} — zawęź filtry, aby zobaczyć starsze) }
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Data</th><th>Użytkownik</th><th>Akcja</th><th>Obiekt</th><th>Wynik</th></tr></thead>
       <tbody>
         @for (entry of entries(); track entry.id) {
           <tr>
-            <td>{{ entry.timestampUtc }}</td>
+            <td>{{ entry.timestampUtc | date: 'dd.MM.yyyy HH:mm:ss' }}</td>
             <td>{{ entry.userEmail }}</td>
             <td>{{ entry.action }}</td>
             <td>{{ entry.objectDescription }}</td>
