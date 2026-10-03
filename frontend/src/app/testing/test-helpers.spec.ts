@@ -55,6 +55,22 @@ describe('test helpers', () => {
     expect(textOf(el)).toContain('Ola b');
   });
 
+  it('prefers an exact text match over a wrapper that merely contains the text', () => {
+    @Component({
+      standalone: true,
+      template: `<span class="wrap"><span id="n" (click)="hit = 'n'">Notatki</span> <span id="d" (click)="hit = 'd'">Dokumenty</span></span>`
+    })
+    class WrapperHost {
+      hit = '';
+    }
+    const { fixture, el } = setup(WrapperHost);
+    fixture.detectChanges();
+
+    clickByText(el, 'Dokumenty');
+
+    expect(fixture.componentInstance.hit).toBe('d');
+  });
+
   it('throws a readable error for missing elements', () => {
     const { fixture, el } = setup(HostComponent);
     fixture.detectChanges();

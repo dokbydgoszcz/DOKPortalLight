@@ -53,7 +53,10 @@ export function click(el: HTMLElement, selector: string): void {
 }
 
 export function clickByText(el: HTMLElement, text: string, selector = 'button, span, a, label'): void {
-  const target = Array.from(el.querySelectorAll<HTMLElement>(selector)).find(e => (e.textContent ?? '').trim().includes(text));
+  const candidates = Array.from(el.querySelectorAll<HTMLElement>(selector));
+  const target =
+    candidates.find(e => (e.textContent ?? '').trim() === text) ??
+    candidates.find(e => (e.textContent ?? '').trim().includes(text));
   if (!target) throw new Error(`Brak elementu z tekstem „${text}” (${selector})`);
   target.click();
 }
