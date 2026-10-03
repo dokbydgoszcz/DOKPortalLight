@@ -31,7 +31,8 @@ public static class DefaultRolePermissions
             Permissions.DocumentsView, Permissions.DocumentsGenerate,
             Permissions.MailingView, Permissions.MailingManage,
             Permissions.BudgetDokView, Permissions.BudgetDokManage,
-            Permissions.GraduatesView
+            Permissions.GraduatesView,
+            Permissions.MissionsView, Permissions.MissionsManage, Permissions.MissionsExport
         },
         [AppRoles.Superwizor] = new[]
         {

@@ -109,6 +109,11 @@ public class ExportService : IExportService
         return years.Count == 0 ? "—" : string.Join(", ", years);
     }
 
+    private const string PendingStatusLabel = "Przed udzieleniem posługi";
+
+    private static string MissionStatus(DateOnly endDate, DateOnly today) =>
+        endDate < today ? "wygasła" : endDate <= today.AddDays(30) ? "wygasa" : "ważna";
+
     private static readonly Dictionary<Institution, string> InstitutionLabels = new()
     {
         [Institution.SKSP] = "SKŚP",
@@ -121,15 +126,22 @@ public class ExportService : IExportService
             .Include(m => m.Person)
             .OrderBy(m => m.Person!.LastName).ThenBy(m => m.Person!.FirstName).ThenBy(m => m.MissionStartDate)
             .ToListAsync(ct);
+        var pending = await new MissionService(_db, _time).GetPendingAsync(ct);
+        var today = _time.Today();
 
-        return BuildWorkbook(
-            "Katechiści posłani",
-            new[] { "Katechista", "Miejsce posługi", "Data od", "Data do", "Data udzielenia", "Miejsce udzielenia", "Grupa superwizyjna", "Posłany do DOK" },
-            missions.Select(m => new object?[]
+        // osoby czekające na udzielenie posługi są na liście pierwsze, tak jak na ekranie
+        var rows = pending
+            .Select(p => new object?[] { p.PersonFullName, null, null, null, null, null, null, "Nie", PendingStatusLabel })
+            .Concat(missions.Select(m => new object?[]
             {
                 m.Person?.FullName, m.ServicePlace, FormatDate(m.MissionStartDate), FormatDate(m.MissionEndDate),
-                FormatDate(m.GrantedDate), m.GrantedPlace, m.SupervisionGroup, YesNo(m.SentToDok)
+                FormatDate(m.GrantedDate), m.GrantedPlace, m.SupervisionGroup, YesNo(m.SentToDok), MissionStatus(m.MissionEndDate, today)
             }));
+
+        return BuildWorkbook(
+            "Katechiści",
+            new[] { "Katechista", "Miejsce posługi", "Data od", "Data do", "Data udzielenia", "Miejsce udzielenia", "Grupa superwizyjna", "Posłany do DOK", "Status" },
+            rows);
     }
 
     public async Task<byte[]> ExportFormatorsAsync(CancellationToken ct)

@@ -4,5 +4,6 @@ namespace DokPortal.Domain.Enums;
 public enum AttachmentOwnerType
 {
     PastoralNote,
-    Supervision
+    Supervision,
+    Mission
 }

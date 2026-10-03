@@ -143,15 +143,21 @@ public class ExportServiceTests
             });
         await db.SaveChangesAsync();
 
-        var sheet = OpenSheet(await new ExportService(db).ExportMissionsAsync(default));
+        var waiting = NewPerson("Anna", "Czekajaca");
+        db.People.Add(waiting);
+        db.Candidates.Add(new Candidate { Id = Guid.NewGuid(), PersonId = waiting.Id, FormationStartYear = 2022, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var sheet = OpenSheet(await new ExportService(db, null, new FixedTimeProvider(2026, 10, 3)).ExportMissionsAsync(default));
 
         Assert.Equal(
-            new[] { "Katechista", "Miejsce posługi", "Data od", "Data do", "Data udzielenia", "Miejsce udzielenia", "Grupa superwizyjna", "Posłany do DOK" },
-            Row(sheet, 1, 8));
+            new[] { "Katechista", "Miejsce posługi", "Data od", "Data do", "Data udzielenia", "Miejsce udzielenia", "Grupa superwizyjna", "Posłany do DOK", "Status" },
+            Row(sheet, 1, 9));
+        Assert.Equal(new[] { "Anna Czekajaca", "", "", "", "", "", "", "Nie", "Przed udzieleniem posługi" }, Row(sheet, 2, 9));
         Assert.Equal(
-            new[] { "Jan Kowalski", "Parafia św. Jana", "2026-01-01", "2027-01-01", "2025-12-20", "Bydgoszcz", "Grupa A", "Tak" },
-            Row(sheet, 2, 8));
-        Assert.Equal(2, sheet.LastRowUsed()!.RowNumber());
+            new[] { "Jan Kowalski", "Parafia św. Jana", "2026-01-01", "2027-01-01", "2025-12-20", "Bydgoszcz", "Grupa A", "Tak", "ważna" },
+            Row(sheet, 3, 9));
+        Assert.Equal(3, sheet.LastRowUsed()!.RowNumber());
     }
 
     [Fact]

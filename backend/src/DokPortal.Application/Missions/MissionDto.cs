@@ -1,3 +1,5 @@
+using DokPortal.Application.Attachments;
+
 namespace DokPortal.Application.Missions;
 
 public class MissionDto
@@ -13,4 +15,5 @@ public class MissionDto
     public string? SupervisionGroup { get; init; }
     public bool SentToDok { get; init; }
     public required string Status { get; init; }
+    public IReadOnlyList<AttachmentDto> Attachments { get; init; } = Array.Empty<AttachmentDto>();
 }

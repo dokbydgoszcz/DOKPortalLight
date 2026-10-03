@@ -1,6 +1,8 @@
 using DokPortal.Application.Common;
 using DokPortal.Application.Missions;
 using DokPortal.Domain.Entities;
+using DokPortal.Domain.Enums;
+using DokPortal.Domain.Formation;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,8 +11,13 @@ namespace DokPortal.Infrastructure.Services;
 public class MissionService : IMissionService
 {
     private readonly AppDbContext _db;
+    private readonly TimeProvider _time;
 
-    public MissionService(AppDbContext db) => _db = db;
+    public MissionService(AppDbContext db, TimeProvider? time = null)
+    {
+        _db = db;
+        _time = time ?? TimeProvider.System;
+    }
 
     public async Task<PagedResult<MissionDto>> SearchAsync(string? query, int page, int pageSize, CancellationToken ct)
     {
@@ -32,9 +39,11 @@ public class MissionService : IMissionService
             .Take(pageSize)
             .ToListAsync(ct);
 
+        var attachments = await AttachmentLookup.ForOwnersAsync(_db, AttachmentOwnerType.Mission, entities.Select(m => m.Id).ToList(), ct);
+
         return new PagedResult<MissionDto>
         {
-            Items = entities.Select(ToDto).ToList(),
+            Items = entities.Select(m => ToDto(m, attachments.GetValueOrDefault(m.Id))).ToList(),
             TotalCount = total,
             Page = page,
             PageSize = pageSize
@@ -45,7 +54,9 @@ public class MissionService : IMissionService
     {
         var mission = await _db.CanonicalMissions.Include(m => m.Person).AsNoTracking()
             .FirstOrDefaultAsync(m => m.Id == id, ct);
-        return mission is null ? null : ToDto(mission);
+        if (mission is null) return null;
+        var attachments = await AttachmentLookup.ForOwnersAsync(_db, AttachmentOwnerType.Mission, new[] { id }, ct);
+        return ToDto(mission, attachments.GetValueOrDefault(id));
     }
 
     public async Task<MissionDto> CreateAsync(CreateMissionRequest request, CancellationToken ct)
@@ -99,7 +110,49 @@ public class MissionService : IMissionService
         return true;
     }
 
-    private static MissionDto ToDto(CanonicalMission m) => new()
+    public async Task<IReadOnlyList<PendingCatechistDto>> GetPendingAsync(CancellationToken ct)
+    {
+        var candidates = await _db.Candidates.Completed(_time.Today())
+            .Where(c => !_db.CanonicalMissions.Any(m => m.PersonId == c.PersonId))
+            .Include(c => c.Person).ThenInclude(p => p!.Parish)
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        return candidates
+            .GroupBy(c => c.PersonId)
+            .Select(g => g.OrderByDescending(c => c.FormationStartYear).First())
+            .OrderBy(c => c.Person!.LastName).ThenBy(c => c.Person!.FirstName)
+            .Select(c => new PendingCatechistDto
+            {
+                CandidateId = c.Id,
+                PersonId = c.PersonId,
+                PersonFullName = c.Person!.FullName,
+                ParishName = c.Person.Parish?.Name,
+                FormationCompletedOn = FormationCalendar.CompletedOn(c.FormationStartYear)
+            })
+            .ToList();
+    }
+
+    public async Task<MissionDto> GrantAsync(Guid personId, CancellationToken ct)
+    {
+        var pending = await GetPendingAsync(ct);
+        if (pending.All(p => p.PersonId != personId))
+        {
+            throw new InvalidOperationException("Ta osoba nie czeka na udzielenie posługi.");
+        }
+
+        var today = _time.Today();
+        return await CreateAsync(new CreateMissionRequest
+        {
+            PersonId = personId,
+            ServicePlace = "",
+            MissionStartDate = today,
+            MissionEndDate = today.AddYears(1),
+            GrantedDate = today
+        }, ct);
+    }
+
+    private MissionDto ToDto(CanonicalMission m, IReadOnlyList<DokPortal.Application.Attachments.AttachmentDto>? attachments = null) => new()
     {
         Id = m.Id,
         PersonId = m.PersonId,
@@ -111,12 +164,13 @@ public class MissionService : IMissionService
         GrantedPlace = m.GrantedPlace,
         SupervisionGroup = m.SupervisionGroup,
         SentToDok = m.SentToDok,
-        Status = ComputeStatus(m.MissionEndDate)
+        Status = ComputeStatus(m.MissionEndDate),
+        Attachments = attachments ?? Array.Empty<DokPortal.Application.Attachments.AttachmentDto>()
     };
 
-    private static string ComputeStatus(DateOnly endDate)
+    private string ComputeStatus(DateOnly endDate)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = _time.Today();
         if (endDate < today) return "wygasła";
         if (endDate <= today.AddDays(30)) return "wygasa";
         return "ważna";
