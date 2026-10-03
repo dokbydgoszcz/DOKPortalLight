@@ -14,6 +14,8 @@ export interface DokCase {
   mentorFullName: string | null;
   lastMeetingDate: string | null;
   completedAtUtc: string | null;
+  meetingsRecorded: number;
+  meetingsAttended: number;
 }
 
 export interface DokCaseFormValue {

@@ -180,4 +180,72 @@ describe('MeetingsListComponent', () => {
       expect(toastMessages()).toContain('Nie udało się usunąć spotkania.');
     });
   });
+
+  describe('quick attendance toggle', () => {
+    const rowOf = (el: HTMLElement, text: string) =>
+      Array.from(el.querySelectorAll('tr')).find(r => r.textContent!.includes(text))! as HTMLElement;
+    const toggle = (el: HTMLElement, rowText: string, label: string) =>
+      Array.from(rowOf(el, rowText).querySelectorAll<HTMLButtonElement>('.attendance-toggle button')).find(b => b.textContent!.trim() === label)!;
+
+    it('marks a meeting as attended and shows the new state without reloading the list', () => {
+      const ctx = boot();
+
+      toggle(ctx.el, 'DOK grupa', 'Obecny').click();
+
+      const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${url}/m1/attendance`);
+      expect(req.request.body).toEqual({ isAttended: true });
+      req.flush({ ...groupMeeting, isAttended: true });
+      ctx.fixture.detectChanges();
+
+      expect(rowOf(ctx.el, 'DOK grupa').querySelector('.pill.green')).not.toBeNull();
+      expect(toggle(ctx.el, 'DOK grupa', 'Obecny').classList.contains('active')).toBe(true);
+    });
+
+    it('marks a meeting as absent', () => {
+      const ctx = boot();
+
+      toggle(ctx.el, 'DOK grupa', 'Nieobecny').click();
+
+      const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${url}/m1/attendance`);
+      expect(req.request.body).toEqual({ isAttended: false });
+      req.flush({ ...groupMeeting, isAttended: false });
+      ctx.fixture.detectChanges();
+
+      expect(rowOf(ctx.el, 'DOK grupa').querySelector('.pill.red')).not.toBeNull();
+    });
+
+    it('clears the attendance when the active button is clicked again', () => {
+      const ctx = boot();
+
+      toggle(ctx.el, 'Jan Kowalski', 'Obecny').click();
+
+      const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${url}/m2/attendance`);
+      expect(req.request.body).toEqual({ isAttended: null });
+      req.flush({ ...caseMeeting, isAttended: null });
+      ctx.fixture.detectChanges();
+
+      expect(rowOf(ctx.el, 'Jan Kowalski').querySelector('.pill')).toBeNull();
+    });
+
+    it('shows a toast and keeps the old state when saving fails', () => {
+      const ctx = boot();
+
+      toggle(ctx.el, 'DOK grupa', 'Obecny').click();
+      ctx.http.expectOne(r => r.method === 'PUT').flush('x', { status: 500, statusText: 'Server Error' });
+      ctx.fixture.detectChanges();
+
+      expect(toastMessages()).toContain('Nie udało się zapisać obecności.');
+      expect(rowOf(ctx.el, 'DOK grupa').querySelector('.pill')).toBeNull();
+    });
+
+    it('is hidden for users who cannot manage meetings', () => {
+      const ctx = setup(MeetingsListComponent, { granted: ['Meetings.View'] });
+      ctx.fixture.detectChanges();
+      ctx.http.expectOne(url).flush([groupMeeting, caseMeeting]);
+      ctx.http.expectOne(r => r.url === casesUrl).flush({ items: dokCases, totalCount: 1, page: 1, pageSize: 1000 });
+      ctx.fixture.detectChanges();
+
+      expect(ctx.el.querySelector('.attendance-toggle')).toBeNull();
+    });
+  });
 });

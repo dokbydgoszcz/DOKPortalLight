@@ -32,6 +32,13 @@ const PAGE_SIZE = 20;
 })
 export class DokCasesListComponent implements OnInit {
   readonly cases = signal<DokCase[]>([]);
+
+  attendanceLabel(dokCase: DokCase): string {
+    if (dokCase.meetingsRecorded === 0) return '—';
+    const percent = Math.round((dokCase.meetingsAttended * 100) / dokCase.meetingsRecorded);
+    return `${dokCase.meetingsAttended}/${dokCase.meetingsRecorded} (${percent}%)`;
+  }
+
   readonly page = signal(1);
   readonly totalCount = signal(0);
   readonly pageSize = PAGE_SIZE;

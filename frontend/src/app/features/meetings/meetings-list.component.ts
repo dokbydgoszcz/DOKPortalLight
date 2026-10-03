@@ -82,6 +82,14 @@ export class MeetingsListComponent implements OnInit {
     });
   }
 
+  setAttendance(meeting: Meeting, value: boolean): void {
+    const next = meeting.isAttended === value ? null : value;
+    this.meetingsService.setAttendance(meeting.id, next).subscribe({
+      next: updated => this.meetings.update(list => list.map(m => (m.id === updated.id ? updated : m))),
+      error: () => this.toast.error('Nie udało się zapisać obecności.')
+    });
+  }
+
   cancel(): void {
     this.isFormOpen.set(false);
   }

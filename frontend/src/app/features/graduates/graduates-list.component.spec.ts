@@ -8,7 +8,8 @@ import { api, clickByText, setInput, setup, textOf } from '../../testing/test-he
 const katarzyna: DokCase = {
   id: '1', personId: 'p1', personFullName: 'Katarzyna Jankowska', parishName: 'św. Mateusza', path: 'BaptismCandidate',
   stage: 'Graduate', catechistPersonId: 'c1', catechistFullName: 'Joanna Lis', mentorPersonId: null, mentorFullName: 'Piotr Nowak',
-  lastMeetingDate: null, completedAtUtc: '2026-04-04T12:00:00Z'
+  lastMeetingDate: null, completedAtUtc: '2026-04-04T12:00:00Z',
+  meetingsRecorded: 0, meetingsAttended: 0
 };
 const graduatesUrl = api('/api/graduates');
 

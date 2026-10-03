@@ -1,0 +1,9 @@
+.attendance-toggle {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.attendance-toggle .btn.active {
+  background: var(--green);
+  color: white;
+}

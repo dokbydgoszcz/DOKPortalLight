@@ -7,7 +7,7 @@ import { api, click, clickByText, paged, setInput, setSelect, setup, textOf } fr
 const dokCase = {
   id: '1', personId: 'p1', personFullName: 'Jan Kowalski', parishName: null, path: 'Confirmation', stage: 'Formation',
   catechistPersonId: 'c1', catechistFullName: 'Anna Maj', mentorPersonId: null, mentorFullName: null,
-  lastMeetingDate: null, completedAtUtc: null
+  lastMeetingDate: null, completedAtUtc: null, meetingsRecorded: 0, meetingsAttended: 0
 };
 const secondCase = { ...dokCase, id: '2', personId: 'p2', personFullName: 'Piotr Malinowski', path: 'Conversion', stage: 'Sacrament', catechistPersonId: 'c2', catechistFullName: 'Maria Kaczmarek' };
 const people = [
@@ -328,6 +328,26 @@ describe('DokCasesListComponent', () => {
       ctx.http.expectOne(docsUrl).flush('x', { status: 500, statusText: 'Server Error' });
 
       expect(toastMessages()).toContain('Nie udało się wczytać listy dokumentów.');
+    });
+  });
+
+  describe('attendance summary', () => {
+    it('shows attended/recorded with a percentage, and a dash when nothing is recorded', () => {
+      const { el } = boot([
+        { ...dokCase, meetingsRecorded: 5, meetingsAttended: 4 },
+        { ...secondCase, meetingsRecorded: 0, meetingsAttended: 0 }
+      ]);
+
+      const rows = Array.from(el.querySelectorAll('tbody tr'));
+      expect(rows[0].textContent).toContain('4/5 (80%)');
+      expect(rows[1].textContent).not.toContain('%');
+      expect(rows[1].querySelector('.attendance')!.textContent!.trim()).toBe('—');
+    });
+
+    it('rounds the percentage to a whole number', () => {
+      const { el } = boot([{ ...dokCase, meetingsRecorded: 3, meetingsAttended: 2 }]);
+
+      expect(textOf(el)).toContain('2/3 (67%)');
     });
   });
 });
