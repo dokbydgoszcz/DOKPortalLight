@@ -11,13 +11,23 @@ jobs:
     steps:
       - name: Wywołaj endpoint przypomnień
         run: |
-          response=$(curl -s -w "\n%{http_code}" -X POST \
-            -H "X-Reminders-Key: ${{ secrets.REMINDERS_API_KEY }}" \
-            https://dokportal-api.azurewebsites.net/api/reminders/upcoming-name-days/run)
-          http_code=$(echo "$response" | tail -n1)
-          body=$(echo "$response" | sed '$d')
-          echo "Odpowiedź: $body"
-          if [ "$http_code" -ne 200 ]; then
-            echo "Endpoint zwrócił kod $http_code"
-            exit 1
-          fi
+          url="https://dokportal-api.azurewebsites.net/api/reminders/upcoming-name-days/run"
+          max_attempts=5
+          for attempt in $(seq 1 $max_attempts); do
+            response=$(curl -s --max-time 120 -w "\n%{http_code}" -X POST \
+              -H "X-Reminders-Key: ${{ secrets.REMINDERS_API_KEY }}" "$url") || true
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | sed '$d')
+            if [ "$http_code" = "200" ]; then
+              echo "Odpowiedź: $body"
+              exit 0
+            fi
+            echo "Próba $attempt/$max_attempts: kod $http_code, odpowiedź: ${body:0:200}"
+            case "$http_code" in
+              000|502|503|504) ;;
+              *) echo "Błąd nieprzejściowy — bez ponawiania."; exit 1 ;;
+            esac
+            if [ "$attempt" -lt "$max_attempts" ]; then sleep 30; fi
+          done
+          echo "Endpoint niedostępny po $max_attempts próbach."
+          exit 1
