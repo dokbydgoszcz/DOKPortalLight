@@ -8,6 +8,7 @@ export interface Mission {
   grantedDate: string | null;
   grantedPlace: string | null;
   supervisionGroup: string | null;
+  sentToDok: boolean;
   status: string;
 }
 
@@ -19,4 +20,5 @@ export interface MissionFormValue {
   grantedDate?: string;
   grantedPlace?: string;
   supervisionGroup?: string;
+  sentToDok?: boolean;
 }

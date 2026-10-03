@@ -22,7 +22,7 @@ export class MissionsListComponent implements OnInit {
   readonly totalCount = signal(0);
   readonly pageSize = PAGE_SIZE;
   readonly isFormOpen = signal(false);
-  formValue: MissionFormValue = { personId: '', servicePlace: '', missionStartDate: '', missionEndDate: '' };
+  formValue: MissionFormValue = { personId: '', servicePlace: '', missionStartDate: '', missionEndDate: '', sentToDok: false };
 
   constructor(
     private readonly missionsService: MissionsService,
@@ -49,7 +49,7 @@ export class MissionsListComponent implements OnInit {
   }
 
   openAddForm(): void {
-    this.formValue = { personId: '', servicePlace: '', missionStartDate: '', missionEndDate: '' };
+    this.formValue = { personId: '', servicePlace: '', missionStartDate: '', missionEndDate: '', sentToDok: false };
     this.isFormOpen.set(true);
   }
 

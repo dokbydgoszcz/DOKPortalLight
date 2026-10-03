@@ -8,8 +8,9 @@ import { api, clickByText, paged, setInput, setSelect, setup, textOf } from '../
 const mission: Mission = {
   id: '1', personId: 'p1', personFullName: 'Anna Maj', servicePlace: 'Parafia św. Mateusza',
   missionStartDate: '2023-10-15', missionEndDate: '2026-10-14', grantedDate: null, grantedPlace: null,
-  supervisionGroup: 'Grupa A', status: 'wygasa'
+  supervisionGroup: 'Grupa A', status: 'wygasa', sentToDok: false
 };
+const sentMission: Mission = { ...mission, id: '2', personFullName: 'Jan Kowalski', sentToDok: true };
 const people = [
   { id: 'p1', firstName: 'Anna', lastName: 'Maj', fullName: 'Anna Maj', email: null, phone: null, birthDate: null, parishId: null, parishName: null, notes: null }
 ];
@@ -20,6 +21,7 @@ function boot(items: Mission[] = [mission], totalCount = items.length) {
   ctx.fixture.detectChanges();
   ctx.http.expectOne(r => r.url === url).flush({ items, totalCount, page: 1, pageSize: 20 });
   ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
+  ctx.http.expectOne(r => r.url === api('/api/parishes')).flush([]);
   ctx.fixture.detectChanges();
   return ctx;
 }
@@ -34,6 +36,15 @@ describe('MissionsListComponent', () => {
 
     expect(textOf(el)).toContain('Anna Maj');
     expect(textOf(el)).toContain('wygasa');
+  });
+
+  it('marks the missions of catechists sent to DOK in their own column', () => {
+    const { el } = boot([mission, sentMission]);
+
+    const rows = Array.from(el.querySelectorAll('tbody tr'));
+    expect(el.querySelector('thead')!.textContent).toContain('Posłany do DOK');
+    expect(rows[0].querySelector('.sent-to-dok')!.textContent!.trim()).toBe('—');
+    expect(rows[1].querySelector('.sent-to-dok')!.textContent!.trim()).toBe('tak');
   });
 
   it('colours expired and expiring missions red and active ones green', () => {
@@ -92,7 +103,7 @@ describe('MissionsListComponent', () => {
       const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
       expect(req.request.body).toEqual({
         personId: 'p1', servicePlace: 'Parafia św. Jana', missionStartDate: '2026-01-01', missionEndDate: '2029-01-01',
-        grantedDate: '2025-12-20', grantedPlace: 'Bydgoszcz', supervisionGroup: 'Grupa B'
+        grantedDate: '2025-12-20', grantedPlace: 'Bydgoszcz', supervisionGroup: 'Grupa B', sentToDok: false
       });
       req.flush(mission);
       ctx.fixture.detectChanges();
