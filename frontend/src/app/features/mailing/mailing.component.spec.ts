@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { MailingComponent } from './mailing.component';
 import { MailingCampaign } from './mailing-campaign.model';
 import { ToastService } from '../../core/notifications/toast.service';
@@ -123,6 +123,64 @@ describe('MailingComponent', () => {
       ctx.http.expectOne(r => r.method === 'POST').flush('x', { status: 500, statusText: 'Server Error' });
 
       expect(toastMessages()).toContain('Nie udało się wysłać kampanii.');
+    });
+  });
+
+  describe('deleting a draft', () => {
+    const rowOf = (el: HTMLElement, text: string) =>
+      Array.from(el.querySelectorAll('tbody tr')).find(r => r.textContent!.includes(text)) as HTMLElement;
+    const deleteLink = (el: HTMLElement, text: string) =>
+      Array.from(rowOf(el, text).querySelectorAll<HTMLElement>('.link')).find(l => l.textContent!.trim() === 'Usuń');
+
+    it('offers deleting only for drafts', () => {
+      const { el } = boot();
+
+      expect(deleteLink(el, 'Zaproszenie')).toBeDefined();
+      expect(deleteLink(el, 'Podsumowanie')).toBeUndefined();
+    });
+
+    it('deletes the draft after confirmation and reloads the list', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const ctx = boot();
+
+      deleteLink(ctx.el, 'Zaproszenie')!.click();
+
+      ctx.http.expectOne(r => r.method === 'DELETE' && r.url === `${url}/c1`).flush(null, { status: 204, statusText: 'No Content' });
+      expect(toastMessages()).toContain('Szkic usunięty.');
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([sent]);
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).not.toContain('Zaproszenie');
+    });
+
+    it('does nothing when the confirmation is declined', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+      const ctx = boot();
+
+      deleteLink(ctx.el, 'Zaproszenie')!.click();
+
+      ctx.http.expectNone(r => r.method === 'DELETE');
+    });
+
+    it('shows the server message, or a generic one, when deleting fails', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const ctx = boot();
+
+      deleteLink(ctx.el, 'Zaproszenie')!.click();
+      ctx.http.expectOne(r => r.method === 'DELETE').flush({ title: 'Wysłanej kampanii nie można usunąć – zostaje w historii.' }, { status: 400, statusText: 'Bad Request' });
+      deleteLink(ctx.el, 'Zaproszenie')!.click();
+      ctx.http.expectOne(r => r.method === 'DELETE').flush('x', { status: 500, statusText: 'Server Error' });
+
+      expect(toastMessages()).toContain('Wysłanej kampanii nie można usunąć – zostaje w historii.');
+      expect(toastMessages()).toContain('Nie udało się usunąć szkicu.');
+    });
+
+    it('is hidden from users who cannot manage mailing', () => {
+      const ctx = setup(MailingComponent, { granted: ['Mailing.View'] });
+      ctx.fixture.detectChanges();
+      ctx.http.expectOne(url).flush([draft]);
+      ctx.fixture.detectChanges();
+
+      expect(textOf(ctx.el)).not.toContain('Usuń');
     });
   });
 });

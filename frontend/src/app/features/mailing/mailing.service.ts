@@ -17,6 +17,10 @@ export class MailingService {
     return this.http.post<MailingCampaign>(this.baseUrl, value);
   }
 
+  deleteDraft(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
   send(id: string) {
     return this.http.post<MailingCampaign>(`${this.baseUrl}/${id}/send`, {});
   }

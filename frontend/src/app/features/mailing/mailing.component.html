@@ -23,6 +23,7 @@
             <td>
               @if (campaign.status === 'Draft') {
                 <button *appHasPermission="'Mailing.Manage'" class="btn primary small" (click)="sendCampaign(campaign)">Wyślij</button>
+                <span *appHasPermission="'Mailing.Manage'" class="link" style="color:var(--danger);margin-left:10px" (click)="deleteDraft(campaign)">Usuń</span>
               }
             </td>
           </tr>

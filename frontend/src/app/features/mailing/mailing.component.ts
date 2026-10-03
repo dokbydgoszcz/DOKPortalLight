@@ -61,6 +61,17 @@ export class MailingComponent implements OnInit {
     });
   }
 
+  deleteDraft(campaign: MailingCampaign): void {
+    if (!confirm(`Usunąć szkic kampanii „${campaign.subject}”?`)) return;
+    this.mailingService.deleteDraft(campaign.id).subscribe({
+      next: () => {
+        this.toast.success('Szkic usunięty.');
+        this.load();
+      },
+      error: err => this.toast.error(err?.error?.title ?? 'Nie udało się usunąć szkicu.')
+    });
+  }
+
   cancel(): void {
     this.isFormOpen.set(false);
   }
