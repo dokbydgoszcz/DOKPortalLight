@@ -115,6 +115,8 @@ describe('MeetingsListComponent', () => {
     it('keeps saving disabled until a date is chosen, so an empty date is never sent', async () => {
       const ctx = await openForm();
       expect(saveButton(ctx.el).disabled).toBe(true);
+      expect(textOf(ctx.el)).toContain('Uzupełnij pola oznaczone *');
+      expect(ctx.el.querySelector('.field .required')).not.toBeNull();
 
       saveButton(ctx.el).click();
       ctx.http.expectNone(r => r.method === 'POST');
@@ -122,6 +124,7 @@ describe('MeetingsListComponent', () => {
       setInput(ctx.el, 'input[name="meetingDate"]', '2026-10-10');
       ctx.fixture.detectChanges();
       expect(saveButton(ctx.el).disabled).toBe(false);
+      expect(textOf(ctx.el)).not.toContain('Uzupełnij pola oznaczone *');
     });
 
     it('shows a toast when adding fails and closes the form on cancel', async () => {
@@ -366,6 +369,8 @@ describe('MeetingsListComponent', () => {
 
         expect(ctx.el.querySelector('select[name="dokCaseId"]')).toBeNull();
         expect(ctx.el.querySelectorAll('.attendee-picker input').length).toBe(2);
+        expect(ctx.el.querySelector('input[name="useAttendees"]')!.closest('label')!.classList.contains('checkbox-label')).toBe(true);
+        expect(ctx.el.querySelector('.attendee-picker input')!.closest('label')!.classList.contains('checkbox-label')).toBe(true);
       });
 
       it('posts the chosen attendees and no single case', async () => {

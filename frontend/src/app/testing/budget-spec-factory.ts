@@ -100,6 +100,8 @@ export function describeBudgetScreen({ name, component, fund, withExpenseStructu
         const save = () =>
           Array.from(ctx.el.querySelectorAll<HTMLButtonElement>('.modal-foot button')).find(b => b.textContent!.includes('Zapisz'))!;
         expect(save().disabled).toBe(true);
+        expect(textOf(ctx.el)).toContain('Uzupełnij pola oznaczone *');
+        expect(ctx.el.querySelector('.field .required')).not.toBeNull();
 
         save().click();
         ctx.http.expectNone(r => r.method === 'POST');
@@ -107,6 +109,7 @@ export function describeBudgetScreen({ name, component, fund, withExpenseStructu
         setInput(ctx.el, 'input[name="entryDate"]', '2026-10-01');
         ctx.fixture.detectChanges();
         expect(save().disabled).toBe(false);
+        expect(textOf(ctx.el)).not.toContain('Uzupełnij pola oznaczone *');
       });
 
       it('shows a toast when adding fails and closes the form on cancel', async () => {

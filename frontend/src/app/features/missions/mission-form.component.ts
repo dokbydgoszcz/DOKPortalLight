@@ -35,6 +35,10 @@ export class MissionFormComponent implements OnInit {
     this.parishesService.list().subscribe({ next: parishes => (this.parishes = parishes), error: () => {} });
   }
 
+  get canSave(): boolean {
+    return !!this.value.personId && !!this.value.missionStartDate && !!this.value.missionEndDate;
+  }
+
   submit(): void {
     // Wyczyszczone pole daty daje pusty tekst, którego API nie przyjmie jako daty – opcjonalną datę pomijamy.
     this.save.emit({ ...this.value, grantedDate: this.value.grantedDate || undefined });

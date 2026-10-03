@@ -43,12 +43,15 @@
             </select>
           </div>
           <div class="field"><label>Grupa</label><input [(ngModel)]="newSupervision.groupLabel" name="groupLabel" /></div>
-          <div class="field"><label>Data</label><input type="date" [(ngModel)]="newSupervision.supervisionDate" name="supervisionDate" /></div>
+          <div class="field"><label>Data <span class="required">*</span></label><input type="date" [(ngModel)]="newSupervision.supervisionDate" name="supervisionDate" /></div>
           <div class="field full"><label>Tematyka</label><textarea [(ngModel)]="newSupervision.topic" name="topic"></textarea></div>
           <div class="field full"><label>Wnioski</label><textarea [(ngModel)]="newSupervision.conclusion" name="conclusion"></textarea></div>
         </div>
       </div>
       <div class="modal-foot">
+        @if (!newSupervision.supervisionDate) {
+          <span class="form-hint">Uzupełnij pola oznaczone *</span>
+        }
         <button class="btn ghost" (click)="cancel()">Anuluj</button>
         <button class="btn primary" [disabled]="!newSupervision.supervisionDate" (click)="createSupervision()">Zapisz</button>
       </div>

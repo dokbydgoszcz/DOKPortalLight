@@ -8,7 +8,7 @@
       <div class="modal-body">
         <div class="form-grid">
           <div class="field">
-            <label>Katechista</label>
+            <label>Katechista <span class="required">*</span></label>
             <select [(ngModel)]="value.personId" name="personId">
               <option value="">— wybierz —</option>
               @for (person of people; track person.id) {
@@ -25,17 +25,20 @@
               }
             </datalist>
           </div>
-          <div class="field"><label>Data od</label><input type="date" [(ngModel)]="value.missionStartDate" name="missionStartDate" /></div>
-          <div class="field"><label>Data do</label><input type="date" [(ngModel)]="value.missionEndDate" name="missionEndDate" /></div>
+          <div class="field"><label>Data od <span class="required">*</span></label><input type="date" [(ngModel)]="value.missionStartDate" name="missionStartDate" /></div>
+          <div class="field"><label>Data do <span class="required">*</span></label><input type="date" [(ngModel)]="value.missionEndDate" name="missionEndDate" /></div>
           <div class="field"><label>Data udzielenia</label><input type="date" [(ngModel)]="value.grantedDate" name="grantedDate" /></div>
           <div class="field"><label>Miejsce udzielenia</label><input [(ngModel)]="value.grantedPlace" name="grantedPlace" /></div>
           <div class="field"><label>Grupa superwizyjna</label><input [(ngModel)]="value.supervisionGroup" name="supervisionGroup" /></div>
-          <div class="field"><label><input type="checkbox" [(ngModel)]="value.sentToDok" name="sentToDok" /> Posłany do DOK</label></div>
+          <div class="field"><label class="checkbox-label"><input type="checkbox" [(ngModel)]="value.sentToDok" name="sentToDok" /> Posłany do DOK</label></div>
         </div>
       </div>
       <div class="modal-foot">
+        @if (!canSave) {
+          <span class="form-hint">Uzupełnij pola oznaczone *</span>
+        }
         <button class="btn ghost" (click)="cancel.emit()">Anuluj</button>
-        <button class="btn primary" [disabled]="!value.personId || !value.missionStartDate || !value.missionEndDate" (click)="submit()">Zapisz</button>
+        <button class="btn primary" [disabled]="!canSave" (click)="submit()">Zapisz</button>
       </div>
     </div>
   </div>

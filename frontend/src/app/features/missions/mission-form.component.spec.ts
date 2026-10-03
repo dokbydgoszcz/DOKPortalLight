@@ -60,14 +60,18 @@ describe('MissionFormComponent', () => {
     setSelect(el, 'select[name="personId"]', 'p1');
     fixture.detectChanges();
     expect(saveButton(el).disabled).toBe(true);
+    expect(el.textContent).toContain('Uzupełnij pola oznaczone *');
+    expect(el.querySelectorAll('.field .required').length).toBe(3);
 
     setInput(el, 'input[name="missionStartDate"]', '2026-01-01');
     fixture.detectChanges();
     expect(saveButton(el).disabled).toBe(true);
+    expect(el.textContent).toContain('Uzupełnij pola oznaczone *');
 
     setInput(el, 'input[name="missionEndDate"]', '2029-01-01');
     fixture.detectChanges();
     expect(saveButton(el).disabled).toBe(false);
+    expect(el.textContent).not.toContain('Uzupełnij pola oznaczone *');
     expect(saved).toEqual([]);
   });
 
@@ -135,6 +139,7 @@ describe('MissionFormComponent', () => {
       await fixture.whenStable();
       const checkbox = el.querySelector('input[name="sentToDok"]') as HTMLInputElement;
       expect(checkbox.checked).toBe(false);
+      expect(checkbox.closest('label')!.classList.contains('checkbox-label')).toBe(true);
       expect(el.textContent).toContain('Posłany do DOK');
 
       setSelect(el, 'select[name="personId"]', 'p1');

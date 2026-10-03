@@ -82,16 +82,16 @@
       </div>
       <div class="modal-body">
         <div class="form-grid">
-          <div class="field"><label>Data</label><input type="date" [(ngModel)]="newMeeting.meetingDate" name="meetingDate" /></div>
+          <div class="field"><label>Data <span class="required">*</span></label><input type="date" [(ngModel)]="newMeeting.meetingDate" name="meetingDate" /></div>
           <div class="field"><label>Grupa / opis</label><input [(ngModel)]="newMeeting.groupLabel" name="groupLabel" /></div>
           <div class="field">
-            <label><input type="checkbox" name="useAttendees" [checked]="useAttendees()" (change)="onUseAttendeesChange($any($event.target).checked)" /> Zajęcia z listą uczestników</label>
+            <label class="checkbox-label"><input type="checkbox" name="useAttendees" [checked]="useAttendees()" (change)="onUseAttendeesChange($any($event.target).checked)" /> Zajęcia z listą uczestników</label>
           </div>
           @if (useAttendees()) {
             <div class="field attendee-picker">
               <label>Uczestnicy</label>
               @for (dokCase of dokCases(); track dokCase.id) {
-                <label>
+                <label class="checkbox-label">
                   <input type="checkbox" [checked]="isAttendeeSelected(dokCase.id)" (change)="toggleAttendeeSelection(dokCase.id, $any($event.target).checked)" />
                   {{ dokCase.personFullName }}
                 </label>
@@ -113,6 +113,9 @@
         </div>
       </div>
       <div class="modal-foot">
+        @if (!newMeeting.meetingDate) {
+          <span class="form-hint">Uzupełnij pola oznaczone *</span>
+        }
         <button class="btn ghost" (click)="cancel()">Anuluj</button>
         <button class="btn primary" [disabled]="!newMeeting.meetingDate" (click)="createMeeting()">Zapisz</button>
       </div>

@@ -191,6 +191,11 @@ tr:hover td{background:#FAFAF7}
 .field label{display:block;font-size:10px;text-transform:uppercase;color:#6C7A75;font-weight:800;margin-bottom:6px}
 .field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 11px;outline:none;background:white}
 .field textarea{min-height:92px;resize:vertical}
+.field input[type="checkbox"]{width:auto;padding:0;margin:0;border:0;flex:none}
+.field label.checkbox-label{display:flex;align-items:center;gap:8px;margin-bottom:0;text-transform:none;font-size:13px;font-weight:600;color:var(--text);cursor:pointer}
+.required{color:var(--danger)}
+.form-hint{margin-right:auto;align-self:center;font-size:12px;color:#6C7A75}
+.btn:disabled{opacity:.45;cursor:not-allowed}
 .field.full{grid-column:1/-1}
 .modal-foot{padding:15px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
 .toast-stack{

@@ -78,6 +78,8 @@ describe('SupervisionsListComponent', () => {
     it('keeps saving disabled until a date is chosen, so an empty date is never sent', async () => {
       const ctx = await openForm();
       expect(saveButton(ctx.el).disabled).toBe(true);
+      expect(textOf(ctx.el)).toContain('Uzupełnij pola oznaczone *');
+      expect(ctx.el.querySelector('.field .required')).not.toBeNull();
 
       saveButton(ctx.el).click();
       ctx.http.expectNone(r => r.method === 'POST');
@@ -85,6 +87,7 @@ describe('SupervisionsListComponent', () => {
       setInput(ctx.el, 'input[name="supervisionDate"]', '2026-10-10');
       ctx.fixture.detectChanges();
       expect(saveButton(ctx.el).disabled).toBe(false);
+      expect(textOf(ctx.el)).not.toContain('Uzupełnij pola oznaczone *');
     });
 
     it('shows a toast when adding fails and closes the form on cancel', async () => {

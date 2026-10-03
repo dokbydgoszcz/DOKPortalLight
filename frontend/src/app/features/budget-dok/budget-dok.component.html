@@ -41,7 +41,7 @@
       </div>
       <div class="modal-body">
         <div class="form-grid">
-          <div class="field"><label>Data</label><input type="date" [(ngModel)]="newEntry.entryDate" name="entryDate" /></div>
+          <div class="field"><label>Data <span class="required">*</span></label><input type="date" [(ngModel)]="newEntry.entryDate" name="entryDate" /></div>
           <div class="field">
             <label>Typ</label>
             <select [(ngModel)]="newEntry.type" name="type">
@@ -55,6 +55,9 @@
         </div>
       </div>
       <div class="modal-foot">
+        @if (!newEntry.entryDate) {
+          <span class="form-hint">Uzupełnij pola oznaczone *</span>
+        }
         <button class="btn ghost" (click)="cancel()">Anuluj</button>
         <button class="btn primary" [disabled]="!newEntry.entryDate" (click)="createEntry()">Zapisz</button>
       </div>
