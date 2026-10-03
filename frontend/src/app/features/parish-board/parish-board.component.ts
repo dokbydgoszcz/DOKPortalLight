@@ -4,9 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { ParishNeedsService } from './parish-needs.service';
 import { ParishesService } from './parishes.service';
 import { PeopleService } from '../people/people.service';
-import { CreateParishNeedValue, Parish, ParishNeed } from './parish-need.model';
+import { AssignedPerson, CreateParishNeedValue, Parish, ParishNeed } from './parish-need.model';
 import { Person } from '../people/person.model';
 import { ToastService } from '../../core/notifications/toast.service';
+import { serverMessage } from '../../shared/http-error';
 
 @Component({
   selector: 'app-parish-board',
@@ -18,6 +19,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 export class ParishBoardComponent implements OnInit {
   readonly needs = signal<ParishNeed[]>([]);
   readonly isAddFormOpen = signal(false);
+  readonly editingNeedId = signal<string | null>(null);
   readonly assigningNeedId = signal<string | null>(null);
   parishes: Parish[] = [];
   people: Person[] = [];
@@ -51,19 +53,39 @@ export class ParishBoardComponent implements OnInit {
   }
 
   openAddForm(): void {
+    this.editingNeedId.set(null);
     this.newNeed = { parishId: '', description: '' };
     this.isAddFormOpen.set(true);
   }
 
-  createNeed(): void {
-    this.parishNeedsService.create(this.newNeed).subscribe({
+  openEditForm(need: ParishNeed): void {
+    this.editingNeedId.set(need.id);
+    this.newNeed = { parishId: need.parishId, description: need.description };
+    this.isAddFormOpen.set(true);
+  }
+
+  canSaveNeed(): boolean {
+    return !!this.newNeed.parishId && !!this.newNeed.description.trim();
+  }
+
+  saveNeed(): void {
+    const id = this.editingNeedId();
+    const request$ = id ? this.parishNeedsService.update(id, this.newNeed) : this.parishNeedsService.create(this.newNeed);
+    request$.subscribe({
       next: () => {
         this.isAddFormOpen.set(false);
-        this.toast.success('Dodano zapotrzebowanie.');
+        this.toast.success(id ? 'Zapisano zmiany.' : 'Dodano zapotrzebowanie.');
         this.load();
       },
-      error: () => this.toast.error('Nie udało się dodać zapotrzebowania.')
+      error: err => this.toast.error(id ? serverMessage(err, 'Nie udało się zapisać zmian.') : 'Nie udało się dodać zapotrzebowania.')
     });
+  }
+
+  /** Osoby, których jeszcze nie skierowano do zapotrzebowania z otwartego okna. */
+  assignablePeople(): Person[] {
+    const need = this.needs().find(n => n.id === this.assigningNeedId());
+    const assigned = new Set((need?.assignedPeople ?? []).map(p => p.personId));
+    return this.people.filter(p => !assigned.has(p.id));
   }
 
   openAssignForm(need: ParishNeed): void {
@@ -80,7 +102,18 @@ export class ParishBoardComponent implements OnInit {
         this.toast.success('Skierowano katechistę.');
         this.load();
       },
-      error: () => this.toast.error('Nie udało się skierować katechisty.')
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się skierować katechisty.'))
+    });
+  }
+
+  unassign(need: ParishNeed, person: AssignedPerson): void {
+    if (!confirm(`Odpiąć „${person.fullName}” od zapotrzebowania?`)) return;
+    this.parishNeedsService.unassign(need.id, person.personId).subscribe({
+      next: () => {
+        this.toast.success('Odpięto osobę.');
+        this.load();
+      },
+      error: () => this.toast.error('Nie udało się odpiąć osoby.')
     });
   }
 

@@ -2,7 +2,8 @@ import { HasPermissionDirective } from '../../shared/permissions/has-permission.
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
 import { CandidatesService } from './candidates.service';
-import { Candidate, CandidateFormValue } from './candidate.model';
+import { Candidate, CandidateFormValue, romanYear } from './candidate.model';
+import { serverMessage } from '../../shared/http-error';
 import { CandidateFormComponent } from './candidate-form.component';
 import { ToastService } from '../../core/notifications/toast.service';
 import { PaginationComponent } from '../../shared/pagination.component';
@@ -22,7 +23,9 @@ export class CandidatesListComponent implements OnInit {
   readonly totalCount = signal(0);
   readonly pageSize = PAGE_SIZE;
   readonly isFormOpen = signal(false);
-  formValue: CandidateFormValue = { personId: '', year: 1, opinionsCollected: 0, isRetreatCompleted: false };
+  readonly editingId = signal<string | null>(null);
+  readonly romanYear = romanYear;
+  formValue: CandidateFormValue = { personId: '', year: 1, opinionsCollected: 0, retreats: [] };
 
   readonly yearOneCount = signal(0);
   readonly yearTwoCount = signal(0);
@@ -65,19 +68,34 @@ export class CandidatesListComponent implements OnInit {
   }
 
   openAddForm(): void {
-    this.formValue = { personId: '', year: 1, opinionsCollected: 0, isRetreatCompleted: false };
+    this.editingId.set(null);
+    this.formValue = { personId: '', year: 1, opinionsCollected: 0, retreats: [] };
+    this.isFormOpen.set(true);
+  }
+
+  openEditForm(candidate: Candidate): void {
+    this.editingId.set(candidate.id);
+    this.formValue = {
+      personId: candidate.personId,
+      year: candidate.year,
+      attendancePercentage: candidate.attendancePercentage ?? undefined,
+      opinionsCollected: candidate.opinionsCollected,
+      retreats: candidate.retreats.map(r => ({ ...r }))
+    };
     this.isFormOpen.set(true);
   }
 
   onSave(value: CandidateFormValue): void {
-    this.candidatesService.create(value).subscribe({
+    const id = this.editingId();
+    const request$ = id ? this.candidatesService.update(id, value) : this.candidatesService.create(value);
+    request$.subscribe({
       next: () => {
         this.isFormOpen.set(false);
-        this.toast.success('Dodano kandydata.');
+        this.toast.success(id ? 'Zapisano zmiany.' : 'Dodano kandydata.');
         this.load();
         this.loadStats();
       },
-      error: () => this.toast.error('Nie udało się dodać kandydata.')
+      error: err => this.toast.error(id ? serverMessage(err, 'Nie udało się zapisać zmian.') : 'Nie udało się dodać kandydata.')
     });
   }
 

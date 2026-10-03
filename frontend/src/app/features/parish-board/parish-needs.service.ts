@@ -17,8 +17,16 @@ export class ParishNeedsService {
     return this.http.post<ParishNeed>(this.baseUrl, value);
   }
 
+  update(id: string, value: CreateParishNeedValue) {
+    return this.http.put<ParishNeed>(`${this.baseUrl}/${id}`, value);
+  }
+
   assign(id: string, personId: string) {
     return this.http.put<ParishNeed>(`${this.baseUrl}/${id}/assign`, { personId });
+  }
+
+  unassign(id: string, personId: string) {
+    return this.http.delete<ParishNeed>(`${this.baseUrl}/${id}/assign/${personId}`);
   }
 
   delete(id: string) {

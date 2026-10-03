@@ -1,3 +1,10 @@
+export interface CandidateRetreat {
+  year: number;
+  isCompleted: boolean;
+}
+
+export const romanYear = (year: number): string => ['', 'I', 'II', 'III'][year] ?? String(year);
+
 export interface Candidate {
   id: string;
   personId: string;
@@ -7,7 +14,7 @@ export interface Candidate {
   attendancePercentage: number | null;
   opinionsCollected: number;
   opinionsRequired: number;
-  isRetreatCompleted: boolean;
+  retreats: CandidateRetreat[];
 }
 
 export interface CandidateFormValue {
@@ -15,5 +22,6 @@ export interface CandidateFormValue {
   year: number;
   attendancePercentage?: number;
   opinionsCollected: number;
-  isRetreatCompleted: boolean;
+  /** Rekolekcje po jednym wpisie na rok formacji; brak wpisu = nic nie zaplanowano. */
+  retreats: CandidateRetreat[];
 }

@@ -9,16 +9,26 @@
       <div class="list-row">
         <div class="list-main">
           <div class="list-title">{{ need.parishName }} — {{ need.description }}</div>
-          @if (need.assignedPersonName) {
-            <div class="list-sub">Skierowano: {{ need.assignedPersonName }}</div>
+          @if (need.assignedPeople.length > 0) {
+            <div class="list-sub">
+              Skierowano:
+              @for (person of need.assignedPeople; track person.personId) {
+                <span class="assigned-person">{{ person.fullName }}<span *appHasPermission="'ParishNeeds.Manage'" class="link" style="color:var(--danger)" title="Odepnij" (click)="unassign(need, person)">&nbsp;×</span></span>@if (!$last) {<span>, </span>}
+              }
+            </div>
           }
         </div>
         @if (need.status === 'Open') {
           <button *appHasPermission="'ParishNeeds.Manage'" class="btn primary small" (click)="openAssignForm(need)">Skieruj</button>
         } @else {
           <span class="pill green">{{ need.status }}</span>
+          <button *appHasPermission="'ParishNeeds.Manage'" class="btn ghost small" (click)="openAssignForm(need)">＋ Kolejna osoba</button>
         }
-        <span *appHasPermission="'ParishNeeds.Manage'" class="link" style="color:var(--danger)" (click)="deleteNeed(need)">Usuń</span>
+        <ng-container *appHasPermission="'ParishNeeds.Manage'">
+          <span class="link" (click)="openEditForm(need)">Edytuj</span>
+          &nbsp;·&nbsp;
+          <span class="link" style="color:var(--danger)" (click)="deleteNeed(need)">Usuń</span>
+        </ng-container>
       </div>
     } @empty {
       <div class="empty">Brak zapotrzebowań.</div>
@@ -30,25 +40,29 @@
   <div class="overlay show">
     <div class="modal">
       <div class="modal-head">
-        <h3>Nowe zapotrzebowanie parafii</h3>
+        <h3>{{ editingNeedId() ? 'Edytuj zapotrzebowanie' : 'Nowe zapotrzebowanie parafii' }}</h3>
         <button class="close" (click)="isAddFormOpen.set(false)">×</button>
       </div>
       <div class="modal-body">
         <div class="form-grid">
           <div class="field">
-            <label>Parafia</label>
+            <label>Parafia <span class="required">*</span></label>
             <select [(ngModel)]="newNeed.parishId" name="parishId">
+              <option value="">— wybierz —</option>
               @for (parish of parishes; track parish.id) {
                 <option [value]="parish.id">{{ parish.name }}</option>
               }
             </select>
           </div>
-          <div class="field full"><label>Opis potrzeby</label><textarea [(ngModel)]="newNeed.description" name="description"></textarea></div>
+          <div class="field full"><label>Opis potrzeby <span class="required">*</span></label><textarea [(ngModel)]="newNeed.description" name="description"></textarea></div>
         </div>
       </div>
       <div class="modal-foot">
+        @if (!canSaveNeed()) {
+          <span class="form-hint">Uzupełnij pola oznaczone *</span>
+        }
         <button class="btn ghost" (click)="isAddFormOpen.set(false)">Anuluj</button>
-        <button class="btn primary" (click)="createNeed()">Zapisz</button>
+        <button class="btn primary" [disabled]="!canSaveNeed()" (click)="saveNeed()">Zapisz</button>
       </div>
     </div>
   </div>
@@ -65,7 +79,8 @@
         <div class="field">
           <label>Osoba</label>
           <select [(ngModel)]="assignPersonId" name="assignPersonId">
-            @for (person of people; track person.id) {
+            <option value="">— wybierz —</option>
+            @for (person of assignablePeople(); track person.id) {
               <option [value]="person.id">{{ person.fullName }}</option>
             }
           </select>
@@ -73,7 +88,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn ghost" (click)="cancelAssign()">Anuluj</button>
-        <button class="btn primary" (click)="confirmAssign()">Skieruj</button>
+        <button class="btn primary" [disabled]="!assignPersonId" (click)="confirmAssign()">Skieruj</button>
       </div>
     </div>
   </div>

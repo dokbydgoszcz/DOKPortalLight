@@ -5,7 +5,8 @@ import { Observable, catchError, concatMap, from, map, of, switchMap } from 'rxj
 import { CaseDocument } from './case-document.model';
 import { UploadSummary } from '../../shared/attachments/attachment.model';
 import { documentNameFromFile, validateFile } from '../../shared/attachments/attachment-rules';
-import { UploadOutcome, serverMessage, toSummary } from '../../shared/attachments/upload-summary';
+import { UploadOutcome, toSummary } from '../../shared/attachments/upload-summary';
+import { serverMessage } from '../../shared/http-error';
 
 @Injectable({ providedIn: 'root' })
 export class CaseDocumentsService {

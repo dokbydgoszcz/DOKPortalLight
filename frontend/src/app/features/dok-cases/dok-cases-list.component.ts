@@ -15,7 +15,7 @@ import { PaginationComponent } from '../../shared/pagination.component';
 import { AttachmentsComponent } from '../../shared/attachments/attachments.component';
 import { AttachmentsService } from '../../shared/attachments/attachments.service';
 import { ACCEPT_ATTRIBUTE, RULES_HINT, formatFileSize, saveBlob, validateFile } from '../../shared/attachments/attachment-rules';
-import { serverMessage } from '../../shared/attachments/upload-summary';
+import { serverMessage } from '../../shared/http-error';
 import { environment } from '../../../environments/environment';
 
 const PATH_LABELS: Record<string, string> = {

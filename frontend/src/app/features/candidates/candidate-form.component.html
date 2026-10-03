@@ -2,7 +2,7 @@
   <div class="overlay show">
     <div class="modal">
       <div class="modal-head">
-        <h3>Nowy kandydat SKŚP</h3>
+        <h3>{{ editing ? 'Edytuj kandydata' : 'Nowy kandydat SKŚP' }}</h3>
         <button class="close" (click)="cancel.emit()">×</button>
       </div>
       <div class="modal-body">
@@ -26,13 +26,16 @@
           </div>
           <div class="field"><label>Frekwencja (%)</label><input type="number" [(ngModel)]="value.attendancePercentage" name="attendancePercentage" /></div>
           <div class="field"><label>Liczba opinii</label><input type="number" [(ngModel)]="value.opinionsCollected" name="opinionsCollected" /></div>
-          <div class="field">
-            <label>Rekolekcje</label>
-            <select [(ngModel)]="value.isRetreatCompleted" name="isRetreatCompleted">
-              <option [ngValue]="false">oczekuje</option>
-              <option [ngValue]="true">zaliczone</option>
-            </select>
-          </div>
+          @for (year of years; track year) {
+            <div class="field">
+              <label>Rekolekcje — {{ romanYear(year) }} rok</label>
+              <select [(ngModel)]="retreatStatus[year]" [attr.name]="'retreat' + year">
+                <option value="">—</option>
+                <option value="pending">oczekuje</option>
+                <option value="done">zaliczone</option>
+              </select>
+            </div>
+          }
         </div>
       </div>
       <div class="modal-foot">

@@ -3,7 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, concatMap, from, map, of } from 'rxjs';
 import { Attachment, UploadSummary } from './attachment.model';
 import { validateFile } from './attachment-rules';
-import { UploadOutcome, serverMessage, toSummary } from './upload-summary';
+import { UploadOutcome, toSummary } from './upload-summary';
+import { serverMessage } from '../http-error';
 
 /** Pliki dołączone do notatek i superwizji; adres bazowy (…/attachments) podaje właściciel załączników. */
 @Injectable({ providedIn: 'root' })

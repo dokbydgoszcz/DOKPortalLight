@@ -26,13 +26,19 @@
             <td>{{ candidate.attendancePercentage }}%</td>
             <td>{{ candidate.opinionsCollected }} / {{ candidate.opinionsRequired }}</td>
             <td>
-              @if (candidate.isRetreatCompleted) {
-                <span class="pill green">✓ zaliczone</span>
-              } @else {
-                <span class="pill gold">oczekuje</span>
+              @for (retreat of candidate.retreats; track retreat.year) {
+                <span class="pill" [class.green]="retreat.isCompleted" [class.gold]="!retreat.isCompleted">{{ romanYear(retreat.year) }} {{ retreat.isCompleted ? '✓' : 'oczekuje' }}</span>&ngsp;
+              } @empty {
+                —
               }
             </td>
-            <td><span *appHasPermission="'Candidates.Manage'" class="link" style="color:var(--danger)" (click)="deleteCandidate(candidate)">Usuń</span></td>
+            <td>
+              <ng-container *appHasPermission="'Candidates.Manage'">
+                <span class="link" (click)="openEditForm(candidate)">Edytuj</span>
+                &nbsp;·&nbsp;
+                <span class="link" style="color:var(--danger)" (click)="deleteCandidate(candidate)">Usuń</span>
+              </ng-container>
+            </td>
           </tr>
         } @empty {
           <tr><td colspan="7" class="empty">Brak kandydatów.</td></tr>
@@ -45,6 +51,7 @@
 
 <app-candidate-form
   [open]="isFormOpen()"
+  [editing]="editingId() !== null"
   [value]="formValue"
   (save)="onSave($event)"
   (cancel)="onCancel()">

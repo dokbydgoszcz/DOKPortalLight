@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { describe, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CandidatesService } from './candidates.service';
 import { environment } from '../../../environments/environment';
 
@@ -18,5 +18,18 @@ describe('CandidatesService', () => {
     );
     req.flush({ items: [], totalCount: 0, page: 1, pageSize: 100 });
     httpMock.verify();
+  });
+
+  it('updates a candidate with PUT, sending the whole retreats list', () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const service = TestBed.inject(CandidatesService);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    service.update('c1', { personId: 'p1', year: 2, opinionsCollected: 1, retreats: [{ year: 1, isCompleted: true }] }).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/candidates/c1`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body.retreats).toEqual([{ year: 1, isCompleted: true }]);
+    req.flush({});
   });
 });

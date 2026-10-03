@@ -22,6 +22,10 @@ export class CandidatesService {
     return this.http.post<Candidate>(this.baseUrl, value);
   }
 
+  update(id: string, value: CandidateFormValue) {
+    return this.http.put<Candidate>(`${this.baseUrl}/${id}`, value);
+  }
+
   delete(id: string) {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
