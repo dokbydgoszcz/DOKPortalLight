@@ -1,6 +1,9 @@
 <div class="page-heading">
   <div><h2>Mailing</h2><p>Kampanie e-mail do grup odbiorców.</p></div>
-  <button *appHasPermission="'Mailing.Manage'" class="btn primary" (click)="openAddForm()">＋ Nowa kampania</button>
+  <div *appHasPermission="'Mailing.Manage'" style="display:flex;gap:8px;align-items:center">
+    <button class="btn ghost" [disabled]="isSendingTest()" (click)="sendTest()">Wyślij wiadomość testową</button>
+    <button class="btn primary" (click)="openAddForm()">＋ Nowa kampania</button>
+  </div>
 </div>
 
 <div class="card">

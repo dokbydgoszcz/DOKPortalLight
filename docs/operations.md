@@ -61,3 +61,23 @@ Telemetria żądań `/health*` jest odrzucana w aplikacji. Dzienny limit danych 
 ## Uptime i rozgrzewanie
 
 Workflow `.github/workflows/uptime.yml` co 15 minut w dni robocze (UTC 5–19) woła `/health`. Gdy aplikacja nie odpowie po 5 próbach, run kończy się błędem i GitHub wysyła powiadomienie. Cron GitHuba bywa opóźniany, więc zimne starty są łagodzone, nie wyeliminowane. Workflow nie dotyka bazy.
+
+## Poczta wychodząca (SMTP, konto Exchange)
+
+Mailing i przypomnienia wysyłają e-maile przez SMTP, gdy w ustawieniach App Service (`dokportal-api`) jest `Smtp__Host`. Bez niego aplikacja zgłasza czytelny błąd „nie jest skonfigurowane”, a reszta działa.
+
+Konto `noreply@bydgoskateologia.pl` (Exchange Online / Microsoft 365):
+
+| Ustawienie | Wartość |
+|---|---|
+| `Smtp__Host` | `smtp.office365.com` |
+| `Smtp__Port` | `587` |
+| `Smtp__EnableSsl` | `true` (STARTTLS) |
+| `Smtp__Username` | `noreply@bydgoskateologia.pl` |
+| `Smtp__FromEmail` | `noreply@bydgoskateologia.pl` |
+| `Smtp__FromName` | `DOK Portal` |
+| `Smtp__Password` | hasło konta – ustawia tylko administrator, nie trafia do repozytorium ani do czatu |
+
+Wymagania po stronie Exchange: włączony **uwierzytelniony SMTP (SMTP AUTH)** dla tej skrzynki, brak wymuszonego MFA na koncie technicznym (logowanie hasłem), nadawca zgodny ze skrzynką. Microsoft stopniowo wycofuje Basic Auth dla SMTP AUTH – gdy przestanie działać, trzeba przejść na wysyłkę przez Microsoft Graph.
+
+Sprawdzenie: w ekranie **Mailing** przycisk „Wyślij wiadomość testową” wysyła wiadomość na adres zalogowanego użytkownika; przy błędzie pokazuje komunikat serwera poczty (np. `5.7.57 Client not authenticated` = SMTP AUTH wyłączony albo złe hasło).

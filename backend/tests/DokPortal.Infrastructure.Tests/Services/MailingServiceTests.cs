@@ -125,13 +125,60 @@ public class MailingServiceTests
         Assert.Equal(3, await service.GetRecipientCountAsync(MailingGroup.Missionaries, default));
     }
 
+    private class FailingEmailSender : IEmailSender
+    {
+        public Task SendAsync(string toEmail, string subject, string body, CancellationToken ct) =>
+            throw new System.Net.Mail.SmtpException("5.7.57 Client not authenticated to send mail");
+    }
+
+    [Fact]
+    public async Task SendTestAsync_SendsOneMessageToTheGivenAddress_ExplainingWhatItIs()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var sender = new RecordingEmailSender();
+
+        await new MailingService(db, sender).SendTestAsync("admin@example.org", default);
+
+        Assert.Equal(new[] { "admin@example.org" }, sender.SentTo);
+        Assert.Equal("Wiadomość testowa z DOK Portal", sender.LastSubject);
+        Assert.Contains("działa", sender.LastBody);
+    }
+
+    [Fact]
+    public async Task SendTestAsync_WhenTheServerRefuses_ExplainsTheReasonInPolish_WithTheServerMessage()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new MailingService(db, new FailingEmailSender()).SendTestAsync("admin@example.org", default));
+
+        Assert.Contains("Nie udało się wysłać wiadomości", ex.Message);
+        Assert.Contains("5.7.57 Client not authenticated", ex.Message);
+    }
+
+    [Fact]
+    public async Task SendTestAsync_WithoutSmtp_KeepsTheNotConfiguredMessage()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new MailingService(db, new NullEmailSender()).SendTestAsync("admin@example.org", default));
+
+        Assert.Contains("nie jest skonfigurowane", ex.Message);
+        Assert.DoesNotContain("Nie udało się wysłać", ex.Message);
+    }
+
     private class RecordingEmailSender : IEmailSender
     {
         public List<string> SentTo { get; } = new();
+        public string? LastSubject { get; private set; }
+        public string? LastBody { get; private set; }
 
         public Task SendAsync(string toEmail, string subject, string body, CancellationToken ct)
         {
             SentTo.Add(toEmail);
+            LastSubject = subject;
+            LastBody = body;
             return Task.CompletedTask;
         }
     }

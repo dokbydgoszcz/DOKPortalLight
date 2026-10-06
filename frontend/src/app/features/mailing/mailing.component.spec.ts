@@ -219,4 +219,56 @@ describe('MailingComponent', () => {
       expect(textOf(ctx.el)).not.toContain('Usuń');
     });
   });
+
+  describe('test message', () => {
+    const testUrl = api('/api/mailing/test-email');
+
+    it('sends a test message to the logged-in user and says where it went', () => {
+      const ctx = boot();
+
+      clickByText(ctx.el, 'Wyślij wiadomość testową', 'button');
+      const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === testUrl);
+      req.flush({ sentTo: 'dyrektor@example.org' });
+
+      expect(toastMessages()).toContain('Wysłano wiadomość testową na adres dyrektor@example.org.');
+    });
+
+    it('is disabled while sending, so a double click does not send twice', () => {
+      const ctx = boot();
+      const button = () => Array.from(ctx.el.querySelectorAll('button')).find(b => b.textContent!.includes('Wyślij wiadomość testową'))!;
+
+      button().click();
+      ctx.fixture.detectChanges();
+      expect(button().disabled).toBe(true);
+      button().click();
+
+      const req = ctx.http.expectOne(r => r.url === testUrl);
+      req.flush({ sentTo: 'a@example.org' });
+      ctx.fixture.detectChanges();
+      expect(button().disabled).toBe(false);
+    });
+
+    it('shows the reason the server gives, or a generic one', () => {
+      const ctx = boot();
+
+      clickByText(ctx.el, 'Wyślij wiadomość testową', 'button');
+      ctx.http.expectOne(r => r.url === testUrl).flush(
+        { title: 'Nie udało się wysłać wiadomości: 5.7.57 Client not authenticated' }, { status: 400, statusText: 'Bad Request' });
+      ctx.fixture.detectChanges();
+      clickByText(ctx.el, 'Wyślij wiadomość testową', 'button');
+      ctx.http.expectOne(r => r.url === testUrl).flush('x', { status: 500, statusText: 'Server Error' });
+
+      expect(toastMessages()).toContain('Nie udało się wysłać wiadomości: 5.7.57 Client not authenticated');
+      expect(toastMessages()).toContain('Nie udało się wysłać wiadomości testowej.');
+    });
+
+    it('is hidden from users who cannot manage mailing', () => {
+      const ctx = setup(MailingComponent, { granted: ['Mailing.View'] });
+      ctx.fixture.detectChanges();
+      ctx.http.expectOne(url).flush([draft]);
+      ctx.fixture.detectChanges();
+
+      expect(textOf(ctx.el)).not.toContain('Wyślij wiadomość testową');
+    });
+  });
 });

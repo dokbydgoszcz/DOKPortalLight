@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MailingService } from './mailing.service';
 import { CreateMailingCampaignValue, MAILING_GROUP_LABELS, MailingCampaign, MailingGroup } from './mailing-campaign.model';
 import { ToastService } from '../../core/notifications/toast.service';
+import { serverMessage } from '../../shared/http-error';
 
 @Component({
   selector: 'app-mailing',
@@ -15,6 +16,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 export class MailingComponent implements OnInit {
   readonly campaigns = signal<MailingCampaign[]>([]);
   readonly isFormOpen = signal(false);
+  readonly isSendingTest = signal(false);
   readonly groupLabels = MAILING_GROUP_LABELS;
   readonly groups = Object.keys(MAILING_GROUP_LABELS) as MailingGroup[];
   newCampaign: CreateMailingCampaignValue = { subject: '', body: '', group: 'CandidatesSksp' };
@@ -26,6 +28,22 @@ export class MailingComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+  }
+
+  /** Wysyła wiadomość testową na adres zalogowanego użytkownika, żeby sprawdzić ustawienia SMTP. */
+  sendTest(): void {
+    if (this.isSendingTest()) return;
+    this.isSendingTest.set(true);
+    this.mailingService.sendTest().subscribe({
+      next: result => {
+        this.isSendingTest.set(false);
+        this.toast.success(`Wysłano wiadomość testową na adres ${result.sentTo}.`);
+      },
+      error: err => {
+        this.isSendingTest.set(false);
+        this.toast.error(serverMessage(err, 'Nie udało się wysłać wiadomości testowej.'));
+      }
+    });
   }
 
   load(): void {

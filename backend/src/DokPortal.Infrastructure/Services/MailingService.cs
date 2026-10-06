@@ -63,6 +63,26 @@ public class MailingService : IMailingService
         return ToDto(campaign);
     }
 
+    public async Task SendTestAsync(string toEmail, CancellationToken ct)
+    {
+        try
+        {
+            await _emailSender.SendAsync(
+                toEmail,
+                "Wiadomość testowa z DOK Portal",
+                "To jest wiadomość testowa. Jeśli ją czytasz, wysyłanie e-maili z DOK Portal działa.",
+                ct);
+        }
+        catch (InvalidOperationException)
+        {
+            throw; // brak konfiguracji SMTP ma już czytelny komunikat
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Nie udało się wysłać wiadomości: {ex.Message}", ex);
+        }
+    }
+
     public async Task<bool> DeleteDraftAsync(Guid id, CancellationToken ct)
     {
         var campaign = await _db.MailingCampaigns.FirstOrDefaultAsync(c => c.Id == id, ct);

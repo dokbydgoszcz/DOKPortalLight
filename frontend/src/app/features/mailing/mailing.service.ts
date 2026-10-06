@@ -21,6 +21,11 @@ export class MailingService {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 
+  /** Wysyła wiadomość testową na adres zalogowanego użytkownika (sprawdzenie ustawień SMTP). */
+  sendTest() {
+    return this.http.post<{ sentTo: string }>(`${environment.apiBaseUrl}/api/mailing/test-email`, {});
+  }
+
   send(id: string) {
     return this.http.post<MailingCampaign>(`${this.baseUrl}/${id}/send`, {});
   }
