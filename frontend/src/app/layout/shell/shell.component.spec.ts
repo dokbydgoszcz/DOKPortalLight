@@ -62,6 +62,15 @@ describe('ShellComponent', () => {
     expect(main.lastElementChild!.tagName.toLowerCase()).toBe('app-footer');
   });
 
+  it('shows the cross as the brand mark in the menu, not the letters SK', () => {
+    setup([]);
+    const logo = el().querySelector('.sidebar .brand .logo') as HTMLElement;
+
+    expect(logo.querySelector('svg')).not.toBeNull();
+    expect(logo.querySelectorAll('svg line')).toHaveLength(2);
+    expect((logo.textContent ?? '').trim()).toBe('');
+  });
+
   it('always shows the items that need no permission and only the permitted modules', () => {
     setup(['Meetings.View']);
     const text = fixture.nativeElement.textContent as string;

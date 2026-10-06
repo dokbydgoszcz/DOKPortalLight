@@ -16,6 +16,10 @@ describe('routes', () => {
     }
   });
 
+  it('titles the logged-in area, so the tab does not keep the login title', () => {
+    expect(routes.find(r => r.path === '')!.title).toBe('DOK Portal');
+  });
+
   it('lazy-loads a component class for every feature route and the login page', async () => {
     const lazy = [routes.find(r => r.path === 'login')!, ...children].filter(r => r.loadComponent);
 
