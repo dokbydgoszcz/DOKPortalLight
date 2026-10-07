@@ -79,7 +79,7 @@ public class DashboardService : IDashboardService
             MissingDocumentsCasesCount = missingDocumentsCasesCount,
             UpcomingMeetingsCount = await _db.Meetings.ForScope(_db, scope)
                 .CountAsync(m => m.MeetingDate >= today && m.MeetingDate <= windowEnd, ct),
-            ActiveCandidatesCount = await _db.Candidates.InFormation(today).CountAsync(ct),
+            ActiveCandidatesCount = await _db.Candidates.InFormation().CountAsync(ct),
             StalledCases = stalledCases,
             StalledCasesCount = stalledCount
         };

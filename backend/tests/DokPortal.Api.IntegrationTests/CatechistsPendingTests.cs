@@ -37,7 +37,7 @@ public class CatechistsPendingTests : IntegrationTestBase, IClassFixture<FakeSto
         db.People.Add(person);
         db.Candidates.Add(new Candidate
         {
-            Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2018, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
+            Id = Guid.NewGuid(), PersonId = person.Id, FormationYear = 3, IsFormationCompleted = true, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
         return (person.Id, $"Anna {last}");

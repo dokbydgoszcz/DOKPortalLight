@@ -98,7 +98,7 @@ public class ExportServiceTests
         db.Candidates.AddRange(
             new Candidate
             {
-                Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2025, AttendancePercentage = 85,
+                Id = Guid.NewGuid(), PersonId = person.Id, FormationYear = 2, AttendancePercentage = 85,
                 OpinionsCollected = 1, OpinionsRequired = 2,
                 Retreats =
                 {
@@ -107,9 +107,9 @@ public class ExportServiceTests
                     new CandidateRetreat { Id = Guid.NewGuid(), Year = 3, IsCompleted = false }
                 }
             },
-            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2022, OpinionsCollected = 0, OpinionsRequired = 2 },
-            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2024, IsFormationStopped = true, FormationStopNote = "x" },
-            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2026, DeletedAtUtc = DateTime.UtcNow });
+            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationYear = 3, IsFormationCompleted = true, OpinionsCollected = 0, OpinionsRequired = 2 },
+            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationYear = 3, IsFormationStopped = true, FormationStopNote = "x" },
+            new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationYear = 1, DeletedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
         var sheet = OpenSheet(await new ExportService(db, null, new FixedTimeProvider(2026, 10, 3)).ExportCandidatesAsync(default));
@@ -145,7 +145,7 @@ public class ExportServiceTests
 
         var waiting = NewPerson("Anna", "Czekajaca");
         db.People.Add(waiting);
-        db.Candidates.Add(new Candidate { Id = Guid.NewGuid(), PersonId = waiting.Id, FormationStartYear = 2022, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+        db.Candidates.Add(new Candidate { Id = Guid.NewGuid(), PersonId = waiting.Id, FormationYear = 3, IsFormationCompleted = true, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
         var sheet = OpenSheet(await new ExportService(db, null, new FixedTimeProvider(2026, 10, 3)).ExportMissionsAsync(default));

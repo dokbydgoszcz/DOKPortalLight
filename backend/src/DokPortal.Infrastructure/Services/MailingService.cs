@@ -25,13 +25,13 @@ public class MailingService : IMailingService
     private IQueryable<Guid> CatechistPersonIds()
     {
         var withMission = _db.CanonicalMissions.Select(m => m.PersonId);
-        var awaiting = _db.Candidates.Completed(_time.Today()).Select(c => c.PersonId);
+        var awaiting = _db.Candidates.Completed().Select(c => c.PersonId);
         return withMission.Union(awaiting);
     }
 
     public async Task<int> GetRecipientCountAsync(MailingGroup group, CancellationToken ct) => group switch
     {
-        MailingGroup.CandidatesSksp => await _db.Candidates.InFormation(_time.Today()).CountAsync(ct),
+        MailingGroup.CandidatesSksp => await _db.Candidates.InFormation().CountAsync(ct),
         MailingGroup.Missionaries => await CatechistPersonIds().CountAsync(ct),
         MailingGroup.DokGraduates => await _db.DokCases.CountAsync(c => c.Stage == DokStage.Graduate, ct),
         MailingGroup.DokCases => await _db.DokCases.CountAsync(ct),
@@ -119,7 +119,7 @@ public class MailingService : IMailingService
     {
         var personIds = group switch
         {
-            MailingGroup.CandidatesSksp => _db.Candidates.InFormation(_time.Today()).Select(c => c.PersonId),
+            MailingGroup.CandidatesSksp => _db.Candidates.InFormation().Select(c => c.PersonId),
             MailingGroup.Missionaries => CatechistPersonIds(),
             MailingGroup.DokGraduates => _db.DokCases.Where(c => c.Stage == DokStage.Graduate).Select(c => c.PersonId),
             MailingGroup.DokCases => _db.DokCases.Select(c => c.PersonId),

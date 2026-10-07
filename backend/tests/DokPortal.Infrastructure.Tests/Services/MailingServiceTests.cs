@@ -45,7 +45,7 @@ public class MailingServiceTests
         await using var db = CreateContext(Guid.NewGuid().ToString());
         var person = NewPerson();
         db.People.Add(person);
-        db.Candidates.Add(new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = FormationCalendar.StartYearFor(1, DateOnly.FromDateTime(DateTime.UtcNow)), CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+        db.Candidates.Add(new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationYear = 1, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
         var service = new MailingService(db, new NullEmailSender());
@@ -83,8 +83,8 @@ public class MailingServiceTests
         var withoutEmail = NewPerson();
         db.People.AddRange(withEmail, withoutEmail);
         db.Candidates.AddRange(
-            new Candidate { Id = Guid.NewGuid(), PersonId = withEmail.Id, FormationStartYear = FormationCalendar.StartYearFor(1, DateOnly.FromDateTime(DateTime.UtcNow)), CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
-            new Candidate { Id = Guid.NewGuid(), PersonId = withoutEmail.Id, FormationStartYear = FormationCalendar.StartYearFor(1, DateOnly.FromDateTime(DateTime.UtcNow)), CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+            new Candidate { Id = Guid.NewGuid(), PersonId = withEmail.Id, FormationYear = 1, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new Candidate { Id = Guid.NewGuid(), PersonId = withoutEmail.Id, FormationYear = 1, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
@@ -111,10 +111,10 @@ public class MailingServiceTests
         var oldMissionary = NewPerson();
         db.People.AddRange(inFormation, stopped, finished, finishedAndSent, oldMissionary);
         db.Candidates.AddRange(
-            new Candidate { Id = Guid.NewGuid(), PersonId = inFormation.Id, FormationStartYear = 2026, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
-            new Candidate { Id = Guid.NewGuid(), PersonId = stopped.Id, FormationStartYear = 2026, IsFormationStopped = true, FormationStopNote = "x", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
-            new Candidate { Id = Guid.NewGuid(), PersonId = finished.Id, FormationStartYear = 2022, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
-            new Candidate { Id = Guid.NewGuid(), PersonId = finishedAndSent.Id, FormationStartYear = 2022, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+            new Candidate { Id = Guid.NewGuid(), PersonId = inFormation.Id, FormationYear = 1, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new Candidate { Id = Guid.NewGuid(), PersonId = stopped.Id, FormationYear = 1, IsFormationStopped = true, FormationStopNote = "x", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new Candidate { Id = Guid.NewGuid(), PersonId = finished.Id, FormationYear = 3, IsFormationCompleted = true, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new Candidate { Id = Guid.NewGuid(), PersonId = finishedAndSent.Id, FormationYear = 3, IsFormationCompleted = true, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
         db.CanonicalMissions.AddRange(
             new CanonicalMission { Id = Guid.NewGuid(), PersonId = finishedAndSent.Id, ServicePlace = "x", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
             new CanonicalMission { Id = Guid.NewGuid(), PersonId = oldMissionary.Id, ServicePlace = "y", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });

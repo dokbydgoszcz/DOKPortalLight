@@ -61,7 +61,7 @@ public class ExportService : IExportService
         var candidates = await _db.Candidates.AsNoTracking()
             .Include(c => c.Person)
             .Include(c => c.Retreats)
-            .OrderBy(c => c.Person!.LastName).ThenBy(c => c.Person!.FirstName).ThenByDescending(c => c.FormationStartYear)
+            .OrderBy(c => c.Person!.LastName).ThenBy(c => c.Person!.FirstName).ThenBy(c => c.IsFormationCompleted).ThenBy(c => c.FormationYear)
             .ToListAsync(ct);
         var today = _time.Today();
 
@@ -70,8 +70,8 @@ public class ExportService : IExportService
             new[] { "Osoba", "Rok", "Status", "Frekwencja (%)", "Opinie zebrane", "Opinie wymagane", "Rekolekcje" },
             candidates.Select(c => new object?[]
             {
-                c.Person?.FullName, Math.Min(FormationCalendar.YearOf(c.FormationStartYear, today), FormationCalendar.YearsOfFormation),
-                CandidateStatusLabels[FormationCalendar.StatusOf(c.FormationStartYear, c.IsFormationStopped, today)],
+                c.Person?.FullName, c.FormationYear,
+                CandidateStatusLabels[c.IsFormationStopped ? CandidateFormationStatus.Stopped : c.IsFormationCompleted ? CandidateFormationStatus.Completed : CandidateFormationStatus.InFormation],
                 c.AttendancePercentage, c.OpinionsCollected, c.OpinionsRequired, CompletedRetreatYears(c)
             }));
     }

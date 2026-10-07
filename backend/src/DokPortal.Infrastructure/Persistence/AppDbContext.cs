@@ -17,6 +17,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<Parish> Parishes => Set<Parish>();
     public DbSet<Candidate> Candidates => Set<Candidate>();
     public DbSet<CandidateRetreat> CandidateRetreats => Set<CandidateRetreat>();
+    public DbSet<CandidateFormationEvent> CandidateFormationEvents => Set<CandidateFormationEvent>();
     public DbSet<CanonicalMission> CanonicalMissions => Set<CanonicalMission>();
     public DbSet<Formator> Formators => Set<Formator>();
     public DbSet<ParishNeed> ParishNeeds => Set<ParishNeed>();
@@ -67,6 +68,15 @@ public class AppDbContext : IdentityDbContext<AppUser>
             entity.HasOne(r => r.Candidate).WithMany(c => c.Retreats).HasForeignKey(r => r.CandidateId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(r => new { r.CandidateId, r.Year }).IsUnique();
             entity.HasQueryFilter(r => r.Candidate!.DeletedAtUtc == null);
+        });
+
+        builder.Entity<CandidateFormationEvent>(entity =>
+        {
+            entity.Property(e => e.PerformedByUserId).HasMaxLength(450);
+            entity.Property(e => e.PerformedByEmail).HasMaxLength(256);
+            entity.HasOne(e => e.Candidate).WithMany(c => c.Events).HasForeignKey(e => e.CandidateId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.CandidateId, e.Sequence }).IsUnique();
+            entity.HasQueryFilter(e => e.Candidate!.DeletedAtUtc == null);
         });
 
         builder.Entity<CanonicalMission>(entity =>

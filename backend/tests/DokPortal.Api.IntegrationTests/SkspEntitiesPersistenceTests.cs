@@ -33,7 +33,7 @@ public class SkspEntitiesPersistenceTests : IClassFixture<CustomWebApplicationFa
 
             var candidate = new Candidate
             {
-                Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = 2026, OpinionsCollected = 0,
+                Id = Guid.NewGuid(), PersonId = person.Id, FormationYear = 1, OpinionsCollected = 0,
                 CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
             };
             var mission = new CanonicalMission

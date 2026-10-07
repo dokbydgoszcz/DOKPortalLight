@@ -155,3 +155,73 @@ public class CandidatesControllerTests : IntegrationTestBase
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }
+
+public class CandidateAdvanceEndpointTests : IntegrationTestBase
+{
+    public CandidateAdvanceEndpointTests(CustomWebApplicationFactory factory) : base(factory)
+    {
+    }
+
+    private async Task<(HttpClient Admin, CandidateDto First, CandidateDto Third)> SeedAsync()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        var first = await (await admin.PostAsJsonAsync("/api/candidates", new { PersonId = await SeedPersonAsync(admin, "Jan", "Pierwszy"), Year = 1, OpinionsCollected = 0 })).Content.ReadFromJsonAsync<CandidateDto>();
+        var third = await (await admin.PostAsJsonAsync("/api/candidates", new { PersonId = await SeedPersonAsync(admin, "Anna", "Trzecia"), Year = 3, OpinionsCollected = 0 })).Content.ReadFromJsonAsync<CandidateDto>();
+        return (admin, first!, third!);
+    }
+
+    [Fact]
+    public async Task MovesTheSelectedCandidates_AndTellsHowManyAdvancedAndHowManyFinished()
+    {
+        var (admin, first, third) = await SeedAsync();
+
+        var response = await admin.PostAsJsonAsync("/api/candidates/advance", new { CandidateIds = new[] { first.Id, third.Id } });
+        var result = await response.Content.ReadFromJsonAsync<AdvanceCandidatesResultDto>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal((1, 1, 0), (result!.Advanced, result.Completed, result.Skipped.Count));
+        var movedFirst = await admin.GetFromJsonAsync<CandidateDto>($"/api/candidates/{first.Id}");
+        var movedThird = await admin.GetFromJsonAsync<CandidateDto>($"/api/candidates/{third.Id}");
+        Assert.Equal(2, movedFirst!.Year);
+        Assert.Equal("Completed", movedThird!.Status);
+        Assert.Equal("Advanced", movedFirst.Events[0].Kind);
+        Assert.StartsWith("admin-", movedFirst.Events[0].PerformedBy);
+    }
+
+    [Fact]
+    public async Task TheMoveIsAudited()
+    {
+        var (admin, first, _) = await SeedAsync();
+        await admin.PostAsJsonAsync("/api/candidates/advance", new { CandidateIds = new[] { first.Id } });
+
+        var log = (await admin.GetFromJsonAsync<List<DokPortal.Application.AuditLog.AuditLogEntryDto>>("/api/audit-log?action=AdvanceCandidates", EnumJsonOptions))!;
+
+        Assert.Contains(log, e => e.ObjectDescription.Contains("przeniesiono: 1"));
+    }
+
+    [Fact]
+    public async Task AnEmptySelection_IsABadRequest_AndAUserWithoutManageIsForbidden()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        var catechist = await CreateAuthenticatedClientAsync($"kat-{Guid.NewGuid():N}@example.org", "Sekret123!", "KatechistaProwadzacy");
+
+        var empty = await admin.PostAsJsonAsync("/api/candidates/advance", new { CandidateIds = Array.Empty<Guid>() });
+        var forbidden = await catechist.PostAsJsonAsync("/api/candidates/advance", new { CandidateIds = new[] { Guid.NewGuid() } });
+
+        Assert.Equal(HttpStatusCode.BadRequest, empty.StatusCode);
+        Assert.Contains("co najmniej jednego", await empty.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+    }
+
+    [Fact]
+    public async Task UnknownCandidates_AreReportedAsSkipped_NotAsAnError()
+    {
+        var (admin, _, _) = await SeedAsync();
+
+        var response = await admin.PostAsJsonAsync("/api/candidates/advance", new { CandidateIds = new[] { Guid.NewGuid() } });
+        var result = await response.Content.ReadFromJsonAsync<AdvanceCandidatesResultDto>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Single(result!.Skipped);
+    }
+}

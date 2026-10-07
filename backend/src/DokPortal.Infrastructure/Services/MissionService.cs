@@ -110,7 +110,7 @@ public class MissionService : IMissionService
 
     public async Task<IReadOnlyList<PendingCatechistDto>> GetPendingAsync(CancellationToken ct)
     {
-        var candidates = await _db.Candidates.Completed(_time.Today())
+        var candidates = await _db.Candidates.Completed()
             .Where(c => !_db.CanonicalMissions.Any(m => m.PersonId == c.PersonId))
             .Include(c => c.Person).ThenInclude(p => p!.Parish)
             .AsNoTracking()
@@ -118,7 +118,7 @@ public class MissionService : IMissionService
 
         return candidates
             .GroupBy(c => c.PersonId)
-            .Select(g => g.OrderByDescending(c => c.FormationStartYear).First())
+            .Select(g => g.OrderByDescending(c => c.FormationYearSinceUtc).First())
             .OrderBy(c => c.Person!.LastName).ThenBy(c => c.Person!.FirstName)
             .Select(c => new PendingCatechistDto
             {
@@ -126,7 +126,7 @@ public class MissionService : IMissionService
                 PersonId = c.PersonId,
                 PersonFullName = c.Person!.FullName,
                 ParishName = c.Person.Parish?.Name,
-                FormationCompletedOn = FormationCalendar.CompletedOn(c.FormationStartYear)
+                FormationCompletedOn = DateOnly.FromDateTime(c.FormationYearSinceUtc)
             })
             .ToList();
     }

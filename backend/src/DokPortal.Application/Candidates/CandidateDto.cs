@@ -9,6 +9,11 @@ public class CandidateDto
     /// <summary>Bieżący rok formacji 1–3 (po ukończeniu nadal 3).</summary>
     public required int Year { get; init; }
     public required string Status { get; init; }
+    public bool IsFormationCompleted { get; init; }
+    /// <summary>Od kiedy kandydat jest w obecnym roku (przy ukończeniu: od ukończenia formacji).</summary>
+    public DateTime YearSinceUtc { get; init; }
+    /// <summary>Historia zmian roku, od najnowszej.</summary>
+    public IReadOnlyList<CandidateFormationEventDto> Events { get; init; } = Array.Empty<CandidateFormationEventDto>();
     public bool IsFormationStopped { get; init; }
     public string? FormationStopNote { get; init; }
     public int? AttendancePercentage { get; init; }

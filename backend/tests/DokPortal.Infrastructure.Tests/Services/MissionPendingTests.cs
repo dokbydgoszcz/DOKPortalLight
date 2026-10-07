@@ -25,10 +25,13 @@ public class MissionPendingTests
         return person;
     }
 
-    private static Candidate NewCandidate(Person person, int startYear, bool stopped = false) => new()
+    /// <summary>Kandydat ze znacznikiem ukończenia formacji (domyślnie 1 września 2026) albo jeszcze w trakcie formacji.</summary>
+    private static Candidate NewCandidate(Person person, bool completed, bool stopped = false, DateTime? since = null) => new()
     {
-        Id = Guid.NewGuid(), PersonId = person.Id, FormationStartYear = startYear, IsFormationStopped = stopped,
-        FormationStopNote = stopped ? "x" : null, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
+        Id = Guid.NewGuid(), PersonId = person.Id, FormationYear = completed ? 3 : 1, IsFormationCompleted = completed, IsFormationStopped = stopped,
+        FormationStopNote = stopped ? "x" : null,
+        FormationYearSinceUtc = since ?? new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc),
+        CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
     };
 
     private static CanonicalMission NewMission(Person person, bool deleted = false) => new()
@@ -48,7 +51,7 @@ public class MissionPendingTests
         var sent = NewPerson("Poslany");
         db.People.AddRange(waiting, inFormation, stopped, sent);
         db.Candidates.AddRange(
-            NewCandidate(waiting, 2023), NewCandidate(inFormation, 2025), NewCandidate(stopped, 2023, stopped: true), NewCandidate(sent, 2023));
+            NewCandidate(waiting, true), NewCandidate(inFormation, false), NewCandidate(stopped, true, stopped: true), NewCandidate(sent, true));
         db.CanonicalMissions.Add(NewMission(sent));
         await db.SaveChangesAsync();
 
@@ -60,28 +63,12 @@ public class MissionPendingTests
     }
 
     [Fact]
-    public async Task GetPendingAsync_AppearsOnlyFromTheFirstOfSeptember_AfterTheThirdYear()
-    {
-        await using var db = CreateContext();
-        var person = NewPerson("Kowalski");
-        db.People.Add(person);
-        db.Candidates.Add(NewCandidate(person, 2026));
-        await db.SaveChangesAsync();
-
-        var onTheLastDay = await new MissionService(db, new FixedTimeProvider(2029, 8, 31)).GetPendingAsync(default);
-        var onTheFirst = await new MissionService(db, new FixedTimeProvider(2029, 9, 1)).GetPendingAsync(default);
-
-        Assert.Empty(onTheLastDay);
-        Assert.Single(onTheFirst);
-    }
-
-    [Fact]
     public async Task GetPendingAsync_APersonWithTwoFinishedRecords_IsListedOnce_AndADeletedMissionBringsThemBack()
     {
         await using var db = CreateContext();
         var person = NewPerson("Kowalski");
         db.People.Add(person);
-        db.Candidates.AddRange(NewCandidate(person, 2020), NewCandidate(person, 2022));
+        db.Candidates.AddRange(NewCandidate(person, true, since: new DateTime(2024, 9, 1, 0, 0, 0, DateTimeKind.Utc)), NewCandidate(person, true));
         db.CanonicalMissions.Add(NewMission(person, deleted: true));
         await db.SaveChangesAsync();
 
@@ -96,7 +83,7 @@ public class MissionPendingTests
         await using var db = CreateContext();
         var person = NewPerson("Kowalski");
         db.People.Add(person);
-        db.Candidates.Add(NewCandidate(person, 2022));
+        db.Candidates.Add(NewCandidate(person, true));
         await db.SaveChangesAsync();
         var service = new MissionService(db, Time);
 
@@ -118,7 +105,7 @@ public class MissionPendingTests
         var inFormation = NewPerson("Uczacy");
         var waiting = NewPerson("Czekajacy");
         db.People.AddRange(inFormation, waiting);
-        db.Candidates.AddRange(NewCandidate(inFormation, 2025), NewCandidate(waiting, 2022));
+        db.Candidates.AddRange(NewCandidate(inFormation, false), NewCandidate(waiting, true));
         await db.SaveChangesAsync();
         var service = new MissionService(db, Time);
         await service.GrantAsync(waiting.Id, default);
@@ -137,7 +124,7 @@ public class MissionPendingTests
         await using var db = CreateContext();
         var person = NewPerson("Kowalski");
         db.People.Add(person);
-        db.Candidates.Add(NewCandidate(person, 2022));
+        db.Candidates.Add(NewCandidate(person, true));
         await db.SaveChangesAsync();
         var service = new MissionService(db, Time);
         var mission = await service.GrantAsync(person.Id, default);
