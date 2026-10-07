@@ -1,10 +1,16 @@
 export type DocumentTemplate =
   | 'LetterToBishop'
   | 'ConversionConsent'
-  | 'CanonicalMissionDecree'
+  | 'CanonicalMissionApplication'
   | 'DokReferral'
   | 'SkspCompletionCertificate'
-  | 'SacramentCertificate';
+  | 'SacramentCertificate'
+  | 'BaptismCertificate'
+  | 'ConfirmationCertificate'
+  | 'EucharistCertificate'
+  | 'CatechumenateStudyCertificate'
+  | 'GodparentCertificate'
+  | 'GdprClause';
 
 export interface GeneratedDocument {
   id: string;
@@ -27,8 +33,29 @@ export interface GenerateDocumentValue {
 export const DOCUMENT_TEMPLATE_LABELS: Record<DocumentTemplate, string> = {
   LetterToBishop: 'Pismo do Biskupa',
   ConversionConsent: 'Zgoda na konwersję',
-  CanonicalMissionDecree: 'Dekret misji kanonicznej',
+  CanonicalMissionApplication: 'Wniosek o misję kanoniczną',
   DokReferral: 'Skierowanie do DOK',
   SkspCompletionCertificate: 'Zaświadczenie ukończenia SKŚP',
-  SacramentCertificate: 'Zaświadczenie o sakramencie'
+  SacramentCertificate: 'Zaświadczenie o sakramencie (dawne)',
+  BaptismCertificate: 'Zaświadczenie o chrzcie',
+  ConfirmationCertificate: 'Zaświadczenie o bierzmowaniu',
+  EucharistCertificate: 'Zaświadczenie o Eucharystii',
+  CatechumenateStudyCertificate: 'Zaświadczenie o ukończeniu studium katechumenalnego',
+  GodparentCertificate: 'Zaświadczenie – ojciec chrzestny / matka chrzestna',
+  GdprClause: 'Klauzula RODO'
 };
+
+/** Typy pism, które można dziś wygenerować, w kolejności menu (dawne typy zostają tylko w historii). */
+export const OFFERED_TEMPLATES: readonly DocumentTemplate[] = [
+  'LetterToBishop',
+  'ConversionConsent',
+  'CanonicalMissionApplication',
+  'DokReferral',
+  'SkspCompletionCertificate',
+  'CatechumenateStudyCertificate',
+  'BaptismCertificate',
+  'ConfirmationCertificate',
+  'EucharistCertificate',
+  'GodparentCertificate',
+  'GdprClause'
+];

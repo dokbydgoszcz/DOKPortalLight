@@ -1,5 +1,6 @@
 using DokPortal.Application.Common;
 using DokPortal.Application.Documents;
+using DokPortal.Domain.Documents;
 using DokPortal.Domain.Entities;
 using DokPortal.Domain.Enums;
 using DokPortal.Infrastructure.Persistence;
@@ -11,16 +12,6 @@ namespace DokPortal.Infrastructure.Services;
 
 public class DocumentService : IDocumentService
 {
-    private static readonly IReadOnlyDictionary<DocumentTemplate, string> TemplateTitles = new Dictionary<DocumentTemplate, string>
-    {
-        [DocumentTemplate.LetterToBishop] = "Pismo do Biskupa",
-        [DocumentTemplate.ConversionConsent] = "Zgoda na konwersję",
-        [DocumentTemplate.CanonicalMissionDecree] = "Dekret misji kanonicznej",
-        [DocumentTemplate.DokReferral] = "Skierowanie do DOK",
-        [DocumentTemplate.SkspCompletionCertificate] = "Zaświadczenie ukończenia SKŚP",
-        [DocumentTemplate.SacramentCertificate] = "Zaświadczenie o sakramencie"
-    };
-
     private readonly AppDbContext _db;
     private readonly IFileStorageService? _storage;
 
@@ -37,12 +28,16 @@ public class DocumentService : IDocumentService
 
     public async Task<GeneratedDocumentResult?> GenerateAsync(GenerateDocumentRequest request, string generatedByUserId, CancellationToken ct)
     {
+        if (!DocumentTemplates.IsOffered(request.Template))
+        {
+            throw new InvalidOperationException($"Typ pisma „{DocumentTemplates.Title(request.Template)}” nie jest już dostępny.");
+        }
         var person = await _db.People.Include(p => p.Parish).AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == request.PersonId, ct);
         if (person is null) return null;
 
         var createdAt = DateTime.UtcNow;
-        var pdfBytes = RenderPdf(TemplateTitles[request.Template], person, request.AdditionalNotes, createdAt);
+        var pdfBytes = RenderPdf(DocumentTemplates.Title(request.Template), person, request.AdditionalNotes, createdAt);
 
         var history = new GeneratedDocument
         {
@@ -93,7 +88,7 @@ public class DocumentService : IDocumentService
         {
             var person = await _db.People.Include(p => p.Parish).AsNoTracking().FirstOrDefaultAsync(p => p.Id == history.PersonId, ct)
                 ?? throw new InvalidOperationException("Nie można odtworzyć pisma: osoba została usunięta.");
-            bytes = RenderPdf(TemplateTitles[history.Template], person, history.AdditionalNotes, history.CreatedAtUtc);
+            bytes = RenderPdf(DocumentTemplates.Title(history.Template), person, history.AdditionalNotes, history.CreatedAtUtc);
         }
 
         history.DownloadCount++;

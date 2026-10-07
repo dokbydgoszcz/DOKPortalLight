@@ -3,7 +3,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DocumentsService } from './documents.service';
-import { DOCUMENT_TEMPLATE_LABELS, DocumentTemplate, GeneratedDocument, GenerateDocumentValue } from './generated-document.model';
+import { DOCUMENT_TEMPLATE_LABELS, GeneratedDocument, GenerateDocumentValue, OFFERED_TEMPLATES } from './generated-document.model';
 import { PeopleService } from '../people/people.service';
 import { Person } from '../people/person.model';
 import { ToastService } from '../../core/notifications/toast.service';
@@ -18,7 +18,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 export class DocumentsComponent implements OnInit {
   readonly history = signal<GeneratedDocument[]>([]);
   readonly templateLabels = DOCUMENT_TEMPLATE_LABELS;
-  readonly templates = Object.keys(DOCUMENT_TEMPLATE_LABELS) as DocumentTemplate[];
+  readonly templates = OFFERED_TEMPLATES;
   people: Person[] = [];
   form: GenerateDocumentValue = { template: 'LetterToBishop', personId: '', additionalNotes: '' };
 

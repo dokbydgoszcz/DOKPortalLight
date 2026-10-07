@@ -46,7 +46,7 @@ describe('DocumentsComponent', () => {
   it('offers every template and keeps generating disabled until a person is chosen', () => {
     const { fixture, el } = boot();
 
-    expect(el.querySelectorAll('select[name="template"] option').length).toBe(6);
+    expect(el.querySelectorAll('select[name="template"] option').length).toBe(11);
     expect(generateButton(el).disabled).toBe(true);
 
     setSelect(el, 'select[name="personId"]', 'p1');
@@ -204,6 +204,29 @@ describe('DocumentsComponent', () => {
       expect(rowOf(ctx.el, 'Jan Kowalski').textContent).not.toContain('Usuń');
     });
   });
+  describe('templates', () => {
+    it('offers the new documents, but not the old generic sacrament certificate', () => {
+      const { el } = boot();
+      const options = Array.from(el.querySelectorAll('select[name="template"] option')).map(o => o.textContent!.trim());
+
+      expect(options).toContain('Wniosek o misję kanoniczną');
+      expect(options).toContain('Zaświadczenie o chrzcie');
+      expect(options).toContain('Zaświadczenie o bierzmowaniu');
+      expect(options).toContain('Zaświadczenie o Eucharystii');
+      expect(options).toContain('Zaświadczenie o ukończeniu studium katechumenalnego');
+      expect(options).toContain('Zaświadczenie – ojciec chrzestny / matka chrzestna');
+      expect(options).toContain('Klauzula RODO');
+      expect(options).not.toContain('Dekret misji kanonicznej');
+      expect(options).not.toContain('Zaświadczenie o sakramencie (dawne)');
+    });
+
+    it('still names an old generic certificate in the history', () => {
+      const { el } = boot([{ ...history[0], id: 'old', template: 'SacramentCertificate' }]);
+
+      expect(textOf(el)).toContain('Zaświadczenie o sakramencie (dawne)');
+    });
+  });
+
 });
 
 function clickByTextSafe(el: HTMLElement, text: string): boolean {
