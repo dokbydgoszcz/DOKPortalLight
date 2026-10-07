@@ -31,7 +31,7 @@ public class DokCaseServiceTests
 
         await service.CreateAsync(new CreateDokCaseRequest
         {
-            PersonId = personId, Path = DokPath.Confirmation, Stage = DokStage.Formation, CatechistPersonId = catechistId
+            PersonId = personId, Path = DokPath.Confirmation, Stage = DokStage.Evangelization, CatechistPersonId = catechistId
         }, default);
 
         var confirmation = await service.SearchAsync(DokPath.Confirmation, 1, 20, default);
@@ -50,7 +50,7 @@ public class DokCaseServiceTests
         var service = new DokCaseService(db);
         var created = await service.CreateAsync(new CreateDokCaseRequest
         {
-            PersonId = personId, Path = DokPath.Confirmation, Stage = DokStage.Sacrament, CatechistPersonId = catechistId
+            PersonId = personId, Path = DokPath.Confirmation, Stage = DokStage.Evangelization, CatechistPersonId = catechistId
         }, default);
 
         var updated = await service.UpdateAsync(created.Id, new UpdateDokCaseRequest

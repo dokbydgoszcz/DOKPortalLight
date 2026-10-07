@@ -36,7 +36,7 @@ public class DokEntitiesPersistenceTests : IClassFixture<CustomWebApplicationFac
 
             var dokCase = new DokCase
             {
-                Id = Guid.NewGuid(), PersonId = person.Id, Path = DokPath.Confirmation, Stage = DokStage.Formation,
+                Id = Guid.NewGuid(), PersonId = person.Id, Path = DokPath.Confirmation, Stage = DokStage.Evangelization,
                 CatechistPersonId = catechist.Id, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
             };
             db.DokCases.Add(dokCase);

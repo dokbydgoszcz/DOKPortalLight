@@ -1,6 +1,7 @@
 using DokPortal.Application.Dashboard;
 using DokPortal.Application.DokCases;
 using DokPortal.Domain.Enums;
+using DokPortal.Domain.Formation;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ namespace DokPortal.Infrastructure.Services;
 public class DashboardService : IDashboardService
 {
     private const int UpcomingMeetingsWindowDays = 7;
+    private const int StalledCasesShown = 20;
 
     private readonly AppDbContext _db;
     private readonly ICaseScopeProvider _scope;
@@ -34,13 +36,33 @@ public class DashboardService : IDashboardService
             .Select(g => new { Stage = g.Key, Count = g.Count() })
             .ToListAsync(ct);
 
-        var dokCasesByStage = Enum.GetValues<DokStage>()
+        var dokCasesByStage = DokStages.All
             .Select(stage => new DokStageCountDto
             {
                 Stage = stage.ToString(),
                 Count = stageCounts.FirstOrDefault(s => s.Stage == stage)?.Count ?? 0
             })
             .ToList();
+
+        // Sprawa na jednym etapie dłużej niż rok (absolwent nie ma już etapu do przejścia).
+        var now = _time.GetUtcNow().UtcDateTime;
+        var stalledSince = now.AddYears(-1);
+        var stalledQuery = cases.Where(c => c.Stage != DokStage.Graduate && c.StageSinceUtc < stalledSince);
+        var stalledCount = await stalledQuery.CountAsync(ct);
+        var stalledEntities = await stalledQuery.Include(c => c.Person)
+            .OrderBy(c => c.StageSinceUtc).ThenBy(c => c.Person!.LastName)
+            .Take(StalledCasesShown)
+            .AsNoTracking()
+            .ToListAsync(ct);
+        var stalledCases = stalledEntities.Select(c => new StalledCaseDto
+        {
+            CaseId = c.Id,
+            PersonFullName = c.Person!.FullName,
+            Path = c.Path.ToString(),
+            Stage = c.Stage.ToString(),
+            StageSinceUtc = c.StageSinceUtc,
+            MonthsOnStage = FullMonthsBetween(c.StageSinceUtc, now)
+        }).ToList();
 
         var missingDocumentsCasesCount = await (
             from doc in _db.CaseDocuments
@@ -57,7 +79,15 @@ public class DashboardService : IDashboardService
             MissingDocumentsCasesCount = missingDocumentsCasesCount,
             UpcomingMeetingsCount = await _db.Meetings.ForScope(_db, scope)
                 .CountAsync(m => m.MeetingDate >= today && m.MeetingDate <= windowEnd, ct),
-            ActiveCandidatesCount = await _db.Candidates.InFormation(today).CountAsync(ct)
+            ActiveCandidatesCount = await _db.Candidates.InFormation(today).CountAsync(ct),
+            StalledCases = stalledCases,
+            StalledCasesCount = stalledCount
         };
+    }
+
+    private static int FullMonthsBetween(DateTime from, DateTime to)
+    {
+        var months = (to.Year - from.Year) * 12 + to.Month - from.Month;
+        return to.Day < from.Day ? months - 1 : months;
     }
 }

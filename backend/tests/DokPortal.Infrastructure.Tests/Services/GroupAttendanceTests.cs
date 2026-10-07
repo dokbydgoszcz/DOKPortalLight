@@ -42,7 +42,7 @@ public class GroupAttendanceTests
     private static DokCase NewCase(Person student, Person catechist) => new()
     {
         Id = Guid.NewGuid(), PersonId = student.Id, CatechistPersonId = catechist.Id, Path = DokPath.Confirmation,
-        Stage = DokStage.Formation, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
+        Stage = DokStage.Evangelization, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
     };
 
     private static async Task<World> SeedAsync()

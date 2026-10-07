@@ -28,7 +28,7 @@ public class AttendanceTests
     private static DokCase NewCase(Person student, Person catechist) => new()
     {
         Id = Guid.NewGuid(), PersonId = student.Id, CatechistPersonId = catechist.Id, Path = DokPath.Confirmation,
-        Stage = DokStage.Formation, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
+        Stage = DokStage.Evangelization, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
     };
 
     private static Meeting NewMeeting(Guid caseId, int dayOffset, bool? attended, DateTime? deletedAtUtc = null) => new()

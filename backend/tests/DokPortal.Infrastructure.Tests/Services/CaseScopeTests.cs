@@ -19,8 +19,8 @@ public class CaseScopeTests
         var p2 = new Person { Id = Guid.NewGuid(), FirstName = "Piotr", LastName = "Nowak", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
         db.People.AddRange(a, b, p1, p2);
         db.DokCases.AddRange(
-            new DokCase { Id = Guid.NewGuid(), PersonId = p1.Id, CatechistPersonId = a.Id, Path = DokPath.Confirmation, Stage = DokStage.Formation, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
-            new DokCase { Id = Guid.NewGuid(), PersonId = p2.Id, CatechistPersonId = b.Id, Path = DokPath.Confirmation, Stage = DokStage.Formation, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+            new DokCase { Id = Guid.NewGuid(), PersonId = p1.Id, CatechistPersonId = a.Id, Path = DokPath.Confirmation, Stage = DokStage.Evangelization, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new DokCase { Id = Guid.NewGuid(), PersonId = p2.Id, CatechistPersonId = b.Id, Path = DokPath.Confirmation, Stage = DokStage.Evangelization, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
         return (db, a.Id, b.Id);
     }

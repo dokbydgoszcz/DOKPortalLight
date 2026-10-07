@@ -26,7 +26,7 @@ public class ReminderServiceTests
     private static DokCase NewDokCase(Guid personId, Guid catechistPersonId) => new()
     {
         Id = Guid.NewGuid(), PersonId = personId, CatechistPersonId = catechistPersonId,
-        Path = DokPath.Confirmation, Stage = DokStage.Formation,
+        Path = DokPath.Confirmation, Stage = DokStage.Evangelization,
         CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
     };
 

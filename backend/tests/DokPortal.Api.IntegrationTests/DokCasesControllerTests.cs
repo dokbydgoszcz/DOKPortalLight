@@ -30,7 +30,7 @@ public class DokCasesControllerTests : IntegrationTestBase
 
         var createResponse = await admin.PostAsJsonAsync("/api/dok-cases", new
         {
-            PersonId = personId, Path = "Confirmation", Stage = "Formation", CatechistPersonId = catechistId
+            PersonId = personId, Path = "Confirmation", Stage = "Evangelization", CatechistPersonId = catechistId
         });
 
         createResponse.EnsureSuccessStatusCode();
@@ -48,7 +48,7 @@ public class DokCasesControllerTests : IntegrationTestBase
         var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
         var personId = await CreatePersonAsync(admin, "Karolina", "Szymanska");
         var catechistId = await CreatePersonAsync(admin, "Marek", "Zielinski");
-        await admin.PostAsJsonAsync("/api/dok-cases", new { PersonId = personId, Path = "BaptismCandidate", Stage = "Application", CatechistPersonId = catechistId });
+        await admin.PostAsJsonAsync("/api/dok-cases", new { PersonId = personId, Path = "BaptismCandidate", Stage = "Prekatechumenate", CatechistPersonId = catechistId });
 
         var response = await admin.GetAsync("/api/dok-cases?path=BaptismCandidate");
 
@@ -65,9 +65,26 @@ public class DokCasesControllerTests : IntegrationTestBase
 
         var response = await client.PostAsJsonAsync("/api/dok-cases", new
         {
-            PersonId = Guid.NewGuid(), Path = "Confirmation", Stage = "Application", CatechistPersonId = Guid.NewGuid()
+            PersonId = Guid.NewGuid(), Path = "Confirmation", Stage = "Evangelization", CatechistPersonId = Guid.NewGuid()
         });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AStageThatDoesNotBelongToThePath_IsABadRequestNamingBoth()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        var personId = await SeedPersonAsync(admin, "Jan", "Kowalski");
+        var catechistId = await SeedPersonAsync(admin, "Anna", "Maj");
+
+        var invalid = await admin.PostAsJsonAsync("/api/dok-cases", new { PersonId = personId, Path = "Confirmation", Stage = "Election", CatechistPersonId = catechistId });
+        var valid = await admin.PostAsJsonAsync("/api/dok-cases", new { PersonId = personId, Path = "BaptismCandidate", Stage = "Election", CatechistPersonId = catechistId });
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, invalid.StatusCode);
+        var message = await invalid.Content.ReadAsStringAsync();
+        Assert.Contains("Wybranie", message);
+        Assert.Contains("Bierzmowanie", message);
+        Assert.Equal(System.Net.HttpStatusCode.Created, valid.StatusCode);
     }
 }

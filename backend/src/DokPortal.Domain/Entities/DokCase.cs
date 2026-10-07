@@ -9,6 +9,8 @@ public class DokCase : ISoftDeletable
     public Person? Person { get; set; }
     public DokPath Path { get; set; }
     public DokStage Stage { get; set; }
+    /// <summary>Od kiedy sprawa jest na obecnym etapie (zmienia się razem z etapem); podstawa powiadomienia o zbyt długim etapie.</summary>
+    public DateTime StageSinceUtc { get; set; } = DateTime.UtcNow;
     public Guid CatechistPersonId { get; set; }
     public Person? CatechistPerson { get; set; }
     public Guid? MentorPersonId { get; set; }

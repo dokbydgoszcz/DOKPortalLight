@@ -38,23 +38,6 @@ public class ExportService : IExportService
             }));
     }
 
-    private static readonly Dictionary<DokPath, string> PathLabels = new()
-    {
-        [DokPath.BaptismCandidate] = "Kandydaci do Chrztu",
-        [DokPath.Confirmation] = "Bierzmowanie",
-        [DokPath.Communion] = "Stół Pański",
-        [DokPath.Conversion] = "Konwersja",
-        [DokPath.ReturnToUnity] = "Powrót do Jedności"
-    };
-
-    private static readonly Dictionary<DokStage, string> StageLabels = new()
-    {
-        [DokStage.Application] = "Zgłoszenie",
-        [DokStage.Formation] = "Formacja",
-        [DokStage.Sacrament] = "Sakrament",
-        [DokStage.Graduate] = "Absolwent"
-    };
-
     public async Task<byte[]> ExportDokCasesAsync(CancellationToken ct)
     {
         var scope = await _scope.GetAsync(ct);
@@ -68,7 +51,7 @@ public class ExportService : IExportService
             new[] { "Osoba", "Ścieżka", "Etap", "Katechista", "Opiekun (mentor)", "Data ostatniego spotkania", "Data zakończenia" },
             cases.Select(c => new object?[]
             {
-                c.Person?.FullName, PathLabels[c.Path], StageLabels[c.Stage], c.CatechistPerson?.FullName,
+                c.Person?.FullName, DokStages.Label(c.Path), DokStages.Label(c.Stage), c.CatechistPerson?.FullName,
                 c.MentorPerson?.FullName, FormatDate(c.LastMeetingDate), c.CompletedAtUtc?.ToString("yyyy-MM-dd")
             }));
     }

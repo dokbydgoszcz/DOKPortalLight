@@ -2,6 +2,7 @@ using DokPortal.Application.Common;
 using DokPortal.Application.DokCases;
 using DokPortal.Domain.Entities;
 using DokPortal.Domain.Enums;
+using DokPortal.Domain.Formation;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,10 +13,13 @@ public class DokCaseService : IDokCaseService
     private readonly AppDbContext _db;
     private readonly ICaseScopeProvider _scope;
 
-    public DokCaseService(AppDbContext db, ICaseScopeProvider? scope = null)
+    private readonly TimeProvider _time;
+
+    public DokCaseService(AppDbContext db, ICaseScopeProvider? scope = null, TimeProvider? time = null)
     {
         _db = db;
         _scope = scope ?? new AllCasesScopeProvider();
+        _time = time ?? TimeProvider.System;
     }
 
     public async Task<PagedResult<DokCaseDto>> SearchAsync(DokPath? path, int page, int pageSize, CancellationToken ct)
@@ -122,14 +126,26 @@ public class DokCaseService : IDokCaseService
         }).ToList();
     }
 
+    /// <summary>Etap musi należeć do etapów wybranej ścieżki (np. „Wybranie” istnieje tylko w Kandydatach do Chrztu).</summary>
+    private static void EnsureStageMatchesPath(DokPath path, DokStage stage)
+    {
+        if (!DokStages.IsValid(path, stage))
+        {
+            throw new InvalidOperationException(
+                $"Etap „{DokStages.Label(stage)}” nie pasuje do ścieżki „{DokStages.Label(path)}”.");
+        }
+    }
+
     public async Task<DokCaseDto> CreateAsync(CreateDokCaseRequest request, CancellationToken ct)
     {
+        EnsureStageMatchesPath(request.Path, request.Stage);
         var dokCase = new DokCase
         {
             Id = Guid.NewGuid(),
             PersonId = request.PersonId,
             Path = request.Path,
             Stage = request.Stage,
+            StageSinceUtc = _time.GetUtcNow().UtcDateTime,
             CatechistPersonId = request.CatechistPersonId,
             MentorPersonId = request.MentorPersonId,
             CompletedAtUtc = request.Stage == DokStage.Graduate ? DateTime.UtcNow : null,
@@ -143,6 +159,7 @@ public class DokCaseService : IDokCaseService
 
     public async Task<DokCaseDto?> UpdateAsync(Guid id, UpdateDokCaseRequest request, CancellationToken ct)
     {
+        EnsureStageMatchesPath(request.Path, request.Stage);
         var scope = await _scope.GetAsync(ct);
         var dokCase = await _db.DokCases.ForScope(scope).FirstOrDefaultAsync(c => c.Id == id, ct);
         if (dokCase is null) return null;
@@ -151,6 +168,10 @@ public class DokCaseService : IDokCaseService
 
         dokCase.PersonId = request.PersonId;
         dokCase.Path = request.Path;
+        if (dokCase.Stage != request.Stage)
+        {
+            dokCase.StageSinceUtc = _time.GetUtcNow().UtcDateTime;
+        }
         dokCase.Stage = request.Stage;
         dokCase.CatechistPersonId = request.CatechistPersonId;
         dokCase.MentorPersonId = request.MentorPersonId;

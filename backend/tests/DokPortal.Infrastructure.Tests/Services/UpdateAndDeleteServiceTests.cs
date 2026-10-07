@@ -180,7 +180,7 @@ public class UpdateAndDeleteServiceTests
             var dokCase = new DokCase
             {
                 Id = Guid.NewGuid(), PersonId = person.Id, CatechistPersonId = catechist.Id,
-                Path = DokPath.Confirmation, Stage = DokStage.Formation, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
+                Path = DokPath.Confirmation, Stage = DokStage.Evangelization, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
             };
             db.DokCases.Add(dokCase);
             await db.SaveChangesAsync();

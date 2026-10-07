@@ -23,7 +23,7 @@ public class GroupMeetingsTests : IntegrationTestBase
         var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
         var (caseA1, catechistA, _) = await SeedDokCaseAsync(admin, "Jan", $"Uczestnik1-{marker}", "Anna", $"KatA{marker}");
         var studentA2 = await SeedPersonAsync(admin, "Ewa", $"Uczestnik2-{marker}");
-        var caseA2Response = await admin.PostAsJsonAsync("/api/dok-cases", new { PersonId = studentA2, Path = "Confirmation", Stage = "Formation", CatechistPersonId = catechistA });
+        var caseA2Response = await admin.PostAsJsonAsync("/api/dok-cases", new { PersonId = studentA2, Path = "Confirmation", Stage = "Evangelization", CatechistPersonId = catechistA });
         var caseA2 = (await caseA2Response.Content.ReadFromJsonAsync<DokCaseDto>(EnumJsonOptions))!.Id;
         var (caseB, catechistB, _) = await SeedDokCaseAsync(admin, "Piotr", $"Obcy-{marker}", "Beata", $"KatB{marker}");
         var clientA = await CreateAuthenticatedClientForPersonAsync($"kat-a-{Guid.NewGuid():N}@example.org", "Sekret123!", catechistA, "KatechistaProwadzacy");

@@ -30,10 +30,10 @@ public class GraduateSearchTests
     public async Task SearchGraduatesAsync_ReturnsOnlyGraduates_NewestCompletionFirst()
     {
         await using var db = CreateContext();
-        await AddCaseAsync(db, "Jan", "Kowalski", DokStage.Formation);
+        await AddCaseAsync(db, "Jan", "Kowalski", DokStage.Evangelization);
         await AddCaseAsync(db, "Anna", "Maj", DokStage.Graduate, new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc));
         await AddCaseAsync(db, "Piotr", "Nowak", DokStage.Graduate, new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc));
-        await AddCaseAsync(db, "Ewa", "Zielińska", DokStage.Sacrament);
+        await AddCaseAsync(db, "Ewa", "Zielińska", DokStage.CloserFormation);
         var service = new DokCaseService(db);
 
         var result = await service.SearchGraduatesAsync(null, 1, 20, default);

@@ -87,7 +87,7 @@ public class CaseDocumentFileTests : IntegrationTestBase, IClassFixture<FakeStor
         var catechist = await (await admin.PostAsJsonAsync("/api/people", new { FirstName = "Anna", LastName = "Maj" })).Content.ReadFromJsonAsync<PersonDto>();
         var dokCase = await (await admin.PostAsJsonAsync("/api/dok-cases", new
         {
-            PersonId = person!.Id, Path = "Confirmation", Stage = "Formation", CatechistPersonId = catechist!.Id
+            PersonId = person!.Id, Path = "Confirmation", Stage = "Evangelization", CatechistPersonId = catechist!.Id
         })).Content.ReadFromJsonAsync<DokCaseDto>(EnumJsonOptions);
         var document = await (await admin.PostAsJsonAsync($"/api/dok-cases/{dokCase!.Id}/documents", new { Name = "Metryka chrztu" }))
             .Content.ReadFromJsonAsync<CaseDocumentDto>();

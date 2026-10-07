@@ -37,7 +37,7 @@ public class GraduatesControllerTests : IntegrationTestBase
         var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
         var marker = Guid.NewGuid().ToString("N")[..8];
         await CreateCaseAsync(admin, "Absolwent", $"Pierwszy{marker}", "Graduate");
-        await CreateCaseAsync(admin, "Uczestnik", $"Formacja{marker}", "Formation");
+        await CreateCaseAsync(admin, "Uczestnik", $"Formacja{marker}", "Evangelization");
 
         var all = await admin.GetFromJsonAsync<PagedResult<DokCaseDto>>($"/api/graduates?search={marker}", EnumJsonOptions);
         var none = await admin.GetFromJsonAsync<PagedResult<DokCaseDto>>($"/api/graduates?search=Formacja{marker}", EnumJsonOptions);

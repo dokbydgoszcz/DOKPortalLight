@@ -103,7 +103,7 @@ public abstract class IntegrationTestBase : IClassFixture<CustomWebApplicationFa
         var catechistId = await SeedPersonAsync(admin, catechistFirst, catechistLast);
         var response = await admin.PostAsJsonAsync("/api/dok-cases", new
         {
-            PersonId = studentId, Path = "Confirmation", Stage = "Formation", CatechistPersonId = catechistId
+            PersonId = studentId, Path = "Confirmation", Stage = "Evangelization", CatechistPersonId = catechistId
         });
         response.EnsureSuccessStatusCode();
         var dokCase = await response.Content.ReadFromJsonAsync<DokCaseDto>(EnumJsonOptions);

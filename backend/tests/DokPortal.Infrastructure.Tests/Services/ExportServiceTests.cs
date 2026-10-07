@@ -61,7 +61,7 @@ public class ExportServiceTests
             new DokCase
             {
                 Id = Guid.NewGuid(), PersonId = person.Id, CatechistPersonId = catechist.Id,
-                Path = DokPath.Confirmation, Stage = DokStage.Formation, LastMeetingDate = new DateOnly(2026, 9, 30)
+                Path = DokPath.Confirmation, Stage = DokStage.Evangelization, LastMeetingDate = new DateOnly(2026, 9, 30)
             },
             new DokCase
             {
@@ -71,7 +71,7 @@ public class ExportServiceTests
             new DokCase
             {
                 Id = Guid.NewGuid(), PersonId = person.Id, CatechistPersonId = catechist.Id,
-                Path = DokPath.Communion, Stage = DokStage.Application, DeletedAtUtc = DateTime.UtcNow
+                Path = DokPath.Communion, Stage = DokStage.Evangelization, DeletedAtUtc = DateTime.UtcNow
             });
         await db.SaveChangesAsync();
 
@@ -81,7 +81,7 @@ public class ExportServiceTests
             new[] { "Osoba", "Ścieżka", "Etap", "Katechista", "Opiekun (mentor)", "Data ostatniego spotkania", "Data zakończenia" },
             Row(sheet, 1, 7));
         Assert.Equal(
-            new[] { "Jan Kowalski", "Bierzmowanie", "Formacja", "Anna Nowak", "", "2026-09-30", "" },
+            new[] { "Jan Kowalski", "Bierzmowanie", "Ewangelizacja", "Anna Nowak", "", "2026-09-30", "" },
             Row(sheet, 2, 7));
         Assert.Equal(
             new[] { "Piotr Wiśniewski", "Powrót do Jedności", "Absolwent", "Anna Nowak", "Jan Kowalski", "", "2026-08-01" },
@@ -208,7 +208,7 @@ public class ExportServiceTests
         var dokCase = new DokCase
         {
             Id = Guid.NewGuid(), PersonId = person.Id, CatechistPersonId = catechist.Id,
-            Path = DokPath.Confirmation, Stage = DokStage.Formation
+            Path = DokPath.Confirmation, Stage = DokStage.Evangelization
         };
         db.DokCases.Add(dokCase);
         db.Meetings.AddRange(

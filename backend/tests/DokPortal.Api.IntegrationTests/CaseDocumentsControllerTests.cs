@@ -22,7 +22,7 @@ public class CaseDocumentsControllerTests : IntegrationTestBase
         var catechist = await catechistResponse.Content.ReadFromJsonAsync<PersonDto>();
         var caseResponse = await admin.PostAsJsonAsync("/api/dok-cases", new
         {
-            PersonId = person!.Id, Path = "Confirmation", Stage = "Formation", CatechistPersonId = catechist!.Id
+            PersonId = person!.Id, Path = "Confirmation", Stage = "Evangelization", CatechistPersonId = catechist!.Id
         });
         var dokCase = await caseResponse.Content.ReadFromJsonAsync<DokCaseDto>(EnumJsonOptions);
 

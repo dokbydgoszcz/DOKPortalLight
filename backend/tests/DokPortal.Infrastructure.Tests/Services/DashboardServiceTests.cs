@@ -53,32 +53,32 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task GetSummaryAsync_GroupsActiveDokCasesByStage_InEnumOrder_IncludingEmptyStages()
+    public async Task GetSummaryAsync_GroupsActiveDokCasesByStage_InFormationOrder_IncludingEmptyStages()
     {
         await using var db = CreateContext();
         db.DokCases.AddRange(
-            NewDokCase(DokStage.Formation),
-            NewDokCase(DokStage.Formation),
+            NewDokCase(DokStage.Evangelization),
+            NewDokCase(DokStage.Evangelization),
             NewDokCase(DokStage.Graduate),
-            NewDokCase(DokStage.Formation, deletedAtUtc: DateTime.UtcNow));
+            NewDokCase(DokStage.Evangelization, deletedAtUtc: DateTime.UtcNow));
         await db.SaveChangesAsync();
 
         var summary = await new DashboardService(db).GetSummaryAsync(default);
 
         Assert.Equal(
-            new[] { "Application", "Formation", "Sacrament", "Graduate" },
+            new[] { "Evangelization", "CloserFormation", "Prekatechumenate", "Catechumenate", "Election", "Neophyte", "Graduate" },
             summary.DokCasesByStage.Select(s => s.Stage));
-        Assert.Equal(new[] { 0, 2, 0, 1 }, summary.DokCasesByStage.Select(s => s.Count));
+        Assert.Equal(new[] { 2, 0, 0, 0, 0, 0, 1 }, summary.DokCasesByStage.Select(s => s.Count));
     }
 
     [Fact]
     public async Task GetSummaryAsync_CountsDistinctActiveCasesWithMissingDocuments()
     {
         await using var db = CreateContext();
-        var caseWithTwoMissing = NewDokCase(DokStage.Formation);
-        var caseWithOneMissing = NewDokCase(DokStage.Formation);
-        var caseAllProvided = NewDokCase(DokStage.Formation);
-        var deletedCaseWithMissing = NewDokCase(DokStage.Formation, deletedAtUtc: DateTime.UtcNow);
+        var caseWithTwoMissing = NewDokCase(DokStage.Evangelization);
+        var caseWithOneMissing = NewDokCase(DokStage.Evangelization);
+        var caseAllProvided = NewDokCase(DokStage.Evangelization);
+        var deletedCaseWithMissing = NewDokCase(DokStage.Evangelization, deletedAtUtc: DateTime.UtcNow);
         db.DokCases.AddRange(caseWithTwoMissing, caseWithOneMissing, caseAllProvided, deletedCaseWithMissing);
         db.CaseDocuments.AddRange(
             NewDocument(caseWithTwoMissing.Id, false),

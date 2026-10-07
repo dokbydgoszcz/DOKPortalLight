@@ -75,8 +75,8 @@ public class ScopedServicesTests
         var studentB = NewPerson("Piotr", "Nowak");
         db.People.AddRange(catechistA, catechistB, studentA, studentB);
 
-        var caseA = new DokCase { Id = Guid.NewGuid(), PersonId = studentA.Id, CatechistPersonId = catechistA.Id, Path = DokPath.Confirmation, Stage = DokStage.Formation, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
-        var caseB = new DokCase { Id = Guid.NewGuid(), PersonId = studentB.Id, CatechistPersonId = catechistB.Id, Path = DokPath.Confirmation, Stage = DokStage.Sacrament, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
+        var caseA = new DokCase { Id = Guid.NewGuid(), PersonId = studentA.Id, CatechistPersonId = catechistA.Id, Path = DokPath.Confirmation, Stage = DokStage.Evangelization, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
+        var caseB = new DokCase { Id = Guid.NewGuid(), PersonId = studentB.Id, CatechistPersonId = catechistB.Id, Path = DokPath.Confirmation, Stage = DokStage.CloserFormation, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
         db.DokCases.AddRange(caseA, caseB);
 
         var docA = new CaseDocument { Id = Guid.NewGuid(), DokCaseId = caseA.Id, Name = "Metryka A", IsProvided = false, CreatedAtUtc = DateTime.UtcNow };
@@ -151,10 +151,10 @@ public class ScopedServicesTests
 
         var updated = await service.UpdateAsync(w.CaseA, new UpdateDokCaseRequest
         {
-            PersonId = own.PersonId, Path = DokPath.Confirmation, Stage = DokStage.Sacrament, CatechistPersonId = w.CatechistA
+            PersonId = own.PersonId, Path = DokPath.Confirmation, Stage = DokStage.Graduate, CatechistPersonId = w.CatechistA
         }, default);
 
-        Assert.Equal(DokStage.Sacrament, updated!.Stage);
+        Assert.Equal(DokStage.Graduate, updated!.Stage);
         Assert.True(await service.DeleteAsync(w.CaseA, "user-a", default));
     }
 
@@ -263,8 +263,8 @@ public class ScopedServicesTests
         var own = await new DashboardService(w.Db, w.AsA).GetSummaryAsync(default);
         var all = await new DashboardService(w.Db, w.AsAll).GetSummaryAsync(default);
 
-        Assert.Equal(1, own.DokCasesByStage.Single(s => s.Stage == "Formation").Count);
-        Assert.Equal(0, own.DokCasesByStage.Single(s => s.Stage == "Sacrament").Count);
+        Assert.Equal(1, own.DokCasesByStage.Single(s => s.Stage == "Evangelization").Count);
+        Assert.Equal(0, own.DokCasesByStage.Single(s => s.Stage == "CloserFormation").Count);
         Assert.Equal(1, own.MissingDocumentsCasesCount);
         Assert.Equal(1, own.UpcomingMeetingsCount);
         Assert.Equal(2, all.MissingDocumentsCasesCount);
