@@ -11,6 +11,8 @@ public class CreatePersonRequest
     public string? Notes { get; init; }
     public int? NameDayMonth { get; init; }
     public int? NameDayDay { get; init; }
+    /// <summary>Funkcje osoby. Brak listy (null) zostawia funkcje bez zmian; pusta lista je usuwa.</summary>
+    public IReadOnlyList<PersonFunctionInput>? Functions { get; init; }
     /// <summary>Potwierdza zapis mimo ostrzeżenia o telefonie, który ma już inna osoba (nie dotyczy e-maila).</summary>
     public bool ConfirmDuplicate { get; init; }
 }

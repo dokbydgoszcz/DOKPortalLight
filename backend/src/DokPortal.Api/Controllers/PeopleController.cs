@@ -3,6 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Common;
 using DokPortal.Application.People;
 using DokPortal.Domain.Constants;
+using DokPortal.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,8 +20,9 @@ public class PeopleController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<PersonDto>>> Search(
-        [FromQuery] string? query, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
-        => Ok(await _personService.SearchAsync(query, page, pageSize, ct));
+        [FromQuery] string? query, [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
+        [FromQuery] FunctionType? function = null, CancellationToken ct = default)
+        => Ok(await _personService.SearchAsync(query, page, pageSize, ct, function));
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<PersonDto>> GetById(Guid id, CancellationToken ct)

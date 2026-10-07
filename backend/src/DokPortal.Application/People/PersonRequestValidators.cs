@@ -13,6 +13,11 @@ public abstract class PersonRequestValidatorBase<T> : AbstractValidator<T> where
         RuleFor(x => x.Notes).MaximumLength(2000);
         RuleFor(x => x.NameDayMonth).InclusiveBetween(1, 12).When(x => x.NameDayMonth.HasValue);
         RuleFor(x => x.NameDayDay).InclusiveBetween(1, 31).When(x => x.NameDayDay.HasValue);
+        RuleForEach(x => x.Functions).ChildRules(f =>
+        {
+            f.RuleFor(i => i.Type).IsInEnum();
+            f.RuleFor(i => i.Notes).MaximumLength(500);
+        });
     }
 }
 

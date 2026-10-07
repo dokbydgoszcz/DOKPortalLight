@@ -17,6 +17,7 @@ public class Person : ISoftDeletable
     public DateTime UpdatedAtUtc { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
     public string? DeletedBy { get; set; }
+    public List<PersonFunction> Functions { get; set; } = new();
 
     public string FullName => $"{FirstName} {LastName}";
 }

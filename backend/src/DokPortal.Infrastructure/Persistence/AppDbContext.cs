@@ -15,6 +15,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
 
     public DbSet<Person> People => Set<Person>();
     public DbSet<Parish> Parishes => Set<Parish>();
+    public DbSet<PersonFunction> PersonFunctions => Set<PersonFunction>();
     public DbSet<Candidate> Candidates => Set<Candidate>();
     public DbSet<CandidateRetreat> CandidateRetreats => Set<CandidateRetreat>();
     public DbSet<CandidateFormationEvent> CandidateFormationEvents => Set<CandidateFormationEvent>();
@@ -56,6 +57,15 @@ public class AppDbContext : IdentityDbContext<AppUser>
                 .WithMany()
                 .HasForeignKey(p => p.ParishId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<PersonFunction>(entity =>
+        {
+            entity.Property(f => f.Notes).HasMaxLength(500);
+            entity.HasOne(f => f.Person).WithMany(p => p.Functions).HasForeignKey(f => f.PersonId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(f => f.Parish).WithMany().HasForeignKey(f => f.ParishId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(f => new { f.Type, f.ParishId });
+            entity.HasQueryFilter(f => f.Person!.DeletedAtUtc == null);
         });
 
         builder.Entity<Candidate>(entity =>

@@ -14,4 +14,5 @@ public class PersonDto
     public string? Notes { get; init; }
     public int? NameDayMonth { get; init; }
     public int? NameDayDay { get; init; }
+    public IReadOnlyList<PersonFunctionDto> Functions { get; init; } = Array.Empty<PersonFunctionDto>();
 }
