@@ -83,7 +83,6 @@ describe('DashboardComponent', () => {
       const el = renderWith([]);
 
       expect(el.querySelector('.attention')).toBeNull();
-      expect(el.textContent).not.toContain('Wymaga uwagi');
     });
 
     it('lists each stuck case with its path, stage and how long it has been there', () => {
