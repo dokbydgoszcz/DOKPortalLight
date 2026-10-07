@@ -1,0 +1,62 @@
+<div class="page-heading">
+  <div><h2>Zasoby dla katechistów</h2><p>Wspólna biblioteka materiałów: scenariusze, wzory pism, opracowania. Pliki można pobrać bez zakładania superwizji.</p></div>
+  <div>
+    <button *appHasPermission="'Resources.Manage'" class="btn primary" (click)="openAddForm()">＋ Dodaj zasób</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div class="search">
+      <input placeholder="Szukaj…" [value]="query()" (input)="onSearch($any($event.target).value)" />
+    </div>
+  </div>
+  <div class="resources">
+    @for (resource of resources(); track resource.id) {
+      <section class="resource">
+        <div class="resource-head">
+          <h3>{{ resource.title }}</h3>
+          <span *appHasPermission="'Resources.Manage'" class="actions">
+            <span class="link edit" (click)="openEditForm(resource)">Edytuj</span>
+            &nbsp;·&nbsp;
+            <span class="link delete" style="color:var(--danger)" (click)="deleteResource(resource)">Usuń</span>
+          </span>
+        </div>
+        @if (resource.description) {
+          <p class="description">{{ resource.description }}</p>
+        }
+        <app-attachments
+          [attachments]="resource.files"
+          [baseUrl]="attachmentsUrl(resource)"
+          managePermission="Resources.Manage"
+          [showEmpty]="true"
+          [showHint]="false"
+          (changed)="load()" />
+      </section>
+    } @empty {
+      <div class="empty">Brak zasobów.</div>
+    }
+  </div>
+</div>
+
+@if (isFormOpen()) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Dodaj / edytuj zasób</h3>
+        <button class="close" (click)="onCancel()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field full"><label>Tytuł</label><input [(ngModel)]="formValue.title" name="title" /></div>
+          <div class="field full"><label>Opis</label><textarea [(ngModel)]="formValue.description" name="description"></textarea></div>
+        </div>
+        <p class="form-hint">Pliki dołączysz po zapisaniu — przy zasobie pojawi się „Dodaj plik”.</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="onCancel()">Anuluj</button>
+        <button class="btn primary" (click)="onSave()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}

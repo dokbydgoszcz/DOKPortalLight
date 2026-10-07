@@ -1,0 +1,40 @@
+.resources {
+  display: flex;
+  flex-direction: column;
+}
+
+.resource {
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+
+  &:first-child {
+    border-top: 0;
+  }
+}
+
+.resource-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+
+  h3 {
+    margin: 0;
+    font-size: 15px;
+    overflow-wrap: anywhere;
+  }
+}
+
+.description {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--muted);
+}

@@ -40,7 +40,9 @@ export const Permissions = {
   GraduatesView: 'Graduates.View',
   UsersManage: 'Users.Manage',
   AuditLogView: 'AuditLog.View',
-  PermissionsManage: 'Permissions.Manage'
+  PermissionsManage: 'Permissions.Manage',
+  ResourcesView: 'Resources.View',
+  ResourcesManage: 'Resources.Manage'
 } as const;
 
 export const ALL_PERMISSIONS: readonly string[] = Object.values(Permissions);

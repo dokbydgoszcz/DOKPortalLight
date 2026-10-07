@@ -12,6 +12,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Osoby', icon: '◎', path: '/people' },
   { label: 'Kalendarz imienin', icon: '✿', path: '/name-days' },
   { label: 'Dokumenty i pisma', icon: '✎', path: '/documents', permission: Permissions.DocumentsView },
+  { label: 'Zasoby dla katechistów', icon: '❖', path: '/resources', permission: Permissions.ResourcesView },
   { label: 'Mailing', icon: '✉', path: '/mailing', permission: Permissions.MailingView },
   { label: 'Kandydaci SKŚP', icon: '◉', path: '/candidates', permission: Permissions.CandidatesView },
   { label: 'Katechiści', icon: '✦', path: '/missions', permission: Permissions.MissionsView },

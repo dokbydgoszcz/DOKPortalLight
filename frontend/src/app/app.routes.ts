@@ -31,6 +31,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/documents/documents.component').then(m => m.DocumentsComponent)
       },
       {
+        path: 'resources',
+        canActivate: [permissionGuard(Permissions.ResourcesView)],
+        loadComponent: () => import('./features/resources/resources.component').then(m => m.ResourcesComponent)
+      },
+      {
         path: 'mailing',
         canActivate: [permissionGuard(Permissions.MailingView)],
         loadComponent: () => import('./features/mailing/mailing.component').then(m => m.MailingComponent)
