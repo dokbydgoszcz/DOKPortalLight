@@ -146,7 +146,7 @@ describe('ParishBoardComponent', () => {
       req.flush(assignedNeed);
       ctx.fixture.detectChanges();
 
-      expect(toastMessages()).toContain('Skierowano katechistę.');
+      expect(toastMessages()).toContain('Skierowano katechistę. Dodano rekord misji kanonicznej; proboszcz i katechista dostają e-mail z danymi kontaktowymi.');
       expect(ctx.el.querySelector('.modal')).toBeNull();
       ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([assignedNeed]);
     });

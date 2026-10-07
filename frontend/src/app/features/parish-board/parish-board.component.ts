@@ -99,7 +99,7 @@ export class ParishBoardComponent implements OnInit {
     this.parishNeedsService.assign(id, this.assignPersonId).subscribe({
       next: () => {
         this.assigningNeedId.set(null);
-        this.toast.success('Skierowano katechistę.');
+        this.toast.success('Skierowano katechistę. Dodano rekord misji kanonicznej; proboszcz i katechista dostają e-mail z danymi kontaktowymi.');
         this.load();
       },
       error: err => this.toast.error(serverMessage(err, 'Nie udało się skierować katechisty.'))

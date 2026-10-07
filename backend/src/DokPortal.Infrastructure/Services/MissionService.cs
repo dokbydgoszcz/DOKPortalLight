@@ -75,7 +75,7 @@ public class MissionService : IMissionService
             UpdatedAtUtc = DateTime.UtcNow
         };
         _db.CanonicalMissions.Add(mission);
-        await EnsureCatechistFunctionAsync(request.PersonId, ct);
+        await CatechistFunction.EnsureAsync(_db, request.PersonId, ct);
         await _db.SaveChangesAsync(ct);
         return (await GetByIdAsync(mission.Id, ct))!;
     }
@@ -94,19 +94,9 @@ public class MissionService : IMissionService
         mission.SentToDok = request.SentToDok;
         mission.UpdatedAtUtc = DateTime.UtcNow;
 
-        await EnsureCatechistFunctionAsync(request.PersonId, ct);
+        await CatechistFunction.EnsureAsync(_db, request.PersonId, ct);
         await _db.SaveChangesAsync(ct);
         return await GetByIdAsync(id, ct);
-    }
-
-    /// <summary>Katechista jest funkcją osoby: misja kanoniczna nadaje ją (raz); usunięcie misji jej nie odbiera.</summary>
-    private async Task EnsureCatechistFunctionAsync(Guid personId, CancellationToken ct)
-    {
-        var has = await _db.PersonFunctions.AnyAsync(f => f.PersonId == personId && f.Type == FunctionType.Catechist, ct);
-        if (!has)
-        {
-            _db.PersonFunctions.Add(new PersonFunction { Id = Guid.NewGuid(), PersonId = personId, Type = FunctionType.Catechist });
-        }
     }
 
     public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)

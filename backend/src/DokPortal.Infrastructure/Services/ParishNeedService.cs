@@ -1,16 +1,27 @@
+using DokPortal.Application.Common;
 using DokPortal.Application.ParishNeeds;
 using DokPortal.Domain.Entities;
 using DokPortal.Domain.Enums;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DokPortal.Infrastructure.Services;
 
 public class ParishNeedService : IParishNeedService
 {
     private readonly AppDbContext _db;
+    private readonly IEmailSender? _emailSender;
+    private readonly TimeProvider _time;
+    private readonly ILogger<ParishNeedService>? _logger;
 
-    public ParishNeedService(AppDbContext db) => _db = db;
+    public ParishNeedService(AppDbContext db, IEmailSender? emailSender = null, TimeProvider? time = null, ILogger<ParishNeedService>? logger = null)
+    {
+        _db = db;
+        _emailSender = emailSender;
+        _time = time ?? TimeProvider.System;
+        _logger = logger;
+    }
 
     private IQueryable<ParishNeed> NeedsWithDetails() =>
         _db.ParishNeeds.Include(n => n.Parish).Include(n => n.Assignments).ThenInclude(a => a.Person);
@@ -58,16 +69,95 @@ public class ParishNeedService : IParishNeedService
         if (need is null) return null;
         if (!await _db.People.AnyAsync(p => p.Id == personId, ct)) throw new InvalidOperationException("Nie znaleziono osoby.");
 
-        if (need.Assignments.All(a => a.PersonId != personId))
+        var isNew = need.Assignments.All(a => a.PersonId != personId);
+        if (isNew)
         {
             _db.ParishNeedAssignments.Add(new ParishNeedAssignment
             {
                 Id = Guid.NewGuid(), ParishNeedId = id, PersonId = personId, AssignedAtUtc = DateTime.UtcNow
             });
+            await RecordMissionAsync(need, personId, ct);
         }
         if (need.Status == ParishNeedStatus.Open) need.Status = ParishNeedStatus.Assigned;
         await _db.SaveChangesAsync(ct);
+        if (isNew) await NotifyAsync(need, personId, ct);
         return await LoadAsync(id, ct);
+    }
+
+    /// <summary>
+    /// Skierowanie do parafii zakłada rekord misji kanonicznej na rok (osoba zostaje katechistą). Jeśli osoba ma już misję
+    /// bez miejsca (udzieloną „Udziel posłania”), uzupełniamy w niej parafię; jeśli ma już aktualną misję w tej parafii – nic nie dodajemy.
+    /// </summary>
+    private async Task RecordMissionAsync(ParishNeed need, Guid personId, CancellationToken ct)
+    {
+        var parishName = await _db.Parishes.Where(p => p.Id == need.ParishId).Select(p => p.Name).FirstAsync(ct);
+        var today = _time.Today();
+        var missions = await _db.CanonicalMissions.Where(m => m.PersonId == personId).ToListAsync(ct);
+
+        var unplaced = missions.Where(m => string.IsNullOrWhiteSpace(m.ServicePlace)).OrderByDescending(m => m.MissionEndDate).FirstOrDefault();
+        if (unplaced is not null)
+        {
+            unplaced.ServicePlace = parishName;
+            unplaced.UpdatedAtUtc = DateTime.UtcNow;
+        }
+        else if (!missions.Any(m => m.ServicePlace == parishName && m.MissionEndDate >= today))
+        {
+            _db.CanonicalMissions.Add(new CanonicalMission
+            {
+                Id = Guid.NewGuid(),
+                PersonId = personId,
+                ServicePlace = parishName,
+                MissionStartDate = today,
+                MissionEndDate = today.AddYears(1),
+                CreatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = DateTime.UtcNow
+            });
+        }
+
+        await CatechistFunction.EnsureAsync(_db, personId, ct);
+    }
+
+    /// <summary>Proboszcz i katechista dostają e-mail z danymi kontaktowymi drugiej strony. Błąd poczty nie cofa skierowania.</summary>
+    private async Task NotifyAsync(ParishNeed need, Guid personId, CancellationToken ct)
+    {
+        if (_emailSender is null) return;
+
+        var parish = await _db.Parishes.AsNoTracking().FirstAsync(p => p.Id == need.ParishId, ct);
+        var catechist = await _db.People.AsNoTracking().FirstAsync(p => p.Id == personId, ct);
+        var pastor = await _db.PersonFunctions.AsNoTracking()
+            .Where(f => f.Type == FunctionType.Pastor && f.ParishId == need.ParishId)
+            .Select(f => f.Person!)
+            .FirstOrDefaultAsync(ct);
+
+        var subject = $"Skierowanie katechisty do parafii {parish.Name}";
+        await TrySendAsync(pastor?.Email, subject,
+            $"Szczęść Boże,\n\nDo parafii „{parish.Name}” został skierowany katechista: {catechist.FullName}.\n" +
+            $"Zapotrzebowanie: {need.Description}\n\nDane kontaktowe katechisty:\n{Contact(catechist)}\n\n" +
+            "Prosimy o bezpośredni kontakt z katechistą.", ct);
+
+        var pastorPart = pastor is null
+            ? "Parafia nie ma jeszcze przypisanego proboszcza w systemie – dane kontaktowe prześlemy po jego wskazaniu."
+            : $"Dane kontaktowe proboszcza ({pastor.FullName}):\n{Contact(pastor)}";
+        await TrySendAsync(catechist.Email, subject,
+            $"Szczęść Boże,\n\nZostałeś(-aś) skierowany(-a) do parafii „{parish.Name}”.\n" +
+            $"Zapotrzebowanie: {need.Description}\n\n{pastorPart}\n\n" +
+            "Prosimy o bezpośredni kontakt z parafią.", ct);
+    }
+
+    private static string Contact(Person p) =>
+        $"- e-mail: {(string.IsNullOrWhiteSpace(p.Email) ? "brak" : p.Email)}\n- telefon: {(string.IsNullOrWhiteSpace(p.Phone) ? "brak" : p.Phone)}";
+
+    private async Task TrySendAsync(string? to, string subject, string body, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(to)) return;
+        try
+        {
+            await _emailSender!.SendAsync(to, subject, body, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Nie udało się wysłać powiadomienia o skierowaniu do {Recipient}", to);
+        }
     }
 
     public async Task<ParishNeedDto?> UnassignAsync(Guid id, Guid personId, CancellationToken ct)
