@@ -5,5 +5,7 @@ public enum AttachmentOwnerType
 {
     PastoralNote,
     Supervision,
-    Mission
+    Mission,
+    /// <summary>Plik z globalnej biblioteki zasobów dla katechistów.</summary>
+    Resource
 }

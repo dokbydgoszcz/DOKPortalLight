@@ -16,8 +16,8 @@ public class PermissionCatalogTests
     [Fact]
     public void Catalog_HasExpectedNumberOfUniquePermissions()
     {
-        Assert.Equal(42, PermissionCatalog.All.Count);
-        Assert.Equal(42, PermissionCatalog.AllNames.Count);
+        Assert.Equal(44, PermissionCatalog.All.Count);
+        Assert.Equal(44, PermissionCatalog.AllNames.Count);
     }
 
     [Fact]

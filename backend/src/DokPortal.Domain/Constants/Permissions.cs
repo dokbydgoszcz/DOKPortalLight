@@ -44,6 +44,8 @@ public static class Permissions
     public const string UsersManage = "Users.Manage";
     public const string AuditLogView = "AuditLog.View";
     public const string PermissionsManage = "Permissions.Manage";
+    public const string ResourcesView = "Resources.View";
+    public const string ResourcesManage = "Resources.Manage";
 }
 
 public sealed record PermissionInfo(string Name, string Module, string Label);
@@ -93,7 +95,9 @@ public static class PermissionCatalog
         new(Permissions.GraduatesView, "Absolwenci", "Dostęp do ekranu absolwentów"),
         new(Permissions.UsersManage, "Użytkownicy", "Zarządzanie użytkownikami i ich rolami"),
         new(Permissions.AuditLogView, "Dziennik audytu", "Podgląd dziennika audytu"),
-        new(Permissions.PermissionsManage, "Uprawnienia", "Edycja uprawnień ról")
+        new(Permissions.PermissionsManage, "Uprawnienia", "Edycja uprawnień ról"),
+        new(Permissions.ResourcesView, "Zasoby dla katechistów", "Przeglądanie i pobieranie zasobów"),
+        new(Permissions.ResourcesManage, "Zasoby dla katechistów", "Dodawanie, edycja i usuwanie zasobów oraz plików")
     };
 
     public static readonly IReadOnlySet<string> AllNames = All.Select(p => p.Name).ToHashSet();

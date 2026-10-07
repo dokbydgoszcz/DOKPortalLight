@@ -18,7 +18,8 @@ public static class DefaultRolePermissions
             Permissions.BudgetSkspView, Permissions.BudgetSkspManage,
             Permissions.SupervisionsView, Permissions.SupervisionsManage, Permissions.SupervisionsExport,
             Permissions.DocumentsView, Permissions.DocumentsGenerate,
-            Permissions.MailingView, Permissions.MailingManage
+            Permissions.MailingView, Permissions.MailingManage,
+            Permissions.ResourcesView, Permissions.ResourcesManage
         },
         [AppRoles.DyrektorDOK] = new[]
         {
@@ -32,18 +33,21 @@ public static class DefaultRolePermissions
             Permissions.MailingView, Permissions.MailingManage,
             Permissions.BudgetDokView, Permissions.BudgetDokManage,
             Permissions.GraduatesView,
-            Permissions.MissionsView, Permissions.MissionsManage, Permissions.MissionsExport
+            Permissions.MissionsView, Permissions.MissionsManage, Permissions.MissionsExport,
+            Permissions.ResourcesView, Permissions.ResourcesManage
         },
         [AppRoles.Superwizor] = new[]
         {
             Permissions.DokCasesView, Permissions.DokCasesViewAll, Permissions.CaseDocumentsView,
-            Permissions.SupervisionsView, Permissions.SupervisionsManage, Permissions.SupervisionsExport
+            Permissions.SupervisionsView, Permissions.SupervisionsManage, Permissions.SupervisionsExport,
+            Permissions.ResourcesView, Permissions.ResourcesManage
         },
         [AppRoles.KatechistaProwadzacy] = new[]
         {
             Permissions.DokCasesView, Permissions.CaseDocumentsView, Permissions.CaseDocumentsManage,
             Permissions.PastoralNotesView, Permissions.PastoralNotesWrite,
-            Permissions.MeetingsView, Permissions.MeetingsManage
+            Permissions.MeetingsView, Permissions.MeetingsManage,
+            Permissions.ResourcesView
         }
     };
 }

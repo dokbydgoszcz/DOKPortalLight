@@ -16,6 +16,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<Person> People => Set<Person>();
     public DbSet<Parish> Parishes => Set<Parish>();
     public DbSet<PersonFunction> PersonFunctions => Set<PersonFunction>();
+    public DbSet<LibraryResource> LibraryResources => Set<LibraryResource>();
     public DbSet<Candidate> Candidates => Set<Candidate>();
     public DbSet<CandidateRetreat> CandidateRetreats => Set<CandidateRetreat>();
     public DbSet<CandidateFormationEvent> CandidateFormationEvents => Set<CandidateFormationEvent>();
@@ -57,6 +58,13 @@ public class AppDbContext : IdentityDbContext<AppUser>
                 .WithMany()
                 .HasForeignKey(p => p.ParishId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<LibraryResource>(entity =>
+        {
+            entity.Property(r => r.Title).IsRequired().HasMaxLength(200);
+            entity.Property(r => r.Description).HasMaxLength(1000);
+            entity.Property(r => r.CreatedByUserId).IsRequired().HasMaxLength(450);
         });
 
         builder.Entity<PersonFunction>(entity =>
