@@ -11,7 +11,6 @@ public class MissionDto
     public required DateOnly MissionStartDate { get; init; }
     public required DateOnly MissionEndDate { get; init; }
     public DateOnly? GrantedDate { get; init; }
-    public string? GrantedPlace { get; init; }
     public string? SupervisionGroup { get; init; }
     public bool SentToDok { get; init; }
     public required string Status { get; init; }

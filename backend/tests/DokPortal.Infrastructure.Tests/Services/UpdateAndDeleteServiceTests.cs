@@ -70,7 +70,7 @@ public class UpdateAndDeleteServiceTests
             {
                 PersonId = person.Id, ServicePlace = "Parafia św. Piotra",
                 MissionStartDate = new DateOnly(2026, 2, 1), MissionEndDate = new DateOnly(2030, 2, 1),
-                GrantedDate = new DateOnly(2026, 1, 15), GrantedPlace = "Bydgoszcz", SupervisionGroup = "Grupa A"
+                GrantedDate = new DateOnly(2026, 1, 15), SupervisionGroup = "Grupa A"
             }, default);
 
             Assert.NotNull(updated);

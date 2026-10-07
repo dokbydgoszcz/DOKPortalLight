@@ -17,7 +17,6 @@ export interface Mission {
   missionStartDate: string;
   missionEndDate: string;
   grantedDate: string | null;
-  grantedPlace: string | null;
   supervisionGroup: string | null;
   sentToDok: boolean;
   status: string;
@@ -30,7 +29,6 @@ export interface MissionFormValue {
   missionStartDate: string;
   missionEndDate: string;
   grantedDate?: string;
-  grantedPlace?: string;
   supervisionGroup?: string;
   sentToDok?: boolean;
 }

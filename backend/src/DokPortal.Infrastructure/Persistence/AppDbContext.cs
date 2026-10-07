@@ -72,7 +72,6 @@ public class AppDbContext : IdentityDbContext<AppUser>
         builder.Entity<CanonicalMission>(entity =>
         {
             entity.Property(m => m.ServicePlace).IsRequired().HasMaxLength(200);
-            entity.Property(m => m.GrantedPlace).HasMaxLength(200);
             entity.Property(m => m.SupervisionGroup).HasMaxLength(100);
             entity.HasOne(m => m.Person).WithMany().HasForeignKey(m => m.PersonId).OnDelete(DeleteBehavior.Restrict);
         });

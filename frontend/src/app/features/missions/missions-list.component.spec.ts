@@ -7,7 +7,7 @@ import { api, clickByText, paged, setInput, setSelect, setup, textOf } from '../
 
 const mission: Mission = {
   id: '1', personId: 'p1', personFullName: 'Anna Maj', servicePlace: 'Parafia św. Mateusza',
-  missionStartDate: '2023-10-15', missionEndDate: '2026-10-14', grantedDate: null, grantedPlace: null,
+  missionStartDate: '2023-10-15', missionEndDate: '2026-10-14', grantedDate: null,
   supervisionGroup: 'Grupa A', status: 'wygasa', sentToDok: false, attachments: []
 };
 const sentMission: Mission = { ...mission, id: '2', personFullName: 'Jan Kowalski', sentToDok: true };
@@ -98,7 +98,6 @@ describe('MissionsListComponent', () => {
       setInput(ctx.el, 'input[name="missionStartDate"]', '2026-01-01');
       setInput(ctx.el, 'input[name="missionEndDate"]', '2029-01-01');
       setInput(ctx.el, 'input[name="grantedDate"]', '2025-12-20');
-      setInput(ctx.el, 'input[name="grantedPlace"]', 'Bydgoszcz');
       setInput(ctx.el, 'input[name="supervisionGroup"]', 'Grupa B');
       ctx.fixture.detectChanges();
       expect(saveButton(ctx.el).disabled).toBe(false);
@@ -107,7 +106,7 @@ describe('MissionsListComponent', () => {
       const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
       expect(req.request.body).toEqual({
         personId: 'p1', servicePlace: 'Parafia św. Jana', missionStartDate: '2026-01-01', missionEndDate: '2029-01-01',
-        grantedDate: '2025-12-20', grantedPlace: 'Bydgoszcz', supervisionGroup: 'Grupa B', sentToDok: false
+        grantedDate: '2025-12-20', supervisionGroup: 'Grupa B', sentToDok: false
       });
       req.flush(mission);
       ctx.fixture.detectChanges();
@@ -169,7 +168,7 @@ describe('MissionsListComponent', () => {
 
   describe('editing a mission', () => {
     const detailed: Mission = {
-      ...mission, grantedDate: '2023-10-01', grantedPlace: 'Bydgoszcz', supervisionGroup: 'Grupa A', sentToDok: false
+      ...mission, grantedDate: '2023-10-01', supervisionGroup: 'Grupa A', sentToDok: false
     };
     const saveButton = (el: HTMLElement) =>
       Array.from(el.querySelectorAll<HTMLButtonElement>('.modal-foot button')).find(b => b.textContent!.includes('Zapisz'))!;
@@ -191,7 +190,6 @@ describe('MissionsListComponent', () => {
       expect((ctx.el.querySelector('input[name="missionStartDate"]') as HTMLInputElement).value).toBe('2023-10-15');
       expect((ctx.el.querySelector('input[name="missionEndDate"]') as HTMLInputElement).value).toBe('2026-10-14');
       expect((ctx.el.querySelector('input[name="grantedDate"]') as HTMLInputElement).value).toBe('2023-10-01');
-      expect((ctx.el.querySelector('input[name="grantedPlace"]') as HTMLInputElement).value).toBe('Bydgoszcz');
       expect((ctx.el.querySelector('input[name="sentToDok"]') as HTMLInputElement).checked).toBe(false);
     });
 
@@ -206,7 +204,7 @@ describe('MissionsListComponent', () => {
       const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${url}/1`);
       expect(req.request.body).toEqual({
         personId: 'p1', servicePlace: 'Parafia św. Jana', missionStartDate: '2023-10-15', missionEndDate: '2026-10-14',
-        grantedDate: '2023-10-01', grantedPlace: 'Bydgoszcz', supervisionGroup: 'Grupa A', sentToDok: true
+        grantedDate: '2023-10-01', supervisionGroup: 'Grupa A', sentToDok: true
       });
       req.flush({ ...detailed, servicePlace: 'Parafia św. Jana', sentToDok: true });
       ctx.fixture.detectChanges();
@@ -375,6 +373,19 @@ describe('MissionsListComponent', () => {
 
       expect(modalText(ctx.el)).toContain('Pobierz');
       expect(ctx.el.querySelector('.modal input[type="file"]')).toBeNull();
+    });
+  });
+
+  describe('the mission form', () => {
+    it('no longer asks where the mission was granted', async () => {
+      const ctx = boot();
+      clickByText(ctx.el, 'Dodaj misję');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+
+      expect(ctx.el.querySelector('input[name="grantedPlace"]')).toBeNull();
+      expect(textOf(ctx.el)).not.toContain('Miejsce udzielenia');
+      expect(ctx.el.querySelector('input[name="grantedDate"]')).not.toBeNull();
     });
   });
 });

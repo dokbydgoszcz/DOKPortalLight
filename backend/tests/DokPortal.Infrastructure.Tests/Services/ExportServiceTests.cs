@@ -134,7 +134,7 @@ public class ExportServiceTests
             {
                 Id = Guid.NewGuid(), PersonId = person.Id, ServicePlace = "Parafia św. Jana",
                 MissionStartDate = new DateOnly(2026, 1, 1), MissionEndDate = new DateOnly(2027, 1, 1),
-                GrantedDate = new DateOnly(2025, 12, 20), GrantedPlace = "Bydgoszcz", SupervisionGroup = "Grupa A", SentToDok = true
+                GrantedDate = new DateOnly(2025, 12, 20), SupervisionGroup = "Grupa A", SentToDok = true
             },
             new CanonicalMission
             {
@@ -151,12 +151,12 @@ public class ExportServiceTests
         var sheet = OpenSheet(await new ExportService(db, null, new FixedTimeProvider(2026, 10, 3)).ExportMissionsAsync(default));
 
         Assert.Equal(
-            new[] { "Katechista", "Miejsce posługi", "Data od", "Data do", "Data udzielenia", "Miejsce udzielenia", "Grupa superwizyjna", "Posłany do DOK", "Status" },
-            Row(sheet, 1, 9));
-        Assert.Equal(new[] { "Anna Czekajaca", "", "", "", "", "", "", "Nie", "Przed udzieleniem posługi" }, Row(sheet, 2, 9));
+            new[] { "Katechista", "Miejsce posługi", "Data od", "Data do", "Data udzielenia", "Grupa superwizyjna", "Posłany do DOK", "Status" },
+            Row(sheet, 1, 8));
+        Assert.Equal(new[] { "Anna Czekajaca", "", "", "", "", "", "Nie", "Przed udzieleniem posługi" }, Row(sheet, 2, 8));
         Assert.Equal(
-            new[] { "Jan Kowalski", "Parafia św. Jana", "2026-01-01", "2027-01-01", "2025-12-20", "Bydgoszcz", "Grupa A", "Tak", "ważna" },
-            Row(sheet, 3, 9));
+            new[] { "Jan Kowalski", "Parafia św. Jana", "2026-01-01", "2027-01-01", "2025-12-20", "Grupa A", "Tak", "ważna" },
+            Row(sheet, 3, 8));
         Assert.Equal(3, sheet.LastRowUsed()!.RowNumber());
     }
 

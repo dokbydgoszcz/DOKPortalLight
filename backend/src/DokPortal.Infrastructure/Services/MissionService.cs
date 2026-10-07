@@ -69,7 +69,6 @@ public class MissionService : IMissionService
             MissionStartDate = request.MissionStartDate,
             MissionEndDate = request.MissionEndDate,
             GrantedDate = request.GrantedDate,
-            GrantedPlace = request.GrantedPlace,
             SupervisionGroup = request.SupervisionGroup,
             SentToDok = request.SentToDok,
             CreatedAtUtc = DateTime.UtcNow,
@@ -90,7 +89,6 @@ public class MissionService : IMissionService
         mission.MissionStartDate = request.MissionStartDate;
         mission.MissionEndDate = request.MissionEndDate;
         mission.GrantedDate = request.GrantedDate;
-        mission.GrantedPlace = request.GrantedPlace;
         mission.SupervisionGroup = request.SupervisionGroup;
         mission.SentToDok = request.SentToDok;
         mission.UpdatedAtUtc = DateTime.UtcNow;
@@ -161,7 +159,6 @@ public class MissionService : IMissionService
         MissionStartDate = m.MissionStartDate,
         MissionEndDate = m.MissionEndDate,
         GrantedDate = m.GrantedDate,
-        GrantedPlace = m.GrantedPlace,
         SupervisionGroup = m.SupervisionGroup,
         SentToDok = m.SentToDok,
         Status = ComputeStatus(m.MissionEndDate),

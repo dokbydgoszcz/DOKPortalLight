@@ -114,16 +114,16 @@ public class ExportService : IExportService
 
         // osoby czekające na udzielenie posługi są na liście pierwsze, tak jak na ekranie
         var rows = pending
-            .Select(p => new object?[] { p.PersonFullName, null, null, null, null, null, null, "Nie", PendingStatusLabel })
+            .Select(p => new object?[] { p.PersonFullName, null, null, null, null, null, "Nie", PendingStatusLabel })
             .Concat(missions.Select(m => new object?[]
             {
                 m.Person?.FullName, m.ServicePlace, FormatDate(m.MissionStartDate), FormatDate(m.MissionEndDate),
-                FormatDate(m.GrantedDate), m.GrantedPlace, m.SupervisionGroup, YesNo(m.SentToDok), MissionStatus(m.MissionEndDate, today)
+                FormatDate(m.GrantedDate), m.SupervisionGroup, YesNo(m.SentToDok), MissionStatus(m.MissionEndDate, today)
             }));
 
         return BuildWorkbook(
             "Katechiści",
-            new[] { "Katechista", "Miejsce posługi", "Data od", "Data do", "Data udzielenia", "Miejsce udzielenia", "Grupa superwizyjna", "Posłany do DOK", "Status" },
+            new[] { "Katechista", "Miejsce posługi", "Data od", "Data do", "Data udzielenia", "Grupa superwizyjna", "Posłany do DOK", "Status" },
             rows);
     }
 

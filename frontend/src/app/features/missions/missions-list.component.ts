@@ -103,7 +103,6 @@ export class MissionsListComponent implements OnInit {
       missionStartDate: mission.missionStartDate,
       missionEndDate: mission.missionEndDate,
       grantedDate: mission.grantedDate ?? undefined,
-      grantedPlace: mission.grantedPlace ?? undefined,
       supervisionGroup: mission.supervisionGroup ?? undefined,
       sentToDok: mission.sentToDok
     };
