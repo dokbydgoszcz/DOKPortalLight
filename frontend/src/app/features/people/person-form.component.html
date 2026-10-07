@@ -14,6 +14,30 @@
           <div class="field full"><label>Uwagi</label><textarea [(ngModel)]="value.notes" name="notes"></textarea></div>
           <div class="field"><label>Miesiąc imienin</label><input type="number" min="1" max="12" [(ngModel)]="value.nameDayMonth" name="nameDayMonth" /></div>
           <div class="field"><label>Dzień imienin</label><input type="number" min="1" max="31" [(ngModel)]="value.nameDayDay" name="nameDayDay" /></div>
+          <div class="field full functions">
+            <label>Funkcje</label>
+            @for (fn of value.functions ?? []; track $index) {
+              <div class="function-row">
+                <select [(ngModel)]="fn.type" [attr.name]="'fnType' + $index">
+                  @for (type of functionTypes; track type) {
+                    <option [value]="type">{{ functionLabels[type] }}</option>
+                  }
+                </select>
+                @if (fn.type === 'Pastor') {
+                  <select [(ngModel)]="fn.parishId" [attr.name]="'fnParish' + $index">
+                    <option [ngValue]="undefined">— bez parafii —</option>
+                    @for (parish of parishes; track parish.id) {
+                      <option [value]="parish.id">{{ parish.name }}</option>
+                    }
+                  </select>
+                }
+                <input type="date" [(ngModel)]="fn.institutedOn" [attr.name]="'fnDate' + $index" title="Data ustanowienia / objęcia" />
+                <input [(ngModel)]="fn.notes" [attr.name]="'fnNotes' + $index" placeholder="Notatka" />
+                <button type="button" class="remove" title="Usuń funkcję" (click)="removeFunction($index)">×</button>
+              </div>
+            }
+            <div><button type="button" class="btn ghost" (click)="addFunction()">＋ Dodaj funkcję</button></div>
+          </div>
         </div>
       </div>
       <div class="modal-foot">

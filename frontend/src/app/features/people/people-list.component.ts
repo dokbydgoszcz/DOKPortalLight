@@ -3,7 +3,9 @@ import { ExportButtonComponent } from '../../shared/export/export-button.compone
 import { Component, OnInit, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PeopleService } from './people.service';
-import { Person, PersonFormValue } from './person.model';
+import { FUNCTION_LABELS, FUNCTION_TYPES, FunctionType, Person, PersonFormValue, functionText } from './person.model';
+import { ParishesService } from '../parish-board/parishes.service';
+import { Parish } from '../parish-board/parish-need.model';
 import { PersonFormComponent } from './person-form.component';
 import { ToastService } from '../../core/notifications/toast.service';
 import { PaginationComponent } from '../../shared/pagination.component';
@@ -23,21 +25,28 @@ export class PeopleListComponent implements OnInit {
   readonly page = signal(1);
   readonly totalCount = signal(0);
   readonly pageSize = PAGE_SIZE;
+  readonly functionFilter = signal<FunctionType | ''>('');
+  readonly parishes = signal<Parish[]>([]);
+  readonly functionTypes = FUNCTION_TYPES;
+  readonly functionLabels = FUNCTION_LABELS;
+  readonly functionText = functionText;
   readonly isFormOpen = signal(false);
   readonly editingId = signal<string | null>(null);
   formValue: PersonFormValue = { firstName: '', lastName: '' };
 
   constructor(
     private readonly peopleService: PeopleService,
+    private readonly parishesService: ParishesService,
     private readonly toast: ToastService
   ) {}
 
   ngOnInit(): void {
     this.load();
+    this.parishesService.list().subscribe({ next: parishes => this.parishes.set(parishes), error: () => {} });
   }
 
   load(): void {
-    this.peopleService.search(this.query(), this.page(), this.pageSize).subscribe({
+    this.peopleService.search(this.query(), this.page(), this.pageSize, this.functionFilter() || undefined).subscribe({
       next: result => {
         this.people.set(result.items);
         this.totalCount.set(result.totalCount);
@@ -48,6 +57,12 @@ export class PeopleListComponent implements OnInit {
 
   onSearch(value: string): void {
     this.query.set(value);
+    this.page.set(1);
+    this.load();
+  }
+
+  onFunctionFilter(value: FunctionType | ''): void {
+    this.functionFilter.set(value);
     this.page.set(1);
     this.load();
   }
@@ -70,9 +85,17 @@ export class PeopleListComponent implements OnInit {
       lastName: person.lastName,
       email: person.email ?? undefined,
       phone: person.phone ?? undefined,
+      birthDate: person.birthDate ?? undefined,
+      parishId: person.parishId ?? undefined,
       notes: person.notes ?? undefined,
       nameDayMonth: person.nameDayMonth ?? undefined,
-      nameDayDay: person.nameDayDay ?? undefined
+      nameDayDay: person.nameDayDay ?? undefined,
+      functions: person.functions.map(f => ({
+        type: f.type,
+        parishId: f.parishId ?? undefined,
+        institutedOn: f.institutedOn ?? undefined,
+        notes: f.notes ?? undefined
+      }))
     };
     this.isFormOpen.set(true);
   }

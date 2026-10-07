@@ -1,0 +1,27 @@
+.functions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.function-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+
+  select,
+  input {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+
+  .remove {
+    flex: 0 0 auto;
+    border: 0;
+    background: none;
+    color: var(--danger);
+    font-size: 18px;
+    cursor: pointer;
+  }
+}

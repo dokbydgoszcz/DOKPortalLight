@@ -1,5 +1,5 @@
 <div class="page-heading">
-  <div><h2>Baza osób</h2><p>Jeden profil osoby, wiele ról i powiązań.</p></div>
+  <div><h2>Osoby</h2><p>Jeden profil osoby, wiele funkcji i powiązań.</p></div>
   <div style="display:flex;gap:8px;align-items:center">
     <app-export-button list="people" />
     <button *appHasPermission="'People.Manage'" class="btn primary" (click)="openAddForm()">＋ Dodaj osobę</button>
@@ -11,15 +11,24 @@
     <div class="search">
       <input placeholder="Szukaj…" [value]="query()" (input)="onSearch($any($event.target).value)" />
     </div>
+    <select name="functionFilter" [value]="functionFilter()" (change)="onFunctionFilter($any($event.target).value)">
+      <option value="">Wszystkie funkcje</option>
+      @for (type of functionTypes; track type) {
+        <option [value]="type">{{ functionLabels[type] }}</option>
+      }
+    </select>
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Osoba</th><th>Kontakt</th><th>Parafia</th><th></th></tr></thead>
+      <thead><tr><th>Osoba</th><th>Kontakt</th><th>Funkcje</th><th>Parafia</th><th></th></tr></thead>
       <tbody>
         @for (person of people(); track person.id) {
           <tr>
             <td><b>{{ person.fullName }}</b></td>
             <td>{{ person.email }}<br /><span class="small-muted">{{ person.phone }}</span></td>
+            <td>
+              @for (fn of person.functions; track fn.id; let last = $last) {{{ functionText(fn) }}@if (!last) {, }}
+            </td>
             <td>{{ person.parishName }}</td>
             <td>
               <ng-container *appHasPermission="'People.Manage'">
@@ -30,7 +39,7 @@
             </td>
           </tr>
         } @empty {
-          <tr><td colspan="4" class="empty">Brak wyników.</td></tr>
+          <tr><td colspan="5" class="empty">Brak wyników.</td></tr>
         }
       </tbody>
     </table>
@@ -41,6 +50,7 @@
 <app-person-form
   [open]="isFormOpen()"
   [value]="formValue"
+  [parishes]="parishes()"
   (save)="onSave($event)"
   (cancel)="onCancel()">
 </app-person-form>

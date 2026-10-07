@@ -9,7 +9,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', icon: '◫', path: '/dashboard' },
-  { label: 'Baza osób', icon: '◎', path: '/people' },
+  { label: 'Osoby', icon: '◎', path: '/people' },
   { label: 'Kalendarz imienin', icon: '✿', path: '/name-days' },
   { label: 'Dokumenty i pisma', icon: '✎', path: '/documents', permission: Permissions.DocumentsView },
   { label: 'Mailing', icon: '✉', path: '/mailing', permission: Permissions.MailingView },

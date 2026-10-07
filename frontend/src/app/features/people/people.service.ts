@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { PagedResult, Person, PersonFormValue } from './person.model';
+import { FunctionType, PagedResult, Person, PersonFormValue } from './person.model';
 
 @Injectable({ providedIn: 'root' })
 export class PeopleService {
@@ -9,8 +9,10 @@ export class PeopleService {
 
   constructor(private readonly http: HttpClient) {}
 
-  search(query: string, page = 1, pageSize = 20) {
-    return this.http.get<PagedResult<Person>>(this.baseUrl, { params: { query, page, pageSize } });
+  search(query: string, page = 1, pageSize = 20, fn?: FunctionType) {
+    const params: Record<string, string | number> = { query, page, pageSize };
+    if (fn) params['function'] = fn;
+    return this.http.get<PagedResult<Person>>(this.baseUrl, { params });
   }
 
   getById(id: string) {

@@ -75,7 +75,7 @@ describe('ShellComponent', () => {
     setup(['Meetings.View']);
     const text = fixture.nativeElement.textContent as string;
 
-    expect(text).toContain('Baza osób');
+    expect(text).toContain('Osoby');
     expect(text).toContain('Harmonogram i obecności');
     expect(text).not.toContain('Budżet SKŚP');
   });

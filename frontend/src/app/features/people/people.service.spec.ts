@@ -24,6 +24,17 @@ describe('PeopleService', () => {
     httpMock.verify();
   });
 
+  it('adds the function filter to the search only when one is chosen', () => {
+    service.search('', 1, 20, 'Acolyte').subscribe();
+    service.search('').subscribe();
+
+    const filtered = httpMock.expectOne(r => r.url === base && r.params.get('function') === 'Acolyte');
+    const plain = httpMock.expectOne(r => r.url === base && !r.params.has('function'));
+    filtered.flush({ items: [], totalCount: 0, page: 1, pageSize: 20 });
+    plain.flush({ items: [], totalCount: 0, page: 1, pageSize: 20 });
+    httpMock.verify();
+  });
+
   it('loads, creates, updates and deletes a person with the matching HTTP methods', () => {
     service.getById('1').subscribe();
     expect(httpMock.expectOne(`${base}/1`).request.method).toBe('GET');

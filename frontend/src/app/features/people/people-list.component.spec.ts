@@ -3,11 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PeopleListComponent } from './people-list.component';
 import { Person } from './person.model';
 import { ToastService } from '../../core/notifications/toast.service';
-import { api, clickByText, setInput, setup, textOf } from '../../testing/test-helpers';
+import { api, clickByText, setInput, setSelect, setup, textOf } from '../../testing/test-helpers';
 
 const anna: Person = {
   id: '1', firstName: 'Anna', lastName: 'Maj', fullName: 'Anna Maj', email: 'anna@example.org', phone: '600100200',
-  birthDate: null, parishId: null, parishName: null, notes: 'Uwaga', nameDayMonth: 7, nameDayDay: 26
+  birthDate: null, parishId: null, parishName: null, notes: 'Uwaga', nameDayMonth: 7, nameDayDay: 26, functions: []
 };
 const peopleUrl = api('/api/people');
 
@@ -51,6 +51,57 @@ describe('PeopleListComponent', () => {
     const req = ctx.http.expectOne(r => r.url === peopleUrl && r.params.get('query') === 'Maj');
     expect(req.request.params.get('page')).toBe('1');
     req.flush({ items: [anna], totalCount: 1, page: 1, pageSize: 20 });
+  });
+
+  describe('functions', () => {
+    const acolyte: Person = {
+      ...anna, id: '5', firstName: 'Piotr', lastName: 'Lektor', fullName: 'Piotr Lektor',
+      functions: [
+        { id: 'f1', type: 'Acolyte', parishId: null, parishName: null, institutedOn: null, notes: null },
+        { id: 'f2', type: 'Pastor', parishId: 'p1', parishName: 'św. Jana', institutedOn: null, notes: null }
+      ]
+    };
+
+    it('is titled „Osoby” and lists the functions of each person, naming the pastor’s parish', () => {
+      const { el } = boot([acolyte]);
+
+      expect(el.querySelector('h2')!.textContent).toBe('Osoby');
+      expect(textOf(el)).toContain('Akolita, Proboszcz (św. Jana)');
+    });
+
+    it('filters the list by function, from the first page', () => {
+      const ctx = boot([anna], 45);
+      clickByText(ctx.el, 'Następna');
+      ctx.http.expectOne(r => r.url === peopleUrl && r.params.get('page') === '2').flush({ items: [anna], totalCount: 45, page: 2, pageSize: 20 });
+      ctx.fixture.detectChanges();
+
+      setSelect(ctx.el, 'select[name="functionFilter"]', 'Lector');
+
+      const req = ctx.http.expectOne(r => r.url === peopleUrl && r.params.get('function') === 'Lector');
+      expect(req.request.params.get('page')).toBe('1');
+      req.flush({ items: [], totalCount: 0, page: 1, pageSize: 20 });
+    });
+
+    it('does not send a function when the filter is cleared', () => {
+      const ctx = boot();
+      setSelect(ctx.el, 'select[name="functionFilter"]', 'Lector');
+      ctx.http.expectOne(r => r.url === peopleUrl && r.params.get('function') === 'Lector').flush({ items: [], totalCount: 0, page: 1, pageSize: 20 });
+
+      setSelect(ctx.el, 'select[name="functionFilter"]', '');
+
+      ctx.http.expectOne(r => r.url === peopleUrl && !r.params.has('function')).flush({ items: [anna], totalCount: 1, page: 1, pageSize: 20 });
+    });
+
+    it('opens the edit form with the person’s functions, so saving does not drop them', () => {
+      const ctx = boot([acolyte]);
+
+      clickByText(ctx.el, 'Edytuj');
+
+      expect(ctx.fixture.componentInstance.formValue.functions).toEqual([
+        { type: 'Acolyte' },
+        { type: 'Pastor', parishId: 'p1' }
+      ]);
+    });
   });
 
   describe('adding a person', () => {
@@ -110,7 +161,7 @@ describe('PeopleListComponent', () => {
 
       const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${peopleUrl}/1`);
       expect(req.request.body).toEqual({
-        firstName: 'Anna', lastName: 'Maj-Kowalska', email: 'anna@example.org', phone: '600100200', notes: 'Uwaga', nameDayMonth: 7, nameDayDay: 26
+        firstName: 'Anna', lastName: 'Maj-Kowalska', email: 'anna@example.org', phone: '600100200', notes: 'Uwaga', nameDayMonth: 7, nameDayDay: 26, functions: []
       });
       req.flush(anna);
       expect(toastMessages()).toContain('Zapisano zmiany.');
@@ -123,7 +174,7 @@ describe('PeopleListComponent', () => {
       clickByText(ctx.el, 'Edytuj');
 
       expect(ctx.fixture.componentInstance.formValue).toEqual({
-        firstName: 'Anna', lastName: 'Maj', email: undefined, phone: undefined, notes: undefined, nameDayMonth: undefined, nameDayDay: undefined
+        firstName: 'Anna', lastName: 'Maj', email: undefined, phone: undefined, notes: undefined, nameDayMonth: undefined, nameDayDay: undefined, functions: []
       });
     });
   });
