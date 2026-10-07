@@ -142,4 +142,48 @@ describe('CandidateFormComponent', () => {
     expect(saved[0].isFormationStopped).toBeFalsy();
     expect(saved[0].formationStopNote).toBeUndefined();
   });
+
+  describe('finished formation and history', () => {
+    it('ticking "Ukończył formację" moves the year to III and is sent with the form', async () => {
+      const { fixture, el, saved } = render(true);
+      await fixture.whenStable();
+      setSelect(el, 'select[name="personId"]', 'p1');
+
+      (el.querySelector('input[name="isFormationCompleted"]') as HTMLInputElement).click();
+      fixture.detectChanges();
+      saveButton(el).click();
+
+      expect(saved[0].isFormationCompleted).toBe(true);
+      expect(saved[0].year).toBe(3);
+    });
+
+    it('shows the history of year changes with dates and authors, newest first', async () => {
+      const ctx = setup(CandidateFormComponent);
+      ctx.fixture.componentRef.setInput('open', false);
+      ctx.fixture.componentRef.setInput('editing', true);
+      ctx.fixture.componentRef.setInput('value', { personId: 'p1', year: 2, opinionsCollected: 0, retreats: [] } satisfies CandidateFormValue);
+      ctx.fixture.componentRef.setInput('events', [
+        { kind: 'Advanced', fromYear: 1, toYear: 2, atUtc: '2027-09-01T10:00:00Z', performedBy: 'dyrektor@example.org' },
+        { kind: 'Enrolled', fromYear: null, toYear: 1, atUtc: '2026-10-07T10:00:00Z', performedBy: null }
+      ]);
+      ctx.fixture.detectChanges();
+      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
+      ctx.fixture.componentRef.setInput('open', true);
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+
+      const items = Array.from(ctx.el.querySelectorAll('.history li')).map(li => li.textContent!.replace(/\s+/g, ' ').trim());
+      expect(items).toEqual([
+        '01.09.2027 — Przeniesiony z I do II roku · dyrektor@example.org',
+        '07.10.2026 — Wpisany do I roku'
+      ]);
+    });
+
+    it('shows no history block when there is none', async () => {
+      const { fixture, el } = render(true);
+      await fixture.whenStable();
+
+      expect(el.querySelector('.history')).toBeNull();
+    });
+  });
 });

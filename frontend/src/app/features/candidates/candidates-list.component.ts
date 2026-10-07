@@ -1,8 +1,9 @@
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { CandidatesService } from './candidates.service';
-import { Candidate, CandidateFormValue, romanYear } from './candidate.model';
+import { Candidate, CandidateFormValue, CandidateFormationEvent, nextYearLabel, romanYear } from './candidate.model';
 import { serverMessage } from '../../shared/http-error';
 import { CandidateFormComponent } from './candidate-form.component';
 import { ToastService } from '../../core/notifications/toast.service';
@@ -13,7 +14,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-candidates-list',
   standalone: true,
-  imports: [HasPermissionDirective, ExportButtonComponent, CandidateFormComponent, PaginationComponent],
+  imports: [HasPermissionDirective, ExportButtonComponent, CandidateFormComponent, PaginationComponent, DatePipe],
   templateUrl: './candidates-list.component.html',
   styleUrl: './candidates-list.component.scss'
 })
@@ -25,6 +26,14 @@ export class CandidatesListComponent implements OnInit {
   readonly isFormOpen = signal(false);
   readonly editingId = signal<string | null>(null);
   readonly romanYear = romanYear;
+  readonly nextYearLabel = nextYearLabel;
+  /** Historia roku edytowanego kandydata (pusta przy dodawaniu). */
+  readonly formEvents = signal<CandidateFormationEvent[]>([]);
+  /** Zaznaczeni do przeniesienia kandydaci. */
+  readonly selectedIds = signal<ReadonlySet<string>>(new Set());
+  /** Zaznaczać można tylko tych, którzy są w trakcie formacji. */
+  readonly selectable = computed(() => this.candidates().filter(c => c.status === 'InFormation'));
+  readonly allSelected = computed(() => this.selectable().length > 0 && this.selectable().every(c => this.selectedIds().has(c.id)));
   formValue: CandidateFormValue = { personId: '', year: 1, opinionsCollected: 0, retreats: [] };
 
   readonly yearOneCount = signal(0);
@@ -72,18 +81,21 @@ export class CandidatesListComponent implements OnInit {
 
   openAddForm(): void {
     this.editingId.set(null);
+    this.formEvents.set([]);
     this.formValue = { personId: '', year: 1, opinionsCollected: 0, retreats: [] };
     this.isFormOpen.set(true);
   }
 
   openEditForm(candidate: Candidate): void {
     this.editingId.set(candidate.id);
+    this.formEvents.set(candidate.events);
     this.formValue = {
       personId: candidate.personId,
       year: candidate.year,
       attendancePercentage: candidate.attendancePercentage ?? undefined,
       opinionsCollected: candidate.opinionsCollected,
       retreats: candidate.retreats.map(r => ({ ...r })),
+      isFormationCompleted: candidate.isFormationCompleted,
       isFormationStopped: candidate.isFormationStopped,
       formationStopNote: candidate.formationStopNote ?? undefined
     };
@@ -101,6 +113,47 @@ export class CandidatesListComponent implements OnInit {
         this.loadStats();
       },
       error: err => this.toast.error(id ? serverMessage(err, 'Nie udało się zapisać zmian.') : 'Nie udało się dodać kandydata.')
+    });
+  }
+
+  toggleSelected(candidate: Candidate): void {
+    this.selectedIds.update(ids => {
+      const next = new Set(ids);
+      if (!next.delete(candidate.id)) next.add(candidate.id);
+      return next;
+    });
+  }
+
+  toggleAllSelected(): void {
+    this.selectedIds.set(this.allSelected() ? new Set() : new Set(this.selectable().map(c => c.id)));
+  }
+
+  advanceOne(candidate: Candidate): void {
+    const question = candidate.year >= 3
+      ? `Zakończyć formację kandydata „${candidate.personFullName}”?`
+      : `Przenieść „${candidate.personFullName}” do ${romanYear(candidate.year + 1)} roku?`;
+    if (!confirm(question)) return;
+    this.advance([candidate.id]);
+  }
+
+  advanceSelected(): void {
+    const ids = [...this.selectedIds()];
+    if (ids.length === 0) return;
+    if (!confirm(`Przenieść zaznaczonych kandydatów (${ids.length}) do następnego roku? Kandydaci z III roku zakończą formację.`)) return;
+    this.advance(ids);
+  }
+
+  private advance(ids: string[]): void {
+    this.candidatesService.advance(ids).subscribe({
+      next: result => {
+        if (result.advanced > 0) this.toast.success(`Przeniesiono do następnego roku: ${result.advanced}.`);
+        if (result.completed > 0) this.toast.success(`Ukończyło formację: ${result.completed}.`);
+        result.skipped.forEach(s => this.toast.error(`${s.personFullName ?? 'Kandydat'}: ${s.reason}`));
+        this.selectedIds.set(new Set());
+        this.load();
+        this.loadStats();
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się przenieść kandydatów.'))
     });
   }
 

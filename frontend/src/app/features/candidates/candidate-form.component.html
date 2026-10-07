@@ -37,12 +37,25 @@
             </div>
           }
           <div class="field full">
+            <label class="checkbox-label"><input type="checkbox" [ngModel]="value.isFormationCompleted" (ngModelChange)="onCompletedChange($event)" name="isFormationCompleted" /> Ukończył formację (III rok zakończony)</label>
+          </div>
+          <div class="field full">
             <label class="checkbox-label"><input type="checkbox" [(ngModel)]="value.isFormationStopped" name="isFormationStopped" /> Formacja zatrzymana (rezygnacja, nieukończona formacja)</label>
           </div>
           @if (value.isFormationStopped) {
             <div class="field full">
               <label>Powód zatrzymania <span class="required">*</span></label>
               <textarea [(ngModel)]="value.formationStopNote" name="formationStopNote"></textarea>
+            </div>
+          }
+          @if (events.length > 0) {
+            <div class="field full">
+              <label>Historia roku formacji</label>
+              <ul class="history">
+                @for (event of events; track $index) {
+                  <li>{{ event.atUtc | date: 'dd.MM.yyyy' }} — {{ eventText(event) }}</li>
+                }
+              </ul>
             </div>
           }
         </div>

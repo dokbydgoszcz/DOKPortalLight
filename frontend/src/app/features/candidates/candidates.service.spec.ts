@@ -32,4 +32,17 @@ describe('CandidatesService', () => {
     expect(req.request.body.retreats).toEqual([{ year: 1, isCompleted: true }]);
     req.flush({});
   });
+
+  it('moves the selected candidates with one POST carrying their ids', () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const service = TestBed.inject(CandidatesService);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    service.advance(['c1', 'c2']).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/candidates/advance`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ candidateIds: ['c1', 'c2'] });
+    req.flush({ advanced: 2, completed: 0, skipped: [] });
+  });
 });

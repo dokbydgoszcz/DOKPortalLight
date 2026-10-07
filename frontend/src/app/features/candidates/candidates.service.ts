@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { PagedResult } from '../people/person.model';
-import { Candidate, CandidateFormValue } from './candidate.model';
+import { AdvanceResult, Candidate, CandidateFormValue } from './candidate.model';
 
 @Injectable({ providedIn: 'root' })
 export class CandidatesService {
@@ -24,6 +24,11 @@ export class CandidatesService {
 
   update(id: string, value: CandidateFormValue) {
     return this.http.put<Candidate>(`${this.baseUrl}/${id}`, value);
+  }
+
+  /** Przenosi kandydatów o rok dalej (z III roku: kończy formację). */
+  advance(candidateIds: string[]) {
+    return this.http.post<AdvanceResult>(`${this.baseUrl}/advance`, { candidateIds });
   }
 
   delete(id: string) {

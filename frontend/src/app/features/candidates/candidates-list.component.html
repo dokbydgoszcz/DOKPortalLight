@@ -2,6 +2,7 @@
   <div><h2>Kandydaci SKŚP</h2><p>Osoby zapisane do Szkoły Katechistów.</p></div>
   <div style="display:flex;gap:8px;align-items:center">
     <app-export-button list="candidates" />
+    <button *appHasPermission="'Candidates.Manage'" class="btn ghost" [disabled]="selectedIds().size === 0" (click)="advanceSelected()">Przenieś zaznaczonych do następnego roku ({{ selectedIds().size }})</button>
     <button *appHasPermission="'Candidates.Manage'" class="btn primary" (click)="openAddForm()">＋ Nowy kandydat</button>
   </div>
 </div>
@@ -17,10 +18,15 @@
 <div class="card">
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Kandydat</th><th>Rok</th><th>Parafia</th><th>Frekwencja</th><th>Opinie</th><th>Rekolekcje</th><th></th></tr></thead>
+      <thead><tr><th><ng-container *appHasPermission="'Candidates.Manage'"><input type="checkbox" class="select-all" [checked]="allSelected()" (change)="toggleAllSelected()" aria-label="Zaznacz wszystkich" /></ng-container></th><th>Kandydat</th><th>Rok</th><th>Parafia</th><th>Frekwencja</th><th>Opinie</th><th>Rekolekcje</th><th></th></tr></thead>
       <tbody>
         @for (candidate of candidates(); track candidate.id) {
           <tr>
+            <td>
+              <ng-container *appHasPermission="'Candidates.Manage'">
+                <input type="checkbox" class="select-candidate" [checked]="selectedIds().has(candidate.id)" [disabled]="candidate.status !== 'InFormation'" (change)="toggleSelected(candidate)" [attr.aria-label]="'Zaznacz ' + candidate.personFullName" />
+              </ng-container>
+            </td>
             <td>
               <b>{{ candidate.personFullName }}</b>
               @if (candidate.isFormationStopped && candidate.formationStopNote) {
@@ -33,6 +39,7 @@
                 @case ('Stopped') { <span class="pill gold">Formacja zatrzymana</span> }
                 @default { <span class="pill blue">{{ candidate.year }} ROK</span> }
               }
+              <div class="list-sub">od {{ candidate.yearSinceUtc | date: 'dd.MM.yyyy' }}</div>
             </td>
             <td>{{ candidate.parishName }}</td>
             <td>{{ candidate.attendancePercentage }}%</td>
@@ -46,6 +53,10 @@
             </td>
             <td>
               <ng-container *appHasPermission="'Candidates.Manage'">
+                @if (candidate.status === 'InFormation') {
+                  <span class="link" (click)="advanceOne(candidate)">{{ nextYearLabel(candidate.year) }}</span>
+                  &nbsp;·&nbsp;
+                }
                 <span class="link" (click)="openEditForm(candidate)">Edytuj</span>
                 &nbsp;·&nbsp;
                 <span class="link" style="color:var(--danger)" (click)="deleteCandidate(candidate)">Usuń</span>
@@ -53,7 +64,7 @@
             </td>
           </tr>
         } @empty {
-          <tr><td colspan="7" class="empty">Brak kandydatów.</td></tr>
+          <tr><td colspan="8" class="empty">Brak kandydatów.</td></tr>
         }
       </tbody>
     </table>
@@ -64,6 +75,7 @@
 <app-candidate-form
   [open]="isFormOpen()"
   [editing]="editingId() !== null"
+  [events]="formEvents()"
   [value]="formValue"
   (save)="onSave($event)"
   (cancel)="onCancel()">
