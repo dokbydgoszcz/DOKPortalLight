@@ -18,21 +18,18 @@
           </div>
           <div class="field">
             <label>Ścieżka</label>
-            <select [(ngModel)]="value.path" name="path">
-              <option value="BaptismCandidate">Kandydaci do Chrztu</option>
-              <option value="Confirmation">Bierzmowanie</option>
-              <option value="Communion">Stół Pański</option>
-              <option value="Conversion">Konwersja</option>
-              <option value="ReturnToUnity">Powrót do Jedności</option>
+            <select [ngModel]="value.path" (ngModelChange)="onPathChange($event)" name="path">
+              @for (path of paths; track path) {
+                <option [value]="path">{{ pathLabels[path] }}</option>
+              }
             </select>
           </div>
           <div class="field">
             <label>Etap</label>
             <select [(ngModel)]="value.stage" name="stage">
-              <option value="Application">Zgłoszenie</option>
-              <option value="Formation">Formacja</option>
-              <option value="Sacrament">Sakrament</option>
-              <option value="Graduate">Absolwent</option>
+              @for (stage of stages; track stage) {
+                <option [value]="stage">{{ stageLabels[stage] }}</option>
+              }
             </select>
           </div>
           <div class="field">

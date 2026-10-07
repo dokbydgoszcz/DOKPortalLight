@@ -5,6 +5,25 @@
   </div>
 </div>
 
+@if (summary()?.stalledCases?.length) {
+  <div class="card attention">
+    <div class="card-head"><h3>Wymaga uwagi — etap trwa dłużej niż rok ({{ summary()!.stalledCasesCount }})</h3></div>
+    <div class="card-body list">
+      @for (stalled of summary()!.stalledCases; track stalled.caseId) {
+        <div class="list-row">
+          <div class="list-main">
+            <div class="list-title">{{ stalled.personFullName }} — {{ pathLabels[stalled.path] }}, {{ stageLabels[stalled.stage] }}</div>
+            <div class="list-sub">na tym etapie od {{ stalled.stageSinceUtc | date: 'dd.MM.yyyy' }} ({{ stalled.monthsOnStage }} mies.)</div>
+          </div>
+        </div>
+      }
+      @if (summary()!.stalledCasesCount > summary()!.stalledCases.length) {
+        <div class="list-sub">…i {{ summary()!.stalledCasesCount - summary()!.stalledCases.length }} więcej</div>
+      }
+    </div>
+  </div>
+}
+
 <div class="grid stats">
   <div class="card stat">
     <div class="stat-label">Osoby w bazie</div>

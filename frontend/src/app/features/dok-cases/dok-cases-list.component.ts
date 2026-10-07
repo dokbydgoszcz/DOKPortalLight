@@ -4,7 +4,8 @@ import { Component, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DokCasesService } from './dok-cases.service';
-import { DokCase, DokCaseFormValue } from './dok-case.model';
+import { DokCase, DokCaseFormValue, DokStage } from './dok-case.model';
+import { DOK_PATH_LABELS, DOK_STAGE_LABELS, firstStageOf } from './dok-stages';
 import { DokCaseFormComponent } from './dok-case-form.component';
 import { PastoralNotesService } from './pastoral-notes.service';
 import { PastoralNote } from './pastoral-note.model';
@@ -18,13 +19,7 @@ import { ACCEPT_ATTRIBUTE, RULES_HINT, formatFileSize, saveBlob, validateFile } 
 import { serverMessage } from '../../shared/http-error';
 import { environment } from '../../../environments/environment';
 
-const PATH_LABELS: Record<string, string> = {
-  BaptismCandidate: 'Chrzest',
-  Confirmation: 'Bierzmowanie',
-  Communion: 'Stół Pański',
-  Conversion: 'Konwersja',
-  ReturnToUnity: 'Powrót do Jedności'
-};
+const PATH_LABELS: Record<string, string> = DOK_PATH_LABELS;
 
 const PAGE_SIZE = 20;
 
@@ -48,7 +43,7 @@ export class DokCasesListComponent implements OnInit {
   readonly totalCount = signal(0);
   readonly pageSize = PAGE_SIZE;
   readonly isFormOpen = signal(false);
-  formValue: DokCaseFormValue = { personId: '', path: 'BaptismCandidate', stage: 'Application', catechistPersonId: '' };
+  formValue: DokCaseFormValue = { personId: '', path: 'BaptismCandidate', stage: firstStageOf('BaptismCandidate'), catechistPersonId: '' };
 
   readonly baptismCount = signal(0);
   readonly confirmationCount = signal(0);
@@ -108,7 +103,7 @@ export class DokCasesListComponent implements OnInit {
   }
 
   openAddForm(): void {
-    this.formValue = { personId: '', path: 'BaptismCandidate', stage: 'Application', catechistPersonId: '' };
+    this.formValue = { personId: '', path: 'BaptismCandidate', stage: firstStageOf('BaptismCandidate'), catechistPersonId: '' };
     this.isFormOpen.set(true);
   }
 
@@ -130,6 +125,10 @@ export class DokCasesListComponent implements OnInit {
 
   pathLabel(path: string): string {
     return PATH_LABELS[path] ?? path;
+  }
+
+  stageLabel(stage: DokStage): string {
+    return DOK_STAGE_LABELS[stage] ?? stage;
   }
 
   deleteCase(dokCase: DokCase): void {

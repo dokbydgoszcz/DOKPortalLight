@@ -5,7 +5,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 import { api, click, clickByText, paged, setInput, setSelect, setup, textOf } from '../../testing/test-helpers';
 
 const dokCase = {
-  id: '1', personId: 'p1', personFullName: 'Jan Kowalski', parishName: null, path: 'Confirmation', stage: 'Formation',
+  id: '1', personId: 'p1', personFullName: 'Jan Kowalski', parishName: null, path: 'Confirmation', stage: 'Evangelization',
   catechistPersonId: 'c1', catechistFullName: 'Anna Maj', mentorPersonId: null, mentorFullName: null,
   lastMeetingDate: null, completedAtUtc: null, meetingsRecorded: 0, meetingsAttended: 0
 };
@@ -59,7 +59,7 @@ describe('DokCasesListComponent', () => {
   it('translates known paths and falls back to the raw value for unknown ones', () => {
     const { fixture } = boot();
 
-    expect(fixture.componentInstance.pathLabel('Communion')).toBe('Stół Pański');
+    expect(fixture.componentInstance.pathLabel('Communion')).toBe('Eucharystia');
     expect(fixture.componentInstance.pathLabel('Nowa')).toBe('Nowa');
   });
 
@@ -93,13 +93,15 @@ describe('DokCasesListComponent', () => {
       expect(save().disabled).toBe(true);
       setSelect(ctx.el, 'select[name="catechistPersonId"]', 'c1');
       setSelect(ctx.el, 'select[name="path"]', 'Confirmation');
-      setSelect(ctx.el, 'select[name="stage"]', 'Formation');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      setSelect(ctx.el, 'select[name="stage"]', 'Evangelization');
       ctx.fixture.detectChanges();
       expect(save().disabled).toBe(false);
 
       save().click();
       const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === casesUrl);
-      expect(req.request.body).toEqual({ personId: 'p1', path: 'Confirmation', stage: 'Formation', catechistPersonId: 'c1' });
+      expect(req.request.body).toEqual({ personId: 'p1', path: 'Confirmation', stage: 'Evangelization', catechistPersonId: 'c1' });
       req.flush(dokCase);
       ctx.fixture.detectChanges();
 
@@ -582,6 +584,26 @@ describe('DokCasesListComponent', () => {
       const { el } = boot([{ ...dokCase, meetingsRecorded: 3, meetingsAttended: 2 }]);
 
       expect(textOf(el)).toContain('2/3 (67%)');
+    });
+  });
+
+  describe('stages', () => {
+    it('shows the stage as its Polish name, and Eucharystia on the path card', () => {
+      const { el } = boot([{ ...dokCase, path: 'BaptismCandidate', stage: 'Catechumenate' }]);
+
+      expect(textOf(el)).toContain('Katechumenat');
+      expect(textOf(el)).not.toContain('Catechumenate');
+      expect(textOf(el)).toContain('Eucharystia');
+      expect(textOf(el)).not.toContain('Stół Pański');
+    });
+
+    it('starts a new case at the first stage of the default path', async () => {
+      const ctx = boot();
+      clickByText(ctx.el, 'Nowy podopieczny');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+
+      expect((ctx.el.querySelector('select[name="stage"]') as HTMLSelectElement).value).toBe('Prekatechumenate');
     });
   });
 });

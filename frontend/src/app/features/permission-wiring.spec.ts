@@ -87,7 +87,7 @@ describe('action buttons are gated by permissions', () => {
   });
 
   it('dok-cases: row actions are gated independently', () => {
-    const dokCase = { id: '1', personId: 'p1', personFullName: 'Jan Kowalski', parishName: null, path: 'Confirmation', stage: 'Formation', catechistPersonId: 'c1', catechistFullName: 'Anna Maj', mentorPersonId: null, mentorFullName: null, lastMeetingDate: null, completedAtUtc: null };
+    const dokCase = { id: '1', personId: 'p1', personFullName: 'Jan Kowalski', parishName: null, path: 'Confirmation', stage: 'Evangelization', catechistPersonId: 'c1', catechistFullName: 'Anna Maj', mentorPersonId: null, mentorFullName: null, lastMeetingDate: null, completedAtUtc: null };
     const scenarios: Array<[string[], boolean, boolean, boolean]> = [
       [[], false, false, false],
       [['PastoralNotes.View'], true, false, false],

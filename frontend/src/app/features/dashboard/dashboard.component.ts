@@ -1,24 +1,25 @@
 import { Component, OnInit, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { DashboardService } from './dashboard.service';
-import { DashboardSummary, DokStageCount } from './dashboard.model';
+import { DashboardSummary } from './dashboard.model';
+import { DOK_PATH_LABELS, DOK_STAGE_LABELS } from '../dok-cases/dok-stages';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
+  imports: [DatePipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
   readonly summary = signal<DashboardSummary | null>(null);
 
-  readonly stageLabels: Record<DokStageCount['stage'], string> = {
-    Application: 'Zgłoszenie',
-    Formation: 'Formacja',
-    Sacrament: 'Sakrament',
-    Graduate: 'Absolwent'
-  };
+  readonly stageLabels = DOK_STAGE_LABELS;
+  readonly pathLabels = DOK_PATH_LABELS;
 
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-07', text: 'Podopieczni DOK — etapy formacji zależą teraz od ścieżki: Kandydaci do Chrztu (Prekatechumenat, Katechumenat, Wybranie, Neofita, Absolwent), Bierzmowanie (Ewangelizacja, Absolwent), a Eucharystia (dawniej „Stół Pański”), Konwersja i Powrót do Jedności (Ewangelizacja, Formacja bliższa, Absolwent). W formularzu lista etapów zmienia się po wyborze ścieżki, a serwer nie przyjmie etapu spoza ścieżki. Dotychczasowe sprawy wróciły na pierwszy etap swojej ścieżki (absolwenci zostali absolwentami). Pulpit pokazuje liczbę spraw na każdym etapie.' },
+    { date: '2026-10-07', text: 'Pulpit — nowa karta „Wymaga uwagi”: lista podopiecznych DOK, którzy są na jednym etapie dłużej niż rok (od najdłużej czekających, z datą wejścia na etap i liczbą miesięcy). Absolwenci się nie liczą, a katechista widzi tylko swoich podopiecznych. Czas na etapie liczy się od ostatniej zmiany etapu.' },
     { date: '2026-10-06', text: 'Wygląd — w menu bocznym zamiast liter „SK” jest krzyż (taki jak na stronie logowania i w ikonie karty), a karta przeglądarki ma tytuł „DOK Portal” zamiast „Frontend” albo tytułu logowania. Jeśli przeglądarka nadal pokazuje starą ikonę karty, odśwież stronę z pominięciem pamięci podręcznej (Ctrl+F5) — adresy ikon zostały zmienione, żeby wymusić pobranie nowych.' },
     { date: '2026-10-06', text: 'Mailing — nowy przycisk „Wyślij wiadomość testową”: wysyła jedną wiadomość na adres zalogowanego użytkownika, żeby sprawdzić, czy wysyłka e-maili jest skonfigurowana. Gdy serwer poczty odrzuci wiadomość, pokazuje powód (np. brak uprawnień konta). Wysyłka z konta noreply@bydgoskateologia.pl działa po ustawieniu hasła przez administratora w Azure.' },
     { date: '2026-10-03', text: 'Katechiści (dawniej „Katechiści posłani”) — menu i ekran mają nową nazwę. Kandydat, który ukończył III rok (od 1 września), trafia na tę listę ze statusem „Przed udzieleniem posługi”. Dyrektor DOK, Dyrektor SKŚP lub Administrator jednym kliknięciem „Udziel posłania” zakłada mu misję (data posłania i początek misji = dziś, koniec = za rok; miejsce posługi i daty uzupełnisz w „Edytuj”). Przy każdej misji jest „Załączniki”, gdzie można dołączyć dokument posłania. Dyrektor DOK ma teraz dostęp do tego ekranu. Wiersze „Przed udzieleniem posługi” są też w eksporcie do Excela (kolumna „Status”), a grupa mailingu „Katechiści” obejmuje także oczekujących.' },

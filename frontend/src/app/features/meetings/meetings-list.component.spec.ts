@@ -15,10 +15,10 @@ const attendeesMeeting: Meeting = {
   ]
 };
 const dokCases = [{
-  id: 'c1', personId: 'p1', personFullName: 'Jan Kowalski', parishName: null, path: 'Confirmation', stage: 'Formation',
+  id: 'c1', personId: 'p1', personFullName: 'Jan Kowalski', parishName: null, path: 'Confirmation', stage: 'Evangelization',
   catechistPersonId: 'k1', catechistFullName: 'Anna Maj', mentorPersonId: null, mentorFullName: null, lastMeetingDate: null, completedAtUtc: null
 }, {
-  id: 'c2', personId: 'p2', personFullName: 'Ewa Zielińska', parishName: null, path: 'Confirmation', stage: 'Formation',
+  id: 'c2', personId: 'p2', personFullName: 'Ewa Zielińska', parishName: null, path: 'Confirmation', stage: 'Evangelization',
   catechistPersonId: 'k1', catechistFullName: 'Anna Maj', mentorPersonId: null, mentorFullName: null, lastMeetingDate: null, completedAtUtc: null
 }];
 const url = api('/api/meetings');

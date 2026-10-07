@@ -1,5 +1,5 @@
 export type DokPath = 'BaptismCandidate' | 'Confirmation' | 'Communion' | 'Conversion' | 'ReturnToUnity';
-export type DokStage = 'Application' | 'Formation' | 'Sacrament' | 'Graduate';
+export type DokStage = 'Evangelization' | 'CloserFormation' | 'Prekatechumenate' | 'Catechumenate' | 'Election' | 'Neophyte' | 'Graduate';
 
 export interface DokCase {
   id: string;

@@ -10,7 +10,7 @@
   <div class="card stat"><div class="stat-label">Katechumeni</div><div class="stat-value">{{ baptismCount() }}</div></div>
   <div class="card stat"><div class="stat-label">Bierzmowanie</div><div class="stat-value">{{ confirmationCount() }}</div></div>
   <div class="card stat"><div class="stat-label">Konwersja / Rekonsyliacja</div><div class="stat-value">{{ conversionCount() }}</div></div>
-  <div class="card stat"><div class="stat-label">Stół Pański</div><div class="stat-value">{{ communionCount() }}</div></div>
+  <div class="card stat"><div class="stat-label">Eucharystia</div><div class="stat-value">{{ communionCount() }}</div></div>
 </div>
 
 <div class="card">
@@ -22,7 +22,7 @@
           <tr>
             <td><b>{{ dokCase.personFullName }}</b></td>
             <td>{{ pathLabel(dokCase.path) }}</td>
-            <td><span class="pill blue">{{ dokCase.stage }}</span></td>
+            <td><span class="pill blue">{{ stageLabel(dokCase.stage) }}</span></td>
             <td>{{ dokCase.catechistFullName }}</td>
             <td class="attendance">{{ attendanceLabel(dokCase) }}</td>
             <td>{{ dokCase.parishName }}</td>

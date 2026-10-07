@@ -10,7 +10,7 @@ const people = [
 
 function render(open: boolean) {
   const ctx = setup(DokCaseFormComponent);
-  const value: DokCaseFormValue = { personId: '', path: 'BaptismCandidate', stage: 'Application', catechistPersonId: '' };
+  const value: DokCaseFormValue = { personId: '', path: 'BaptismCandidate', stage: 'Prekatechumenate', catechistPersonId: '' };
   ctx.fixture.componentRef.setInput('open', false);
   ctx.fixture.componentRef.setInput('value', value);
   const saved: DokCaseFormValue[] = [];
@@ -54,12 +54,14 @@ describe('DokCaseFormComponent', () => {
 
     setSelect(el, 'select[name="catechistPersonId"]', 'c1');
     setSelect(el, 'select[name="path"]', 'Communion');
-    setSelect(el, 'select[name="stage"]', 'Sacrament');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    setSelect(el, 'select[name="stage"]', 'CloserFormation');
     fixture.detectChanges();
     expect(saveButton(el).disabled).toBe(false);
 
     saveButton(el).click();
-    expect(saved).toEqual([{ personId: 'p1', path: 'Communion', stage: 'Sacrament', catechistPersonId: 'c1' }]);
+    expect(saved).toEqual([{ personId: 'p1', path: 'Communion', stage: 'CloserFormation', catechistPersonId: 'c1' }]);
   });
 
   it('emits cancel from the footer button and the close icon', () => {
@@ -69,5 +71,59 @@ describe('DokCaseFormComponent', () => {
     (el.querySelector('.modal-head .close') as HTMLButtonElement).click();
 
     expect(cancelled()).toBe(2);
+  });
+
+  describe('stages depend on the path', () => {
+    const stageOptions = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll('select[name="stage"] option')).map(o => o.textContent!.trim());
+
+    it('offers the stages of the chosen path in formation order, ending with Absolwent', async () => {
+      const { fixture, el } = render(true);
+      await fixture.whenStable();
+      expect(stageOptions(el)).toEqual(['Prekatechumenat', 'Katechumenat', 'Wybranie', 'Neofita', 'Absolwent']);
+
+      setSelect(el, 'select[name="path"]', 'Confirmation');
+      fixture.detectChanges();
+      expect(stageOptions(el)).toEqual(['Ewangelizacja', 'Absolwent']);
+
+      setSelect(el, 'select[name="path"]', 'Conversion');
+      fixture.detectChanges();
+      expect(stageOptions(el)).toEqual(['Ewangelizacja', 'Formacja bliższa', 'Absolwent']);
+    });
+
+    it('calls the Communion path Eucharystia', async () => {
+      const { fixture, el } = render(true);
+      await fixture.whenStable();
+
+      const labels = Array.from(el.querySelectorAll('select[name="path"] option')).map(o => o.textContent!.trim());
+      expect(labels).toContain('Eucharystia');
+      expect(labels).not.toContain('Stół Pański');
+    });
+
+    it('moves a stage that does not exist on the new path to its first stage', async () => {
+      const { fixture, el } = render(true);
+      await fixture.whenStable();
+      setSelect(el, 'select[name="stage"]', 'Election');
+      fixture.detectChanges();
+
+      setSelect(el, 'select[name="path"]', 'Confirmation');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.value.stage).toBe('Evangelization');
+      await fixture.whenStable();
+      expect((el.querySelector('select[name="stage"]') as HTMLSelectElement).value).toBe('Evangelization');
+    });
+
+    it('keeps a stage that exists on both paths, such as Absolwent', async () => {
+      const { fixture, el } = render(true);
+      await fixture.whenStable();
+      setSelect(el, 'select[name="stage"]', 'Graduate');
+      fixture.detectChanges();
+
+      setSelect(el, 'select[name="path"]', 'Communion');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.value.stage).toBe('Graduate');
+    });
   });
 });
