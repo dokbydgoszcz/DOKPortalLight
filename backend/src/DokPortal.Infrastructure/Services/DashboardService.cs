@@ -11,6 +11,8 @@ public class DashboardService : IDashboardService
 {
     private const int UpcomingMeetingsWindowDays = 7;
     private const int StalledCasesShown = 20;
+    private const int MeetingsShown = 10;
+    private const int MissingDocumentsCasesShown = 20;
 
     private readonly AppDbContext _db;
     private readonly ICaseScopeProvider _scope;
@@ -64,21 +66,48 @@ public class DashboardService : IDashboardService
             MonthsOnStage = FullMonthsBetween(c.StageSinceUtc, now)
         }).ToList();
 
-        var missingDocumentsCasesCount = await (
+        var missingRows = await (
             from doc in _db.CaseDocuments
             join dokCase in cases on doc.DokCaseId equals dokCase.Id
             where !doc.IsProvided
-            select doc.DokCaseId
-        ).Distinct().CountAsync(ct);
+            select new { doc.DokCaseId, doc.Name }
+        ).ToListAsync(ct);
+        var missingByCase = missingRows.GroupBy(r => r.DokCaseId).ToDictionary(g => g.Key, g => g.Select(r => r.Name).OrderBy(n => n).ToList());
+        var missingCaseIds = missingByCase.Keys.ToList();
+        var missingCases = (await cases.Where(c => missingCaseIds.Contains(c.Id)).Include(c => c.Person).AsNoTracking().ToListAsync(ct))
+            .OrderBy(c => c.Person!.LastName).ThenBy(c => c.Person!.FirstName)
+            .Take(MissingDocumentsCasesShown)
+            .Select(c => new MissingDocumentsCaseDto
+            {
+                CaseId = c.Id,
+                PersonFullName = c.Person!.FullName,
+                Path = c.Path.ToString(),
+                MissingDocuments = missingByCase[c.Id]
+            }).ToList();
+
+        var meetingsInWindow = _db.Meetings.ForScope(_db, scope).Where(m => m.MeetingDate >= today && m.MeetingDate <= windowEnd);
+        var meetingEntities = await meetingsInWindow
+            .Include(m => m.DokCase).ThenInclude(c => c!.Person)
+            .OrderBy(m => m.MeetingDate).ThenBy(m => m.CreatedAtUtc)
+            .Take(MeetingsShown)
+            .AsNoTracking()
+            .ToListAsync(ct);
+        var upcomingMeetings = meetingEntities.Select(m => new UpcomingMeetingDto
+        {
+            MeetingId = m.Id,
+            MeetingDate = m.MeetingDate,
+            Label = m.DokCase?.Person?.FullName ?? m.GroupLabel ?? "Spotkanie"
+        }).ToList();
 
         return new DashboardSummaryDto
         {
             PeopleCount = await _db.People.CountAsync(ct),
             ParishCount = await _db.Parishes.CountAsync(ct),
             DokCasesByStage = dokCasesByStage,
-            MissingDocumentsCasesCount = missingDocumentsCasesCount,
-            UpcomingMeetingsCount = await _db.Meetings.ForScope(_db, scope)
-                .CountAsync(m => m.MeetingDate >= today && m.MeetingDate <= windowEnd, ct),
+            MissingDocumentsCasesCount = missingByCase.Count,
+            MissingDocumentsCases = missingCases,
+            UpcomingMeetingsCount = await meetingsInWindow.CountAsync(ct),
+            UpcomingMeetings = upcomingMeetings,
             ActiveCandidatesCount = await _db.Candidates.InFormation().CountAsync(ct),
             StalledCases = stalledCases,
             StalledCasesCount = stalledCount

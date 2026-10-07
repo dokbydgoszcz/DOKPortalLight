@@ -43,6 +43,35 @@ public class DokCaseServiceTests
     }
 
     [Fact]
+    public async Task SearchAsync_CanFilterByStage_AcrossPaths_AndTotalCountFollowsTheFilter()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var (personId, catechistId) = await SeedPeopleAsync(db);
+        var service = new DokCaseService(db);
+        await service.CreateAsync(new CreateDokCaseRequest
+        {
+            PersonId = personId, Path = DokPath.Confirmation, Stage = DokStage.Evangelization, CatechistPersonId = catechistId
+        }, default);
+        await service.CreateAsync(new CreateDokCaseRequest
+        {
+            PersonId = personId, Path = DokPath.Communion, Stage = DokStage.Evangelization, CatechistPersonId = catechistId
+        }, default);
+        await service.CreateAsync(new CreateDokCaseRequest
+        {
+            PersonId = personId, Path = DokPath.Communion, Stage = DokStage.CloserFormation, CatechistPersonId = catechistId
+        }, default);
+
+        var evangelization = await service.SearchAsync(null, 1, 20, default, DokStage.Evangelization);
+        var communionCloser = await service.SearchAsync(DokPath.Communion, 1, 20, default, DokStage.CloserFormation);
+        var all = await service.SearchAsync(null, 1, 20, default);
+
+        Assert.Equal(2, evangelization.TotalCount);
+        Assert.All(evangelization.Items, c => Assert.Equal("Evangelization", c.Stage.ToString()));
+        Assert.Equal(1, communionCloser.TotalCount);
+        Assert.Equal(3, all.TotalCount);
+    }
+
+    [Fact]
     public async Task UpdateAsync_TransitioningToGraduate_StampsCompletedAtUtc()
     {
         await using var db = CreateContext(Guid.NewGuid().ToString());

@@ -21,8 +21,9 @@ public class DokCasesController : ControllerBase
     [HttpGet]
     [HasPermission(Permissions.DokCasesView)]
     public async Task<ActionResult<PagedResult<DokCaseDto>>> Search(
-        [FromQuery] DokPath? path, [FromQuery] int page = 1, [FromQuery] int pageSize = 100, CancellationToken ct = default)
-        => Ok(await _dokCaseService.SearchAsync(path, page, pageSize, ct));
+        [FromQuery] DokPath? path, [FromQuery] int page = 1, [FromQuery] int pageSize = 100,
+        [FromQuery] DokStage? stage = null, CancellationToken ct = default)
+        => Ok(await _dokCaseService.SearchAsync(path, page, pageSize, ct, stage));
 
     [HttpGet("{id:guid}")]
     [HasPermission(Permissions.DokCasesView)]

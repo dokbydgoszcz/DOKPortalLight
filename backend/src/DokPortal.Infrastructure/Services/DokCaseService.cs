@@ -22,7 +22,7 @@ public class DokCaseService : IDokCaseService
         _time = time ?? TimeProvider.System;
     }
 
-    public async Task<PagedResult<DokCaseDto>> SearchAsync(DokPath? path, int page, int pageSize, CancellationToken ct)
+    public async Task<PagedResult<DokCaseDto>> SearchAsync(DokPath? path, int page, int pageSize, CancellationToken ct, DokStage? stage = null)
     {
         var scope = await _scope.GetAsync(ct);
         var q = _db.DokCases.ForScope(scope)
@@ -34,6 +34,11 @@ public class DokCaseService : IDokCaseService
         if (path.HasValue)
         {
             q = q.Where(c => c.Path == path.Value);
+        }
+
+        if (stage.HasValue)
+        {
+            q = q.Where(c => c.Stage == stage.Value);
         }
 
         var total = await q.CountAsync(ct);
