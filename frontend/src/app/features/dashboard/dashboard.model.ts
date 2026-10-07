@@ -15,12 +15,28 @@ export interface StalledCase {
   monthsOnStage: number;
 }
 
+export interface UpcomingMeeting {
+  meetingId: string;
+  meetingDate: string;
+  /** Podopieczny (spotkanie indywidualne) albo nazwa grupy. */
+  label: string;
+}
+
+export interface MissingDocumentsCase {
+  caseId: string;
+  personFullName: string;
+  path: DokPath;
+  missingDocuments: string[];
+}
+
 export interface DashboardSummary {
   peopleCount: number;
   parishCount: number;
   dokCasesByStage: DokStageCount[];
   missingDocumentsCasesCount: number;
   upcomingMeetingsCount: number;
+  upcomingMeetings: UpcomingMeeting[];
+  missingDocumentsCases: MissingDocumentsCase[];
   activeCandidatesCount: number;
   stalledCases: StalledCase[];
   stalledCasesCount: number;

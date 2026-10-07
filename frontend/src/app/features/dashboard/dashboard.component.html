@@ -24,37 +24,93 @@
   </div>
 }
 
-<div class="grid stats">
-  <div class="card stat">
-    <div class="stat-label">Osoby w bazie</div>
-    <div class="stat-value">{{ summary()?.peopleCount ?? '—' }}</div>
+@if (nameDays(); as upcoming) {
+  <div class="card name-days">
+    <div class="card-head"><h3>Nadchodzące imieniny</h3></div>
+    <div class="card-body list">
+      @for (item of upcoming; track item.personId) {
+        <div class="list-row">
+          <div class="list-main">
+            <div class="list-title">{{ item.fullName }}</div>
+            <div class="list-sub">{{ pad(item.nameDayDay) }}.{{ pad(item.nameDayMonth) }} — {{ nameDayWhen(item.daysUntil) }}</div>
+          </div>
+        </div>
+      } @empty {
+        <div class="list-sub">W najbliższych 14 dniach nikt nie ma imienin.</div>
+      }
+    </div>
   </div>
-  <div class="card stat">
-    <div class="stat-label">Parafie</div>
-    <div class="stat-value">{{ summary()?.parishCount ?? '—' }}</div>
-  </div>
-  <div class="card stat">
-    <div class="stat-label">Kandydaci SKŚP</div>
-    <div class="stat-value">{{ summary()?.activeCandidatesCount ?? '—' }}</div>
-  </div>
-  <div class="card stat">
-    <div class="stat-label">Spotkania w ciągu 7 dni</div>
-    <div class="stat-value">{{ summary()?.upcomingMeetingsCount ?? '—' }}</div>
-  </div>
-</div>
+}
 
 <div class="grid stats">
-  <div class="card stat">
+  <a class="card stat" [class.linked]="can(null)" [routerLink]="can(null) ? '/people' : null">
+    <div class="stat-label">Osoby w bazie</div>
+    <div class="stat-value">{{ summary()?.peopleCount ?? '—' }}</div>
+  </a>
+  <a class="card stat" [class.linked]="can(perm.ParishesManage)" [routerLink]="can(perm.ParishesManage) ? '/parishes' : null">
+    <div class="stat-label">Parafie</div>
+    <div class="stat-value">{{ summary()?.parishCount ?? '—' }}</div>
+  </a>
+  <a class="card stat" [class.linked]="can(perm.CandidatesView)" [routerLink]="can(perm.CandidatesView) ? '/candidates' : null">
+    <div class="stat-label">Kandydaci SKŚP</div>
+    <div class="stat-value">{{ summary()?.activeCandidatesCount ?? '—' }}</div>
+  </a>
+  <a class="card stat" [class.linked]="can(perm.MeetingsView)" [routerLink]="can(perm.MeetingsView) ? '/meetings' : null">
+    <div class="stat-label">Spotkania w ciągu 7 dni</div>
+    <div class="stat-value">{{ summary()?.upcomingMeetingsCount ?? '—' }}</div>
+  </a>
+</div>
+
+@if (summary()?.upcomingMeetings?.length) {
+  <div class="card meetings">
+    <div class="card-head"><h3>Spotkania w najbliższych 7 dniach ({{ summary()!.upcomingMeetingsCount }})</h3></div>
+    <div class="card-body list">
+      @for (meeting of summary()!.upcomingMeetings; track meeting.meetingId) {
+        <a class="list-row" [class.linked]="can(perm.MeetingsView)" [routerLink]="can(perm.MeetingsView) ? '/meetings' : null">
+          <div class="list-main">
+            <div class="list-title">{{ meeting.label }}</div>
+            <div class="list-sub">{{ meeting.meetingDate | date: 'dd.MM.yyyy' }}</div>
+          </div>
+        </a>
+      }
+      @if (summary()!.upcomingMeetingsCount > summary()!.upcomingMeetings.length) {
+        <div class="list-sub">…i {{ summary()!.upcomingMeetingsCount - summary()!.upcomingMeetings.length }} więcej — zobacz w harmonogramie</div>
+      }
+    </div>
+  </div>
+}
+
+<div class="grid stats">
+  <a class="card stat" [class.linked]="can(perm.DokCasesView)" [routerLink]="can(perm.DokCasesView) ? '/dok-cases' : null">
     <div class="stat-label">Sprawy DOK z brakującymi dokumentami</div>
     <div class="stat-value">{{ summary()?.missingDocumentsCasesCount ?? '—' }}</div>
-  </div>
+  </a>
   @for (item of summary()?.dokCasesByStage ?? []; track item.stage) {
-    <div class="card stat">
+    <a class="card stat" [class.linked]="can(perm.DokCasesView)" [routerLink]="can(perm.DokCasesView) ? '/dok-cases' : null" [queryParams]="{ stage: item.stage }">
       <div class="stat-label">DOK — {{ stageLabels[item.stage] }}</div>
       <div class="stat-value">{{ item.count }}</div>
-    </div>
+    </a>
   }
 </div>
+
+@if (summary()?.missingDocumentsCases?.length) {
+  <div class="card missing-documents">
+    <div class="card-head"><h3>Sprawy DOK z brakującymi dokumentami ({{ summary()!.missingDocumentsCasesCount }})</h3></div>
+    <div class="card-body list">
+      @for (item of summary()!.missingDocumentsCases; track item.caseId) {
+        <a class="list-row" [class.linked]="can(perm.DokCasesView)" [routerLink]="can(perm.DokCasesView) ? '/dok-cases' : null">
+          <div class="list-main">
+            <div class="list-title">{{ item.personFullName }} — {{ pathLabels[item.path] }}</div>
+            <div class="list-sub">brakuje: {{ item.missingDocuments.join(', ') }}</div>
+          </div>
+        </a>
+      }
+      @if (summary()!.missingDocumentsCasesCount > summary()!.missingDocumentsCases.length) {
+        <div class="list-sub">…i {{ summary()!.missingDocumentsCasesCount - summary()!.missingDocumentsCases.length }} więcej</div>
+      }
+    </div>
+  </div>
+}
 
 <div class="card">
   <div class="card-head"><h3>Co nowego</h3></div>

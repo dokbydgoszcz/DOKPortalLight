@@ -1,11 +1,12 @@
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { DokCasesService } from './dok-cases.service';
 import { DokCase, DokCaseFormValue, DokStage } from './dok-case.model';
-import { DOK_PATH_LABELS, DOK_STAGE_LABELS, firstStageOf } from './dok-stages';
+import { ALL_STAGES, DOK_PATH_LABELS, DOK_STAGE_LABELS, firstStageOf } from './dok-stages';
 import { DokCaseFormComponent } from './dok-case-form.component';
 import { PastoralNotesService } from './pastoral-notes.service';
 import { PastoralNote } from './pastoral-note.model';
@@ -64,6 +65,11 @@ export class DokCasesListComponent implements OnInit {
   readonly rulesHint = RULES_HINT;
   readonly formatFileSize = formatFileSize;
 
+  readonly stages = ALL_STAGES;
+  readonly stageFilter = signal<DokStage | ''>('');
+  /** Adres z filtrem etapu (kafelek na pulpicie); bez routera (np. w testach komponentu) lista po prostu nie jest filtrowana. */
+  private readonly route = inject(ActivatedRoute, { optional: true });
+
   constructor(
     private readonly dokCasesService: DokCasesService,
     private readonly pastoralNotesService: PastoralNotesService,
@@ -73,12 +79,16 @@ export class DokCasesListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    const stage = this.route?.snapshot.queryParamMap.get('stage');
+    if (stage && (ALL_STAGES as readonly string[]).includes(stage)) {
+      this.stageFilter.set(stage as DokStage);
+    }
     this.load();
     this.loadStats();
   }
 
   load(): void {
-    this.dokCasesService.search(undefined, this.page(), this.pageSize).subscribe({
+    this.dokCasesService.search(undefined, this.page(), this.pageSize, this.stageFilter() || undefined).subscribe({
       next: result => {
         this.cases.set(result.items);
         this.totalCount.set(result.totalCount);
@@ -95,6 +105,12 @@ export class DokCasesListComponent implements OnInit {
       this.conversionCount.set(all.filter(c => c.path === 'Conversion' || c.path === 'ReturnToUnity').length);
       this.communionCount.set(all.filter(c => c.path === 'Communion').length);
     });
+  }
+
+  onStageFilter(value: DokStage | ''): void {
+    this.stageFilter.set(value);
+    this.page.set(1);
+    this.load();
   }
 
   onPageChange(page: number): void {

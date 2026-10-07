@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DokCasesListComponent } from './dok-cases-list.component';
 import { ToastService } from '../../core/notifications/toast.service';
@@ -123,6 +124,59 @@ describe('DokCasesListComponent', () => {
       clickByText(ctx.el, 'Anuluj', '.modal-foot button');
       ctx.fixture.detectChanges();
       expect(ctx.el.querySelector('.modal')).toBeNull();
+    });
+  });
+
+  describe('filtering by stage', () => {
+    const withStage = (stage: string | null) =>
+      setup(DokCasesListComponent, {
+        providers: [{ provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(stage ? { stage } : {}) } } }]
+      });
+
+    function bootWithStage(stage: string | null) {
+      const ctx = withStage(stage);
+      ctx.fixture.detectChanges();
+      const list = ctx.http.expectOne(r => r.url === casesUrl && r.params.get('pageSize') === '20');
+      ctx.http.expectOne(r => r.url === casesUrl && r.params.get('pageSize') === '1000').flush(paged([dokCase, secondCase]));
+      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
+      return { ...ctx, list };
+    }
+
+    it('starts filtered when the address carries a stage (from a dashboard tile)', () => {
+      const ctx = bootWithStage('Evangelization');
+
+      expect(ctx.list.request.params.get('stage')).toBe('Evangelization');
+      ctx.list.flush(paged([dokCase]));
+      ctx.fixture.detectChanges();
+      expect((ctx.el.querySelector('select[name="stageFilter"]') as HTMLSelectElement).value).toBe('Evangelization');
+      expect(textOf(ctx.el)).toContain('Jan Kowalski');
+    });
+
+    it('does not filter without a stage in the address, nor with an unknown one', () => {
+      const plain = bootWithStage(null);
+      expect(plain.list.request.params.has('stage')).toBe(false);
+      plain.list.flush(paged([dokCase]));
+      TestBed.resetTestingModule();
+
+      const unknown = bootWithStage('Nieistniejacy');
+      expect(unknown.list.request.params.has('stage')).toBe(false);
+      unknown.list.flush(paged([dokCase]));
+    });
+
+    it('reloads from the first page when another stage is chosen, and drops the filter on “all”', () => {
+      const ctx = bootWithStage(null);
+      ctx.list.flush(paged([dokCase]));
+      ctx.fixture.detectChanges();
+
+      setSelect(ctx.el, 'select[name="stageFilter"]', 'Graduate');
+      const filtered = ctx.http.expectOne(r => r.url === casesUrl && r.params.get('stage') === 'Graduate');
+      expect(filtered.request.params.get('page')).toBe('1');
+      filtered.flush(paged([]));
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Brak podopiecznych.');
+
+      setSelect(ctx.el, 'select[name="stageFilter"]', '');
+      ctx.http.expectOne(r => r.url === casesUrl && !r.params.has('stage')).flush(paged([dokCase]));
     });
   });
 

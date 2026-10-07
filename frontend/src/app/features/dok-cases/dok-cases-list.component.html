@@ -14,6 +14,14 @@
 </div>
 
 <div class="card">
+  <div class="card-head">
+    <select name="stageFilter" [value]="stageFilter()" (change)="onStageFilter($any($event.target).value)">
+      <option value="">Wszystkie etapy</option>
+      @for (stage of stages; track stage) {
+        <option [value]="stage" [selected]="stage === stageFilter()">{{ stageLabel(stage) }}</option>
+      }
+    </select>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Podopieczny</th><th>Ścieżka</th><th>Etap</th><th>Katechista</th><th>Frekwencja</th><th>Parafia</th><th></th></tr></thead>

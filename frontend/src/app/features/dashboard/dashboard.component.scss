@@ -1,4 +1,24 @@
 
+.name-days,
+.meetings,
+.missing-documents {
+  margin-bottom: 18px;
+}
+
+a.linked {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--accent);
+  }
+}
+
+a.list-row.linked:hover {
+  background: var(--accent-soft);
+}
+
 .attention {
   margin-bottom: 18px;
   border-left: 4px solid var(--gold);

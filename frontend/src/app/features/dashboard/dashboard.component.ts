@@ -1,23 +1,35 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { DashboardService } from './dashboard.service';
+import { NameDaysService } from '../name-days/name-days.service';
+import { UpcomingNameDay } from '../name-days/name-day.model';
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { DashboardSummary } from './dashboard.model';
 import { DOK_PATH_LABELS, DOK_STAGE_LABELS } from '../dok-cases/dok-stages';
+
+const NAME_DAYS_WINDOW = 14;
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DatePipe],
+  imports: [DatePipe, RouterLink],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
   readonly summary = signal<DashboardSummary | null>(null);
+  /** Imieniny w najbliższych dniach; null, gdy się nie wczytały (reszta pulpitu działa bez nich). */
+  readonly nameDays = signal<UpcomingNameDay[] | null>(null);
 
+  readonly perm = Permissions;
   readonly stageLabels = DOK_STAGE_LABELS;
   readonly pathLabels = DOK_PATH_LABELS;
 
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-07', text: 'Pulpit — kafelki są teraz linkami: „Osoby w bazie” prowadzi do Osób, „Parafie” do rejestru parafii, „Kandydaci SKŚP” do kandydatów, „Spotkania w ciągu 7 dni” do harmonogramu, a „DOK — Ewangelizacja” (i pozostałe etapy) do listy podopiecznych już przefiltrowanej po tym etapie (filtr „Wszystkie etapy” jest też nad listą). Kafelek jest linkiem tylko, gdy masz uprawnienie do tego ekranu. Pod kafelkami są listy: spotkania z najbliższych 7 dni (z datą i podopiecznym albo grupą; klik prowadzi do harmonogramu) oraz sprawy DOK z brakującymi dokumentami (z wypisanymi brakami; klik prowadzi do podopiecznych).' },
+    { date: '2026-10-07', text: 'Pulpit — nowa karta „Nadchodzące imieniny”: kto ma imieniny w najbliższych 14 dniach (data i „dziś” / „jutro” / „za N dni”). Imieniny bierze się z pól „miesiąc” i „dzień imienin” przy osobie, więc pojawią się tylko u osób, którym je wpisano; pełna lista (30 dni) jest w „Kalendarz imienin”.' },
     { date: '2026-10-07', text: 'Zasoby dla katechistów — nowa pozycja w menu: wspólna biblioteka materiałów (scenariusze, wzory pism, opracowania), niezależna od superwizji i spraw. Superwizor oraz Dyrektorzy (DOK i SKŚP) dodają zasób (tytuł + opis) i dołączają do niego pliki (PDF, JPG, PNG, DOCX, DOC, TXT, do 20 MB); każdy z uprawnieniem „Zasoby — przeglądanie” (domyślnie także Katechista prowadzący) może je przeglądać i pobierać. Uprawnienia można zmienić w „Uprawnienia ról”.' },
     { date: '2026-10-07', text: 'Skierowanie do parafii — po „Skieruj” w Parafiach i giełdzie system sam zakłada rekord misji kanonicznej (miejsce: parafia, ważna rok od dziś; jeśli osoba ma już misję bez miejsca z „Udziel posłania”, dopisuje w niej parafię) i nadaje funkcję Katechista. Dodatkowo wysyła e-mail do proboszcza parafii (wskazanego w Osoby → funkcja Proboszcz) oraz do skierowanego katechisty, każdemu z danymi kontaktowymi drugiej strony. Uwaga: wysyłka e-maili zadziała po skonfigurowaniu poczty (patrz Mailing → Wyślij testowy e-mail); bez niej skierowanie i misja zapisują się normalnie.' },
     { date: '2026-10-07', text: 'Katechista jako funkcja — każda osoba z misją kanoniczną (także udzieloną przyciskiem „Udziel posłania”) ma teraz automatycznie funkcję „Katechista”, tak samo jak Akolita, Lektor czy Proboszcz. Dzięki temu na liście „Osoby” filtr „Katechista” pokazuje wszystkich katechistów; istniejące osoby z misjami dostały funkcję przy aktualizacji. Usunięcie misji nie odbiera funkcji — można ją zdjąć w edycji osoby.' },
@@ -84,9 +96,29 @@ export class DashboardComponent implements OnInit {
     { date: '2026-09-30', text: 'Nowy wygląd strony logowania i całej aplikacji.' }
   ];
 
-  constructor(private readonly dashboardService: DashboardService) {}
+  constructor(
+    private readonly dashboardService: DashboardService,
+    private readonly nameDaysService: NameDaysService,
+    private readonly auth: AuthService
+  ) {}
+
+  /** Kafelek i wiersz są linkiem tylko do ekranów, które użytkownik może otworzyć (null = bez uprawnienia nie ma linku). */
+  can(permission: string | null): boolean {
+    return permission === null || this.auth.hasPermission(permission);
+  }
+
+  nameDayWhen(daysUntil: number): string {
+    if (daysUntil === 0) return 'dziś';
+    if (daysUntil === 1) return 'jutro';
+    return `za ${daysUntil} dni`;
+  }
+
+  pad(n: number): string {
+    return String(n).padStart(2, '0');
+  }
 
   ngOnInit(): void {
     this.dashboardService.getSummary().subscribe(summary => this.summary.set(summary));
+    this.nameDaysService.upcoming(NAME_DAYS_WINDOW).subscribe({ next: items => this.nameDays.set(items), error: () => {} });
   }
 }
