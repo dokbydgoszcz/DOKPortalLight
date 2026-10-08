@@ -102,13 +102,44 @@ public class MailingService : IMailingService
         var campaign = await _db.MailingCampaigns.FirstOrDefaultAsync(c => c.Id == id, ct);
         if (campaign is null) return null;
 
-        var recipientEmails = await GetRecipientEmailsAsync(campaign.Group, ct);
-        foreach (var email in recipientEmails)
+        if (campaign.Status == CampaignStatus.Sent)
         {
-            await _emailSender.SendAsync(email, campaign.Subject, campaign.Body, ct);
+            throw new InvalidOperationException("Ta kampania została już wysłana.");
         }
 
-        campaign.RecipientCount = recipientEmails.Count;
+        var recipientEmails = (await GetRecipientEmailsAsync(campaign.Group, ct)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var delivered = 0;
+        var failed = 0;
+        string? firstError = null;
+        foreach (var email in recipientEmails)
+        {
+            try
+            {
+                await _emailSender.SendAsync(email, campaign.Subject, campaign.Body, ct);
+                delivered++;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (InvalidOperationException) when (delivered == 0 && failed == 0)
+            {
+                throw; // brak konfiguracji SMTP (nic jeszcze nie poszło) ma własny, czytelny komunikat
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                firstError ??= ex.Message;
+            }
+        }
+
+        if (delivered == 0 && failed > 0)
+        {
+            throw new InvalidOperationException($"Nie udało się wysłać żadnej wiadomości ({firstError}).");
+        }
+
+        campaign.RecipientCount = delivered;
+        campaign.FailedCount = failed;
         campaign.Status = CampaignStatus.Sent;
         campaign.SentAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
@@ -140,6 +171,7 @@ public class MailingService : IMailingService
         Body = c.Body,
         Group = c.Group,
         RecipientCount = c.RecipientCount,
+        FailedCount = c.FailedCount,
         Status = c.Status,
         CreatedAtUtc = c.CreatedAtUtc,
         SentAtUtc = c.SentAtUtc

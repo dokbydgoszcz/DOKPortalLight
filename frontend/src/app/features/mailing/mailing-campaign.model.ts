@@ -7,6 +7,8 @@ export interface MailingCampaign {
   body: string;
   group: MailingGroup;
   recipientCount: number;
+  /** Ilu adresatom nie udało się wysłać wiadomości (po wysyłce). */
+  failedCount?: number;
   status: CampaignStatus;
   createdAtUtc: string;
   sentAtUtc: string | null;

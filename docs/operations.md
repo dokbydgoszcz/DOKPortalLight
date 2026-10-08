@@ -62,9 +62,35 @@ Telemetria żądań `/health*` jest odrzucana w aplikacji. Dzienny limit danych 
 
 Workflow `.github/workflows/uptime.yml` co 15 minut w dni robocze (UTC 5–19) woła `/health`. Gdy aplikacja nie odpowie po 5 próbach, run kończy się błędem i GitHub wysyła powiadomienie. Cron GitHuba bywa opóźniany, więc zimne starty są łagodzone, nie wyeliminowane. Workflow nie dotyka bazy.
 
-## Poczta wychodząca (SMTP, konto Exchange)
+## Poczta wychodząca (SMTP)
 
 Mailing i przypomnienia wysyłają e-maile przez SMTP, gdy w ustawieniach App Service (`dokportal-api`) jest `Smtp__Host`. Bez niego aplikacja zgłasza czytelny błąd „nie jest skonfigurowane”, a reszta działa.
+
+### Wariant A (obecnie): Gmail `dokbydgoszcz@gmail.com`
+
+Działa od razu, bez udziału administratora Microsoft 365. Wymaga **hasła aplikacji** (zwykłe hasło do Gmaila nie zadziała przez SMTP).
+
+1. Konto Google → Bezpieczeństwo → włącz **weryfikację dwuetapową** (jeśli jeszcze nie jest włączona).
+2. Konto Google → Bezpieczeństwo → **Hasła aplikacji** → utwórz hasło (np. nazwa „DOK Portal”) → skopiuj 16 znaków.
+3. W App Service `dokportal-api` ustaw (hasło wpisuje tylko administrator, nie trafia do repozytorium ani czatu):
+
+| Ustawienie | Wartość |
+|---|---|
+| `Smtp__Host` | `smtp.gmail.com` |
+| `Smtp__Port` | `587` |
+| `Smtp__EnableSsl` | `true` (STARTTLS) |
+| `Smtp__Username` | `dokbydgoszcz@gmail.com` |
+| `Smtp__FromEmail` | `dokbydgoszcz@gmail.com` |
+| `Smtp__FromName` | `DOK Portal` |
+| `Smtp__Password` | hasło aplikacji (16 znaków, bez spacji) |
+
+4. Po restarcie: Mailing → „Wyślij wiadomość testową”.
+
+Ograniczenia Gmaila: ok. 500 wiadomości na dobę dla zwykłego konta (Google Workspace: ok. 2000) – większa kampania zostanie ucięta przez Gmaila, a błędy pojedynczych adresów trafią do raportu wysyłki; nadawca zawsze będzie `dokbydgoszcz@gmail.com` (Gmail podmienia inny adres „Od”); odpowiedzi odbiorców lądują w tej skrzynce.
+
+### Wariant B: `noreply@bydgoskateologia.pl` (Exchange Online / Microsoft 365)
+
+Wymaga włączenia SMTP AUTH przez administratora Microsoft 365 (patrz niżej).
 
 Konto `noreply@bydgoskateologia.pl` (Exchange Online / Microsoft 365):
 

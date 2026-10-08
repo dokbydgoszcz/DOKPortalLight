@@ -15,7 +15,7 @@
           <tr>
             <td>{{ campaign.subject }}</td>
             <td>{{ groupLabels[campaign.group] }}</td>
-            <td>{{ campaign.recipientCount }}</td>
+            <td>{{ campaign.recipientCount }}@if (campaign.failedCount) { <span class="small-muted"> · błędy: {{ campaign.failedCount }}</span> }</td>
             <td>
               @if (campaign.status === 'Sent') {
                 <span class="pill green">Wysłano</span>
@@ -25,7 +25,7 @@
             </td>
             <td>
               @if (campaign.status === 'Draft') {
-                <button *appHasPermission="'Mailing.Manage'" class="btn primary small" (click)="sendCampaign(campaign)">Wyślij</button>
+                <button *appHasPermission="'Mailing.Manage'" class="btn primary small" [disabled]="sendingId() !== null" (click)="sendCampaign(campaign)">Wyślij</button>
                 <span *appHasPermission="'Mailing.Manage'" class="link" style="color:var(--danger);margin-left:10px" (click)="deleteDraft(campaign)">Usuń</span>
               }
             </td>

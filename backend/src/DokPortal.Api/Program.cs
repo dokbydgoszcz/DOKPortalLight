@@ -125,7 +125,7 @@ if (!string.IsNullOrWhiteSpace(smtpHost))
     var smtpUsername = builder.Configuration["Smtp:Username"] ?? "";
     var smtpPassword = builder.Configuration["Smtp:Password"] ?? "";
     var smtpFromEmail = builder.Configuration["Smtp:FromEmail"] ?? smtpUsername;
-    var smtpFromName = builder.Configuration["Smtp:FromName"] ?? "DOK Portal Light";
+    var smtpFromName = builder.Configuration["Smtp:FromName"] ?? "DOK Portal";
     var smtpEnableSsl = builder.Configuration.GetValue<bool?>("Smtp:EnableSsl") ?? true;
     builder.Services.AddSingleton<IEmailSender>(
         new SmtpEmailSender(smtpHost, smtpPort, smtpUsername, smtpPassword, smtpFromEmail, smtpFromName, smtpEnableSsl));

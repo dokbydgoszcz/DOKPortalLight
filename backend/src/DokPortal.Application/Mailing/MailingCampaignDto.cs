@@ -9,6 +9,7 @@ public class MailingCampaignDto
     public required string Body { get; init; }
     public MailingGroup Group { get; init; }
     public required int RecipientCount { get; init; }
+    public int FailedCount { get; init; }
     public CampaignStatus Status { get; init; }
     public required DateTime CreatedAtUtc { get; init; }
     public DateTime? SentAtUtc { get; init; }

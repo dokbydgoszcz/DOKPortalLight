@@ -17,6 +17,8 @@ export class MailingComponent implements OnInit {
   readonly campaigns = signal<MailingCampaign[]>([]);
   readonly isFormOpen = signal(false);
   readonly isSendingTest = signal(false);
+  /** Kampania, która właśnie jest wysyłana (blokuje przycisk, żeby podwójne kliknięcie nie wysłało jej dwa razy). */
+  readonly sendingId = signal<string | null>(null);
   readonly groupLabels = MAILING_GROUP_LABELS;
   readonly groups = Object.keys(MAILING_GROUP_LABELS) as MailingGroup[];
   newCampaign: CreateMailingCampaignValue = { subject: '', body: '', group: 'CandidatesSksp' };
@@ -76,12 +78,22 @@ export class MailingComponent implements OnInit {
   }
 
   sendCampaign(campaign: MailingCampaign): void {
+    if (this.sendingId()) return;
+    this.sendingId.set(campaign.id);
     this.mailingService.send(campaign.id).subscribe({
-      next: () => {
-        this.toast.success('Kampania wysłana.');
+      next: result => {
+        this.sendingId.set(null);
+        if (result.failedCount) {
+          this.toast.error(`Wysłano do ${result.recipientCount} odbiorców. Nie udało się wysłać do ${result.failedCount} adresów – sprawdź ich poprawność.`);
+        } else {
+          this.toast.success('Kampania wysłana.');
+        }
         this.load();
       },
-      error: err => this.toast.error(err?.error?.title ?? 'Nie udało się wysłać kampanii.')
+      error: err => {
+        this.sendingId.set(null);
+        this.toast.error(err?.error?.title ?? 'Nie udało się wysłać kampanii.');
+      }
     });
   }
 

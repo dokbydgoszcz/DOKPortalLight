@@ -36,7 +36,9 @@ public class SmtpEmailSender : IEmailSender
         {
             From = new MailAddress(_fromEmail, _fromName),
             Subject = subject,
-            Body = body
+            Body = body,
+            SubjectEncoding = System.Text.Encoding.UTF8,
+            BodyEncoding = System.Text.Encoding.UTF8
         };
         message.To.Add(toEmail);
         await client.SendMailAsync(message, ct);

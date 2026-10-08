@@ -142,6 +142,49 @@ describe('MailingComponent', () => {
       ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([sent]);
     });
 
+    it('reports a partly failed send with the number of addresses that did not get the message', () => {
+      const ctx = boot();
+
+      clickByText(ctx.el, 'Wyślij');
+      ctx.http.expectOne(r => r.method === 'POST').flush({ ...draft, status: 'Sent', recipientCount: 10, failedCount: 2 });
+
+      expect(toastMessages()).toContain('Wysłano do 10 odbiorców. Nie udało się wysłać do 2 adresów – sprawdź ich poprawność.');
+      expect(toastMessages()).not.toContain('Kampania wysłana.');
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([sent]);
+    });
+
+    it('disables the send button while a send is in progress, so a double click cannot send twice', () => {
+      const ctx = boot();
+      const button = Array.from(ctx.el.querySelectorAll<HTMLButtonElement>('button')).find(b => b.textContent!.trim() === 'Wyślij')!;
+
+      button.click();
+      ctx.fixture.detectChanges();
+
+      expect(button.disabled).toBe(true);
+      button.click();
+      ctx.http.expectOne(r => r.method === 'POST').flush({ ...draft, status: 'Sent' });
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([sent]);
+      ctx.fixture.detectChanges();
+    });
+
+    it('lets the user try again after a refused send', () => {
+      const ctx = boot();
+      const button = Array.from(ctx.el.querySelectorAll<HTMLButtonElement>('button')).find(b => b.textContent!.trim() === 'Wyślij')!;
+
+      button.click();
+      ctx.http.expectOne(r => r.method === 'POST').flush({ title: 'x' }, { status: 400, statusText: 'Bad Request' });
+      ctx.fixture.detectChanges();
+
+      expect(button.disabled).toBe(false);
+    });
+
+    it('shows the number of failed addresses next to the recipients of a sent campaign', () => {
+      const { el } = boot([{ ...sent, recipientCount: 10, failedCount: 2 }]);
+
+      expect(textOf(el)).toContain('10');
+      expect(textOf(el)).toContain('błędy: 2');
+    });
+
     it('shows the message from the server when sending is refused', () => {
       const ctx = boot();
 
