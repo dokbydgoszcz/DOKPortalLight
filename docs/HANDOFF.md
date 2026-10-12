@@ -63,3 +63,18 @@ Model `Moduł.Akcja` (`backend/src/DokPortal.Domain/Constants/Permissions.cs`, `
 - `backend/src/DokPortal.Api/appsettings.Development.json` — lokalna konfiguracja (connection string, JWT, SeedAdmin itp.). **Zawiera dane dostępowe; nie jest w paczce.** Użytkownik musi go przenieść bezpiecznie lub utworzyć od nowa (poproś go o wartości; nie wpisuj ich do czatu ani do repo).
 - Poświadczenia GitHub (`gh auth login`) i Azure (`az login`) na nowym koncie/komputerze.
 - `.claude/launch.json` jest w paczce (konfiguracja podglądu).
+
+## 8. Aktualizacja 2026-10-12 (lokalnie, NIEWYPCHNIĘTE – czeka na „wypchnij”)
+
+Zrobione w 8 commitach na `master` (testy: backend 33+372+345, frontend 612, pokrycie ok. 99,7% linii):
+1. **Spójność danych**: blokada usuwania osoby/parafii z zależnościami (400 z listą przyczyn); misja zna parafię (`ParishId`), skierowanie pamięta swoją misję; odpięcie cofa misję/funkcję; zamykanie zapotrzebowań; migracja `LinkMissionsToParishesAndAssignments` **porządkuje dane po dawnych usunięciach** (patrz runbook – migracja nieodwracalna).
+2. **Proces DOK**: „Edytuj” sprawę + „Historia” (`DokCaseEvents`), e-mail do nowego katechisty, absolwenci w zakresie katechisty i bez przypomnień, edycja/usuwanie własnych notatek, zmiana nazwy/usuwanie dokumentów sprawy.
+3. **Dostęp i konta**: `People.View` (Osoby, imieniny, API osób); wyłączanie kont; sesja sprawdzana na serwerze (claim `stamp`) – **po wdrożeniu wszyscy logują się ponownie raz**; ochrona administratorów; 401 → wylogowanie z komunikatem.
+4. **Misje**: karta „Misje do odnowienia”, „Odnów”, ważne misje na górze listy, filtr.
+5. **Operacje**: bramka testów przed deployem (oba workflowy), retry/timeouty bazy, migracje z ponowieniami, limit logowania 10/min, `[Audit]` na zmianach i plikach, runbook kopii zapasowych w `docs/operations.md`.
+6. **Pisma**: ostrzeżenie „Wzór do uzupełnienia” w generatorze i na PDF.
+7. Drobne: jedna kandydatura na osobę, daty misji, data ostatniego spotkania liczona ze spotkań, komunikaty.
+
+Decyzje do potwierdzenia przez użytkownika: notatki duszpasterskie nadal widzi tylko autor (+ ReadAll) – nowy katechista nie widzi notatek poprzednika; Katechista/Superwizor/Biskup domyślnie bez `People.View`; jedna trwająca sprawa osoby **na ścieżkę** (nie globalnie).
+
+Nadal otwarte (z przeglądu, nie zrobione): asynchroniczna wysyłka kampanii (C4), zajęcia grupowe bez właściciela (C10), uprawnienia SKŚP do potwierdzenia (C11), RODO – anonimizacja/eksport danych osoby (B5), wypis z mailingu, przypomnienia o zajęciach grupowych, nagłówki bezpieczeństwa SPA, listy wyboru osób ograniczone do 200 (C7). Plus sprawy z sekcji 6 pkt 1, 4, 5 (Gmail, powiązanie kont, ustawienia Azure) – wymagają użytkownika.
