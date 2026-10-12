@@ -135,6 +135,17 @@ describe('ParishesListComponent', () => {
 
       expect(toastMessages()).toContain('Nie udało się usunąć parafii.');
     });
+
+    it('shows why the parish cannot be deleted', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const ctx = boot();
+
+      clickByText(ctx.el, 'Usuń');
+      ctx.http.expectOne(r => r.method === 'DELETE')
+        .flush({ title: 'Nie można usunąć parafii, bo ma: proboszcz (1).' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(toastMessages()).toContain('Nie można usunąć parafii, bo ma: proboszcz (1).');
+    });
   });
 
   describe('editing a parish', () => {

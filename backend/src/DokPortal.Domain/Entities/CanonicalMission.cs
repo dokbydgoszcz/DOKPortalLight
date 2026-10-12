@@ -6,6 +6,8 @@ public class CanonicalMission : ISoftDeletable
     public Guid PersonId { get; set; }
     public Person? Person { get; set; }
     public required string ServicePlace { get; set; }
+    /// <summary>Parafia, do której skierowano (przez giełdę parafii); ServicePlace to wtedy jej nazwa.</summary>
+    public Guid? ParishId { get; set; }
     public DateOnly MissionStartDate { get; set; }
     public DateOnly MissionEndDate { get; set; }
     public DateOnly? GrantedDate { get; set; }

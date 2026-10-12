@@ -85,6 +85,9 @@ public class MissionService : IMissionService
         var mission = await _db.CanonicalMissions.FirstOrDefaultAsync(m => m.Id == id, ct);
         if (mission is null) return null;
 
+        var previousPersonId = mission.PersonId;
+        // Ręcznie zmienione miejsce posługi to już nie parafia ze skierowania – zmiana jej nazwy nie może go nadpisać.
+        if (mission.ServicePlace != request.ServicePlace) mission.ParishId = null;
         mission.PersonId = request.PersonId;
         mission.ServicePlace = request.ServicePlace;
         mission.MissionStartDate = request.MissionStartDate;
@@ -96,6 +99,11 @@ public class MissionService : IMissionService
 
         await CatechistFunction.EnsureAsync(_db, request.PersonId, ct);
         await _db.SaveChangesAsync(ct);
+        if (previousPersonId != request.PersonId)
+        {
+            await CatechistFunction.RemoveIfNoMissionAsync(_db, previousPersonId, ct);
+            await _db.SaveChangesAsync(ct);
+        }
         return await GetByIdAsync(id, ct);
     }
 
@@ -106,6 +114,8 @@ public class MissionService : IMissionService
 
         mission.DeletedAtUtc = DateTime.UtcNow;
         mission.DeletedBy = deletedBy;
+        await _db.SaveChangesAsync(ct);
+        await CatechistFunction.RemoveIfNoMissionAsync(_db, mission.PersonId, ct);
         await _db.SaveChangesAsync(ct);
         return true;
     }

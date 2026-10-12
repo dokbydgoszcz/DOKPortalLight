@@ -76,16 +76,21 @@ public class MissionCatechistFunctionTests
     }
 
     [Fact]
-    public async Task DeletingTheMission_KeepsTheFunction()
+    public async Task DeletingTheOnlyMission_RemovesTheFunction_ButASecondMissionKeepsIt()
     {
         await using var db = CreateContext();
-        var person = await AddPersonAsync(db, "Kowalski");
+        var single = await AddPersonAsync(db, "Kowalski");
+        var twice = await AddPersonAsync(db, "Nowak");
         var service = new MissionService(db, Time);
-        var mission = await service.CreateAsync(NewMission(person.Id), default);
+        var only = await service.CreateAsync(NewMission(single.Id), default);
+        var first = await service.CreateAsync(NewMission(twice.Id), default);
+        await service.CreateAsync(NewMission(twice.Id), default);
 
-        await service.DeleteAsync(mission.Id, "u", default);
+        await service.DeleteAsync(only.Id, "u", default);
+        await service.DeleteAsync(first.Id, "u", default);
 
-        Assert.Equal(new[] { FunctionType.Catechist }, await FunctionsOfAsync(db, person.Id));
+        Assert.Empty(await FunctionsOfAsync(db, single.Id));
+        Assert.Equal(new[] { FunctionType.Catechist }, await FunctionsOfAsync(db, twice.Id));
     }
 
     [Fact]

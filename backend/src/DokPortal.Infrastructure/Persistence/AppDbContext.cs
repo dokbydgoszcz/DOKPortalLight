@@ -102,6 +102,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
             entity.Property(m => m.ServicePlace).IsRequired().HasMaxLength(200);
             entity.Property(m => m.SupervisionGroup).HasMaxLength(100);
             entity.HasOne(m => m.Person).WithMany().HasForeignKey(m => m.PersonId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Parish>().WithMany().HasForeignKey(m => m.ParishId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<Formator>(entity =>
@@ -121,6 +122,8 @@ public class AppDbContext : IdentityDbContext<AppUser>
             entity.HasOne(a => a.ParishNeed).WithMany(n => n.Assignments).HasForeignKey(a => a.ParishNeedId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(a => a.Person).WithMany().HasForeignKey(a => a.PersonId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(a => new { a.ParishNeedId, a.PersonId }).IsUnique();
+            entity.Property(a => a.MissionCreatedByAssignment).HasDefaultValue(false);
+            entity.Property(a => a.MissionPlaceFilledByAssignment).HasDefaultValue(false);
             entity.HasQueryFilter(a => a.ParishNeed!.DeletedAtUtc == null && a.Person!.DeletedAtUtc == null);
         });
 

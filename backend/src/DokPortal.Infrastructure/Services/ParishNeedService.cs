@@ -56,6 +56,10 @@ public class ParishNeedService : IParishNeedService
         var description = request.Description.Trim();
         if (description.Length == 0) throw new InvalidOperationException("Podaj opis zapotrzebowania.");
         if (!await _db.Parishes.AnyAsync(p => p.Id == request.ParishId, ct)) throw new InvalidOperationException("Nie znaleziono parafii.");
+        if (request.ParishId != need.ParishId && await _db.ParishNeedAssignments.AnyAsync(a => a.ParishNeedId == id, ct))
+        {
+            throw new InvalidOperationException("Do zapotrzebowania są skierowane osoby – najpierw je odepnij, potem zmień parafię.");
+        }
 
         need.ParishId = request.ParishId;
         need.Description = description;
@@ -67,16 +71,22 @@ public class ParishNeedService : IParishNeedService
     {
         var need = await _db.ParishNeeds.Include(n => n.Assignments).FirstOrDefaultAsync(n => n.Id == id, ct);
         if (need is null) return null;
+        if (need.Status == ParishNeedStatus.Closed) throw new InvalidOperationException("Zapotrzebowanie jest zamknięte – otwórz je ponownie, żeby kogoś skierować.");
         if (!await _db.People.AnyAsync(p => p.Id == personId, ct)) throw new InvalidOperationException("Nie znaleziono osoby.");
+        if (await _db.Candidates.AnyAsync(c => c.PersonId == personId && !c.IsFormationCompleted, ct))
+        {
+            throw new InvalidOperationException("Ta osoba jest kandydatem w trakcie formacji – skierować można dopiero po jej ukończeniu.");
+        }
 
         var isNew = need.Assignments.All(a => a.PersonId != personId);
         if (isNew)
         {
-            _db.ParishNeedAssignments.Add(new ParishNeedAssignment
+            var assignment = new ParishNeedAssignment
             {
                 Id = Guid.NewGuid(), ParishNeedId = id, PersonId = personId, AssignedAtUtc = DateTime.UtcNow
-            });
-            await RecordMissionAsync(need, personId, ct);
+            };
+            await RecordMissionAsync(need, assignment, ct);
+            _db.ParishNeedAssignments.Add(assignment);
         }
         if (need.Status == ParishNeedStatus.Open) need.Status = ParishNeedStatus.Assigned;
         await _db.SaveChangesAsync(ct);
@@ -85,33 +95,49 @@ public class ParishNeedService : IParishNeedService
     }
 
     /// <summary>
-    /// Skierowanie do parafii zakłada rekord misji kanonicznej na rok (osoba zostaje katechistą). Jeśli osoba ma już misję
-    /// bez miejsca (udzieloną „Udziel posłania”), uzupełniamy w niej parafię; jeśli ma już aktualną misję w tej parafii – nic nie dodajemy.
+    /// Skierowanie do parafii zakłada rekord misji kanonicznej na rok (osoba zostaje katechistą). Jeśli osoba ma ważną misję
+    /// bez miejsca (udzieloną „Udziel posłania”), uzupełniamy w niej parafię; jeśli ma już ważną misję w tej parafii – nic nie dodajemy.
+    /// Parafię rozpoznajemy po identyfikatorze (zmiana nazwy parafii nie tworzy duplikatu). Skierowanie zapamiętuje swoją misję,
+    /// żeby odpięcie mogło ją cofnąć.
     /// </summary>
-    private async Task RecordMissionAsync(ParishNeed need, Guid personId, CancellationToken ct)
+    private async Task RecordMissionAsync(ParishNeed need, ParishNeedAssignment assignment, CancellationToken ct)
     {
+        var personId = assignment.PersonId;
         var parishName = await _db.Parishes.Where(p => p.Id == need.ParishId).Select(p => p.Name).FirstAsync(ct);
         var today = _time.Today();
-        var missions = await _db.CanonicalMissions.Where(m => m.PersonId == personId).ToListAsync(ct);
+        var valid = await _db.CanonicalMissions.Where(m => m.PersonId == personId && m.MissionEndDate >= today).ToListAsync(ct);
 
-        var unplaced = missions.Where(m => string.IsNullOrWhiteSpace(m.ServicePlace)).OrderByDescending(m => m.MissionEndDate).FirstOrDefault();
-        if (unplaced is not null)
+        var existing = valid.FirstOrDefault(m => m.ParishId == need.ParishId)
+            ?? valid.FirstOrDefault(m => m.ParishId == null && m.ServicePlace == parishName);
+        var unplaced = valid.Where(m => string.IsNullOrWhiteSpace(m.ServicePlace)).OrderByDescending(m => m.MissionEndDate).FirstOrDefault();
+        if (existing is not null)
+        {
+            assignment.MissionId = existing.Id;
+        }
+        else if (unplaced is not null)
         {
             unplaced.ServicePlace = parishName;
+            unplaced.ParishId = need.ParishId;
             unplaced.UpdatedAtUtc = DateTime.UtcNow;
+            assignment.MissionId = unplaced.Id;
+            assignment.MissionPlaceFilledByAssignment = true;
         }
-        else if (!missions.Any(m => m.ServicePlace == parishName && m.MissionEndDate >= today))
+        else
         {
-            _db.CanonicalMissions.Add(new CanonicalMission
+            var mission = new CanonicalMission
             {
                 Id = Guid.NewGuid(),
                 PersonId = personId,
                 ServicePlace = parishName,
+                ParishId = need.ParishId,
                 MissionStartDate = today,
                 MissionEndDate = today.AddYears(1),
                 CreatedAtUtc = DateTime.UtcNow,
                 UpdatedAtUtc = DateTime.UtcNow
-            });
+            };
+            _db.CanonicalMissions.Add(mission);
+            assignment.MissionId = mission.Id;
+            assignment.MissionCreatedByAssignment = true;
         }
 
         await CatechistFunction.EnsureAsync(_db, personId, ct);
@@ -170,8 +196,46 @@ public class ParishNeedService : IParishNeedService
         {
             _db.ParishNeedAssignments.Remove(assignment);
             if (need.Assignments.Count == 1 && need.Status == ParishNeedStatus.Assigned) need.Status = ParishNeedStatus.Open;
+            await RevertMissionAsync(assignment, ct);
+            await _db.SaveChangesAsync(ct);
+            await CatechistFunction.RemoveIfNoMissionAsync(_db, personId, ct);
             await _db.SaveChangesAsync(ct);
         }
+        return await LoadAsync(id, ct);
+    }
+
+    /// <summary>
+    /// Cofa skutek skierowania w misji: misję założoną przez skierowanie usuwa, a w misji tylko uzupełnionej czyści parafię.
+    /// Misji, z której korzysta inne skierowanie tej osoby, nie ruszamy. Starsze skierowania (bez zapamiętanej misji) zostają bez zmian.
+    /// </summary>
+    private async Task RevertMissionAsync(ParishNeedAssignment assignment, CancellationToken ct)
+    {
+        if (assignment.MissionId is not { } missionId) return;
+        if (await _db.ParishNeedAssignments.AnyAsync(a => a.Id != assignment.Id && a.MissionId == missionId, ct)) return;
+        var mission = await _db.CanonicalMissions.FirstOrDefaultAsync(m => m.Id == missionId, ct);
+        if (mission is null) return;
+
+        if (assignment.MissionCreatedByAssignment)
+        {
+            mission.DeletedAtUtc = DateTime.UtcNow;
+            mission.DeletedBy = "odpięcie skierowania";
+        }
+        else if (assignment.MissionPlaceFilledByAssignment)
+        {
+            mission.ServicePlace = "";
+            mission.ParishId = null;
+            mission.UpdatedAtUtc = DateTime.UtcNow;
+        }
+    }
+
+    public async Task<ParishNeedDto?> SetClosedAsync(Guid id, bool closed, CancellationToken ct)
+    {
+        var need = await _db.ParishNeeds.Include(n => n.Assignments).FirstOrDefaultAsync(n => n.Id == id, ct);
+        if (need is null) return null;
+
+        need.Status = closed ? ParishNeedStatus.Closed
+            : need.Assignments.Count > 0 ? ParishNeedStatus.Assigned : ParishNeedStatus.Open;
+        await _db.SaveChangesAsync(ct);
         return await LoadAsync(id, ct);
     }
 

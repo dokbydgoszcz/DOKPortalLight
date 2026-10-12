@@ -10,8 +10,13 @@ namespace DokPortal.Infrastructure.Services;
 public class PersonService : IPersonService
 {
     private readonly AppDbContext _db;
+    private readonly TimeProvider _time;
 
-    public PersonService(AppDbContext db) => _db = db;
+    public PersonService(AppDbContext db, TimeProvider? time = null)
+    {
+        _db = db;
+        _time = time ?? TimeProvider.System;
+    }
 
     private IQueryable<Person> PeopleWithDetails() =>
         _db.People.Include(p => p.Parish).Include(p => p.Functions).ThenInclude(f => f.Parish).AsNoTracking();
@@ -106,6 +111,7 @@ public class PersonService : IPersonService
         if (request.Functions is not null)
         {
             await ValidateFunctionsAsync(id, request.Functions, ct);
+            await EnsureCatechistFunctionKeptAsync(id, request.Functions, ct);
         }
 
         person.FirstName = request.FirstName;
@@ -158,6 +164,18 @@ public class PersonService : IPersonService
         }
 
         _db.PersonFunctions.RemoveRange(existing);
+    }
+
+    /// <summary>Funkcji Katechista nie zdejmujemy ręcznie, dopóki osoba ma ważną misję kanoniczną (misja ją nadała).</summary>
+    private async Task EnsureCatechistFunctionKeptAsync(Guid id, IReadOnlyList<PersonFunctionInput> inputs, CancellationToken ct)
+    {
+        if (inputs.Any(i => i.Type == FunctionType.Catechist)) return;
+        var today = DateOnly.FromDateTime(_time.GetUtcNow().UtcDateTime);
+        if (!await _db.PersonFunctions.AnyAsync(f => f.PersonId == id && f.Type == FunctionType.Catechist, ct)) return;
+        if (await _db.CanonicalMissions.AnyAsync(m => m.PersonId == id && m.MissionEndDate >= today, ct))
+        {
+            throw new InvalidOperationException("Ta osoba ma ważną misję kanoniczną – funkcji Katechista nie można zdjąć. Usuń lub zakończ misję.");
+        }
     }
 
     /// <summary>Każda funkcja tylko raz (proboszcz – raz na parafię); parafia tylko dla proboszcza; parafia ma jednego proboszcza.</summary>
@@ -261,11 +279,38 @@ public class PersonService : IPersonService
     {
         var person = await _db.People.FirstOrDefaultAsync(p => p.Id == id, ct);
         if (person is null) return false;
+        await EnsureCanDeleteAsync(id, ct);
 
         person.DeletedAtUtc = DateTime.UtcNow;
         person.DeletedBy = deletedBy;
         await _db.SaveChangesAsync(ct);
         return true;
+    }
+
+    /// <summary>
+    /// Osoby z powiązanymi danymi nie usuwamy: usunięta osoba znikałaby z list spraw, misji i pism, a liczniki dalej by ją liczyły.
+    /// Komunikat wymienia, co trzeba najpierw usunąć lub przekazać.
+    /// </summary>
+    private async Task EnsureCanDeleteAsync(Guid id, CancellationToken ct)
+    {
+        var reasons = new List<string>();
+        void Add(int count, string text) { if (count > 0) reasons.Add($"{text} ({count})"); }
+
+        Add(await _db.DokCases.CountAsync(c => c.PersonId == id, ct), "sprawa DOK tej osoby");
+        Add(await _db.DokCases.CountAsync(c => c.CatechistPersonId == id, ct), "prowadzi sprawy DOK jako katechista");
+        Add(await _db.DokCases.CountAsync(c => c.MentorPersonId == id, ct), "jest mentorem w sprawach DOK");
+        Add(await _db.Meetings.CountAsync(m => m.CatechistPersonId == id, ct), "prowadzi zajęcia grupowe");
+        Add(await _db.Candidates.CountAsync(c => c.PersonId == id, ct), "jest kandydatem SKŚP");
+        Add(await _db.CanonicalMissions.CountAsync(m => m.PersonId == id, ct), "ma misje kanoniczne");
+        Add(await _db.Formators.CountAsync(f => f.PersonId == id, ct), "jest formatorem");
+        Add(await _db.ParishNeedAssignments.CountAsync(a => a.PersonId == id, ct), "jest skierowana do parafii");
+        Add(await _db.GeneratedDocuments.CountAsync(d => d.PersonId == id, ct), "ma wygenerowane pisma");
+        Add(await _db.Users.CountAsync(u => u.PersonId == id, ct), "ma konto w systemie (odłącz je w ekranie Użytkownicy)");
+
+        if (reasons.Count > 0)
+        {
+            throw new InvalidOperationException($"Nie można usunąć osoby, bo: {string.Join("; ", reasons)}. Najpierw usuń lub przekaż te dane.");
+        }
     }
 
     private static PersonDto ToDto(Person p) => new()

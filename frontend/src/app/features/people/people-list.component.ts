@@ -8,6 +8,7 @@ import { ParishesService } from '../parish-board/parishes.service';
 import { Parish } from '../parish-board/parish-need.model';
 import { PersonFormComponent } from './person-form.component';
 import { ToastService } from '../../core/notifications/toast.service';
+import { serverMessage } from '../../shared/http-error';
 import { PaginationComponent } from '../../shared/pagination.component';
 
 const PAGE_SIZE = 20;
@@ -123,6 +124,8 @@ export class PeopleListComponent implements OnInit {
       if (confirm(`${problem.title} Zapisać mimo to?`)) {
         this.onSave(value, true);
       }
+    } else if (error.status === 400) {
+      this.toast.error(serverMessage(error, 'Nie udało się zapisać osoby.'));
     } else {
       this.toast.error('Nie udało się zapisać osoby.');
     }
@@ -139,7 +142,7 @@ export class PeopleListComponent implements OnInit {
         this.toast.success('Osoba usunięta.');
         this.load();
       },
-      error: () => this.toast.error('Nie udało się usunąć osoby.')
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć osoby.'))
     });
   }
 }

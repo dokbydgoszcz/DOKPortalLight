@@ -29,6 +29,14 @@ export class ParishNeedsService {
     return this.http.delete<ParishNeed>(`${this.baseUrl}/${id}/assign/${personId}`);
   }
 
+  close(id: string) {
+    return this.http.post<ParishNeed>(`${this.baseUrl}/${id}/close`, null);
+  }
+
+  reopen(id: string) {
+    return this.http.post<ParishNeed>(`${this.baseUrl}/${id}/reopen`, null);
+  }
+
   delete(id: string) {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }

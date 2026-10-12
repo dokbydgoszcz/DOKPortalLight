@@ -47,8 +47,48 @@ describe('ParishBoardComponent', () => {
     expect(text).toContain('Skierowano:');
     expect(text).toContain('Anna Maj');
     expect(text).toContain('Marek Zielinski');
-    expect(text).toContain('Assigned');
+    expect(text).toContain('Skierowano');
+    expect(text).not.toContain('Assigned');
     expect(el.querySelectorAll('.list-row button.small').length).toBe(2);
+  });
+
+  describe('closing a need', () => {
+    const closedNeed: ParishNeed = { ...assignedNeed, id: 'n3', description: 'Zamknięta potrzeba', status: 'Closed' };
+    const linkIn = (el: HTMLElement, rowText: string, label: string) =>
+      Array.from(Array.from(el.querySelectorAll('.list-row')).find(r => r.textContent!.includes(rowText))!.querySelectorAll<HTMLElement>('.link'))
+        .find(l => l.textContent!.trim() === label);
+
+    it('closes a need with POST, confirms and reloads', () => {
+      const ctx = boot();
+
+      linkIn(ctx.el, 'Grupa młodzieżowa', 'Zamknij')!.click();
+      ctx.http.expectOne(r => r.method === 'POST' && r.url === `${url}/n2/close`).flush({ ...assignedNeed, status: 'Closed' });
+
+      expect(toastMessages()).toContain('Zapotrzebowanie zamknięte.');
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([]);
+    });
+
+    it('shows a closed need without assigning, and reopens it', () => {
+      const ctx = boot([closedNeed]);
+
+      expect(textOf(ctx.el)).toContain('Zamknięte');
+      expect(ctx.el.querySelector('.list-row button')).toBeNull();
+      expect(linkIn(ctx.el, 'Zamknięta potrzeba', 'Zamknij')).toBeUndefined();
+      linkIn(ctx.el, 'Zamknięta potrzeba', 'Otwórz ponownie')!.click();
+      ctx.http.expectOne(r => r.method === 'POST' && r.url === `${url}/n3/reopen`).flush(assignedNeed);
+
+      expect(toastMessages()).toContain('Zapotrzebowanie otwarte ponownie.');
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([]);
+    });
+
+    it('shows the server message when closing fails', () => {
+      const ctx = boot();
+
+      linkIn(ctx.el, 'Potrzebny katechista', 'Zamknij')!.click();
+      ctx.http.expectOne(r => r.method === 'POST').flush({ title: 'Nie wolno' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(toastMessages()).toContain('Nie wolno');
+    });
   });
 
   it('shows empty-state text when there are no needs', () => {
@@ -279,6 +319,10 @@ describe('ParishBoardComponent', () => {
       link().click();
       ctx.http.expectOne(r => r.method === 'DELETE').flush('x', { status: 500, statusText: 'Server Error' });
       expect(toastMessages()).toContain('Nie udało się odpiąć osoby.');
+
+      link().click();
+      ctx.http.expectOne(r => r.method === 'DELETE').flush({ title: 'Powód z serwera' }, { status: 400, statusText: 'Bad Request' });
+      expect(toastMessages()).toContain('Powód z serwera');
     });
 
     it('hides adding and removing people from users who cannot manage needs', () => {

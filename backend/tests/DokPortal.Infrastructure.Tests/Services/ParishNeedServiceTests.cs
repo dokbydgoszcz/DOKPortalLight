@@ -131,7 +131,7 @@ public class ParishNeedServiceTests
     }
 
     [Fact]
-    public async Task UpdateAsync_ChangesParishAndDescription_AlsoAfterAssignment_KeepingThePeople()
+    public async Task UpdateAsync_ChangesTheDescriptionAfterAssignment_ButNotTheParish()
     {
         var f = await SeedAsync();
         var otherParish = new Parish { Id = Guid.NewGuid(), Name = "św. Pawła" };
@@ -139,12 +139,27 @@ public class ParishNeedServiceTests
         await f.Db.SaveChangesAsync();
         await f.Service.AssignAsync(f.Need.Id, f.Marek.Id, default);
 
-        var updated = await f.Service.UpdateAsync(f.Need.Id, new UpdateParishNeedRequest { ParishId = otherParish.Id, Description = "  Dwóch katechistów  " }, default);
+        var updated = await f.Service.UpdateAsync(f.Need.Id, new UpdateParishNeedRequest { ParishId = f.Parish.Id, Description = "  Dwóch katechistów  " }, default);
+        var move = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            f.Service.UpdateAsync(f.Need.Id, new UpdateParishNeedRequest { ParishId = otherParish.Id, Description = "x" }, default));
 
-        Assert.Equal("św. Pawła", updated!.ParishName);
-        Assert.Equal("Dwóch katechistów", updated.Description);
+        Assert.Equal("Dwóch katechistów", updated!.Description);
         Assert.Equal("Assigned", updated.Status);
         Assert.Single(updated.AssignedPeople);
+        Assert.Contains("odepnij", move.Message);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_CanMoveTheNeedToAnotherParish_BeforeAnyAssignment()
+    {
+        var f = await SeedAsync();
+        var otherParish = new Parish { Id = Guid.NewGuid(), Name = "św. Pawła" };
+        f.Db.Parishes.Add(otherParish);
+        await f.Db.SaveChangesAsync();
+
+        var updated = await f.Service.UpdateAsync(f.Need.Id, new UpdateParishNeedRequest { ParishId = otherParish.Id, Description = "x" }, default);
+
+        Assert.Equal("św. Pawła", updated!.ParishName);
     }
 
     [Fact]

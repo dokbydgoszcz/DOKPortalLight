@@ -53,6 +53,22 @@ public class ParishNeedsController : ControllerBase
         return updated is null ? NotFound() : Ok(updated);
     }
 
+    [HttpPost("{id:guid}/close")]
+    [HasPermission(Permissions.ParishNeedsManage)]
+    public async Task<ActionResult<ParishNeedDto>> Close(Guid id, CancellationToken ct)
+    {
+        var updated = await _parishNeedService.SetClosedAsync(id, true, ct);
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
+    [HttpPost("{id:guid}/reopen")]
+    [HasPermission(Permissions.ParishNeedsManage)]
+    public async Task<ActionResult<ParishNeedDto>> Reopen(Guid id, CancellationToken ct)
+    {
+        var updated = await _parishNeedService.SetClosedAsync(id, false, ct);
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
     [HttpDelete("{id:guid}")]
     [HasPermission(Permissions.ParishNeedsManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)

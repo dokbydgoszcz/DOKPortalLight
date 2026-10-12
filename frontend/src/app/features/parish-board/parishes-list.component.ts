@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ParishesService } from './parishes.service';
 import { Parish } from './parish-need.model';
 import { ToastService } from '../../core/notifications/toast.service';
+import { serverMessage } from '../../shared/http-error';
 
 @Component({
   selector: 'app-parishes-list',
@@ -84,7 +85,7 @@ export class ParishesListComponent implements OnInit {
         this.toast.success('Parafia usunięta.');
         this.load();
       },
-      error: () => this.toast.error('Nie udało się usunąć parafii.')
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć parafii.'))
     });
   }
 }

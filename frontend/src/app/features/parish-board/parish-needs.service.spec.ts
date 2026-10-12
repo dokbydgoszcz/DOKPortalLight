@@ -33,5 +33,10 @@ describe('ParishNeedsService', () => {
     const unassign = httpMock.expectOne(`${environment.apiBaseUrl}/api/parish-needs/n1/assign/p1`);
     expect(unassign.request.method).toBe('DELETE');
     unassign.flush({});
+
+    service.close('n1').subscribe();
+    expect(httpMock.expectOne(`${environment.apiBaseUrl}/api/parish-needs/n1/close`).request.method).toBe('POST');
+    service.reopen('n1').subscribe();
+    expect(httpMock.expectOne(`${environment.apiBaseUrl}/api/parish-needs/n1/reopen`).request.method).toBe('POST');
   });
 });

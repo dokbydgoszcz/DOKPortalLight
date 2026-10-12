@@ -209,6 +209,17 @@ describe('PeopleListComponent', () => {
 
       expect(toastMessages()).toContain('Nie udało się usunąć osoby.');
     });
+
+    it('shows why the person cannot be deleted', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const ctx = boot();
+
+      clickByText(ctx.el, 'Usuń');
+      ctx.http.expectOne(r => r.method === 'DELETE')
+        .flush({ title: 'Nie można usunąć osoby, bo: ma misje kanoniczne (1).' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(toastMessages()).toContain('Nie można usunąć osoby, bo: ma misje kanoniczne (1).');
+    });
   });
 
   describe('duplicate contact data', () => {
@@ -292,6 +303,15 @@ describe('PeopleListComponent', () => {
       ctx.http.expectOne(r => r.method === 'POST').flush({ status: 409, title: 'Inny konflikt' }, { status: 409, statusText: 'Conflict' });
 
       expect(toastMessages()).toContain('Nie udało się zapisać osoby.');
+    });
+
+    it('shows the server message when the change is refused (400)', async () => {
+      const ctx = await openAddForm();
+
+      clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+      ctx.http.expectOne(r => r.method === 'POST').flush({ status: 400, title: 'Ta osoba ma ważną misję kanoniczną.' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(toastMessages()).toContain('Ta osoba ma ważną misję kanoniczną.');
     });
   });
 });

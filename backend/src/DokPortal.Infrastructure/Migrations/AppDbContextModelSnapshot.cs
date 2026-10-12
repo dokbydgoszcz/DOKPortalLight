@@ -284,6 +284,9 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Property<DateOnly>("MissionStartDate")
                         .HasColumnType("date");
 
+                    b.Property<Guid?>("ParishId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("PersonId")
                         .HasColumnType("uniqueidentifier");
 
@@ -303,6 +306,8 @@ namespace DokPortal.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ParishId");
 
                     b.HasIndex("PersonId");
 
@@ -685,6 +690,19 @@ namespace DokPortal.Infrastructure.Migrations
 
                     b.Property<DateTime>("AssignedAtUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("MissionCreatedByAssignment")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<Guid?>("MissionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("MissionPlaceFilledByAssignment")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<Guid>("ParishNeedId")
                         .HasColumnType("uniqueidentifier");
@@ -1114,6 +1132,11 @@ namespace DokPortal.Infrastructure.Migrations
 
             modelBuilder.Entity("DokPortal.Domain.Entities.CanonicalMission", b =>
                 {
+                    b.HasOne("DokPortal.Domain.Entities.Parish", null)
+                        .WithMany()
+                        .HasForeignKey("ParishId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("DokPortal.Domain.Entities.Person", "Person")
                         .WithMany()
                         .HasForeignKey("PersonId")

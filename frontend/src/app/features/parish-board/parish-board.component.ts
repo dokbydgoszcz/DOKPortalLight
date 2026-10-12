@@ -113,7 +113,19 @@ export class ParishBoardComponent implements OnInit {
         this.toast.success('Odpięto osobę.');
         this.load();
       },
-      error: () => this.toast.error('Nie udało się odpiąć osoby.')
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się odpiąć osoby.'))
+    });
+  }
+
+  /** Zamknięte zapotrzebowanie nie przyjmuje kolejnych skierowań; można je otworzyć ponownie. */
+  setClosed(need: ParishNeed, closed: boolean): void {
+    const request$ = closed ? this.parishNeedsService.close(need.id) : this.parishNeedsService.reopen(need.id);
+    request$.subscribe({
+      next: () => {
+        this.toast.success(closed ? 'Zapotrzebowanie zamknięte.' : 'Zapotrzebowanie otwarte ponownie.');
+        this.load();
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się zmienić stanu zapotrzebowania.'))
     });
   }
 
