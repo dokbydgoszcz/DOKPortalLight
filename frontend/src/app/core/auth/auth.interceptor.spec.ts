@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { describe, it, expect, vi } from 'vitest';
 import { authInterceptor } from './auth.interceptor';
 import { AuthService } from './auth.service';
+import { ToastService } from '../notifications/toast.service';
 
 describe('authInterceptor', () => {
   let http: HttpClient;
@@ -17,7 +18,7 @@ describe('authInterceptor', () => {
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
-        { provide: AuthService, useValue: { token, logout } }
+        { provide: AuthService, useValue: { token, logout, isAuthenticated: () => token !== null } }
       ]
     });
     http = TestBed.inject(HttpClient);
@@ -47,6 +48,7 @@ describe('authInterceptor', () => {
 
     expect(logout).toHaveBeenCalledWith('expired');
     expect(failed).toBe(true);
+    expect(TestBed.inject(ToastService).toasts().map(t => t.message)).toEqual(['Sesja wygasła – zaloguj się ponownie.']);
   });
 
   it('does not log out on other errors, nor on a 401 without a session (e.g. a wrong password)', () => {

@@ -2,14 +2,13 @@ import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { IdleTimeoutService } from '../../core/auth/idle-timeout.service';
-import { ToastContainerComponent } from '../../core/notifications/toast-container.component';
 import { NAV_ITEMS } from '../nav-items';
 import { AppFooterComponent } from '../app-footer.component';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, ToastContainerComponent, AppFooterComponent],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, AppFooterComponent],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss'
 })

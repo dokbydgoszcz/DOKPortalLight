@@ -16,4 +16,11 @@ describe('App', () => {
     const app = fixture.componentInstance;
     expect(app).toBeTruthy();
   });
+
+  it('shows notifications on every screen, also on the login page', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-toast-container')).not.toBeNull();
+  });
 });
