@@ -16,7 +16,8 @@ namespace DokPortal.Infrastructure.Migrations
 
         private const string DeletedPeople = "(SELECT Id FROM People WHERE DeletedAtUtc IS NOT NULL)";
         private const string DeletedParishes = "(SELECT Id FROM Parishes WHERE DeletedAtUtc IS NOT NULL)";
-        private const string RepairedBy = "'naprawa danych: osoba/parafia usunięta'";
+        // Tylko ASCII: literał bez prefiksu N na SQL Server mógłby zgubić polskie znaki.
+        private const string RepairedBy = "'naprawa danych: usunieta osoba lub parafia'";
 
         /// <summary>
         /// Naprawa danych po dawnym usuwaniu osób i parafii bez sprawdzania zależności (przegląd 2026-10-08, A3).
