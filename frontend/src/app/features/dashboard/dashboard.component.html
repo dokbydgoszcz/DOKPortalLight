@@ -24,6 +24,28 @@
   </div>
 }
 
+@if (handedOver().length > 0) {
+  <div class="card handed-over">
+    <div class="card-head"><h3>Twoje notatki w przekazanych sprawach</h3></div>
+    <div class="card-body list">
+      <div class="list-sub" style="margin-bottom:8px">Te sprawy prowadzi już ktoś inny. Twoje notatki są poufne — następca zobaczy je dopiero, gdy je udostępnisz.</div>
+      @for (item of handedOver(); track item.caseId) {
+        <div class="list-row">
+          <div class="list-main">
+            <div class="list-title">{{ item.personFullName }} — prowadzi teraz {{ item.currentCatechistFullName }} ({{ notesLabel(item.notesCount) }})</div>
+          </div>
+          @if (item.sharedWithCurrentCatechist) {
+            <span class="pill green">udostępnione</span>
+            <span class="link" (click)="unshareNotes(item)">Cofnij</span>
+          } @else {
+            <button class="btn ghost small" type="button" (click)="shareNotes(item)">Udostępnij</button>
+          }
+        </div>
+      }
+    </div>
+  </div>
+}
+
 @if (missionsToRenew().length > 0) {
   <div class="card missions-to-renew">
     <div class="card-head"><h3>Misje do odnowienia ({{ missionsToRenew().length }})</h3><a routerLink="/missions" class="link">Katechiści →</a></div>

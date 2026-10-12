@@ -5,6 +5,8 @@ import { DashboardService } from './dashboard.service';
 import { NameDaysService } from '../name-days/name-days.service';
 import { MissionsService } from '../missions/missions.service';
 import { Mission } from '../missions/mission.model';
+import { PastoralNotesService } from '../dok-cases/pastoral-notes.service';
+import { HandedOverCase } from '../dok-cases/pastoral-note.model';
 import { UpcomingNameDay } from '../name-days/name-day.model';
 import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
@@ -26,12 +28,15 @@ export class DashboardComponent implements OnInit {
   readonly nameDays = signal<UpcomingNameDay[] | null>(null);
   /** Misje kończące się w ciągu 30 dni albo wygasłe bez następczyni (tylko dla widzących Katechistów). */
   readonly missionsToRenew = signal<Mission[]>([]);
+  /** Sprawy z moimi notatkami, które prowadzi już inny katechista (tam mogę udostępnić notatki). */
+  readonly handedOver = signal<HandedOverCase[]>([]);
 
   readonly perm = Permissions;
   readonly stageLabels = DOK_STAGE_LABELS;
   readonly pathLabels = DOK_PATH_LABELS;
 
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-12', text: 'Notatki duszpasterskie — „Udostępnij moje notatki”: notatki są poufne, ale autor może je udostępnić katechiście, który teraz prowadzi sprawę (np. po przekazaniu podopiecznego). Udostępnienie obejmuje wszystkie notatki autora w tej sprawie, także dopisane później, i ich załączniki; autor może je w każdej chwili cofnąć. Poprzedni katechista sprawy już nie widzi, dlatego na jego pulpicie jest karta „Twoje notatki w przekazanych sprawach” z przyciskiem „Udostępnij”, a przy zmianie katechisty dostaje e-mail z tą informacją (jeśli pisał notatki). W oknie Notatki przycisk jest też dla autorów, którzy nadal widzą sprawę. Udostępnienie i jego cofnięcie są zapisywane w dzienniku zmian.' },
     { date: '2026-10-12', text: 'Drobne poprawki — jedna osoba może mieć tylko jedną kandydaturę w SKŚP (duplikaty zawyżały liczniki); po udzieleniu posłania nie da się już cofnąć „Ukończył formację”; koniec misji nie może być wcześniej niż jej początek; komunikaty serwera (np. dlaczego zapis się nie udał) pokazują się przy misjach i kandydatach. Kolumna „Data ostatniego spotkania” w eksporcie podopiecznych i na liście jest teraz liczona ze spotkań (indywidualnych i grupowych) — wcześniej była zawsze pusta. Komunikat po skierowaniu do parafii mówi uczciwie, kiedy e-mail faktycznie wychodzi.' },
     { date: '2026-10-12', text: 'Dokumenty i pisma — dopóki nie zatwierdzimy właściwych wzorów, ekran generatora i każdy wygenerowany PDF (u dołu strony) mają ostrzeżenie „Wzór do uzupełnienia — nie jest to dokument urzędowy”. Treść pism (np. dane sakramentu, klauzula RODO) uzupełnimy po dostarczeniu wzorów.' },
     { date: '2026-10-12', text: 'Niezawodność i bezpieczeństwo — logowanie przyjmuje najwyżej 10 prób na minutę z jednego adresu (potem komunikat „Zbyt wiele prób…”, po minucie znów można). Pierwsze otwarcie aplikacji po dłuższej przerwie (usypianie darmowej bazy) powinno rzadziej kończyć się błędem — połączenie z bazą czeka dłużej i samo ponawia próby. Nowa wersja wchodzi na serwer dopiero, gdy wszystkie testy przejdą. Dziennik zmian zapisuje teraz także dodawanie, edycję i usuwanie osób, spraw DOK, kandydatów, misji, parafii, zapotrzebowań, spotkań, formatorów, superwizji i zasobów, wgrywanie i pobieranie plików, generowanie i pobieranie pism oraz wysyłkę kampanii.' },
@@ -111,10 +116,32 @@ export class DashboardComponent implements OnInit {
     private readonly dashboardService: DashboardService,
     private readonly nameDaysService: NameDaysService,
     private readonly missionsService: MissionsService,
+    private readonly pastoralNotesService: PastoralNotesService,
     private readonly auth: AuthService
   ) {}
 
   /** Kafelek i wiersz są linkiem tylko do ekranów, które użytkownik może otworzyć (null = bez uprawnienia nie ma linku). */
+  private loadHandedOver(): void {
+    this.pastoralNotesService.handedOver().subscribe({ next: items => this.handedOver.set(items), error: () => {} });
+  }
+
+  shareNotes(item: HandedOverCase): void {
+    if (!confirm(`Udostępnić Twoje notatki ze sprawy „${item.personFullName}” (także przyszłe) katechiście: ${item.currentCatechistFullName}?`)) return;
+    this.pastoralNotesService.share(item.caseId).subscribe({ next: () => this.loadHandedOver(), error: () => {} });
+  }
+
+  unshareNotes(item: HandedOverCase): void {
+    if (!confirm(`Cofnąć udostępnienie Twoich notatek katechiście: ${item.currentCatechistFullName}?`)) return;
+    this.pastoralNotesService.unshare(item.caseId, item.currentCatechistPersonId).subscribe({ next: () => this.loadHandedOver(), error: () => {} });
+  }
+
+  notesLabel(count: number): string {
+    if (count === 1) return '1 notatka';
+    const lastDigit = count % 10;
+    const lastTwo = count % 100;
+    return lastDigit >= 2 && lastDigit <= 4 && (lastTwo < 12 || lastTwo > 14) ? `${count} notatki` : `${count} notatek`;
+  }
+
   can(permission: string | null): boolean {
     return permission === null || this.auth.hasPermission(permission);
   }
@@ -132,6 +159,7 @@ export class DashboardComponent implements OnInit {
   ngOnInit(): void {
     this.dashboardService.getSummary().subscribe(summary => this.summary.set(summary));
     // Imieniny to dane osób – tylko dla kont z dostępem do Osób.
+    if (this.auth.hasPermission(Permissions.PastoralNotesWrite)) this.loadHandedOver();
     if (this.auth.hasPermission(Permissions.MissionsView)) {
       this.missionsService.expiring().subscribe({ next: items => this.missionsToRenew.set(items), error: () => {} });
     }

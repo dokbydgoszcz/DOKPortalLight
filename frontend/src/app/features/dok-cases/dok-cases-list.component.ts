@@ -10,7 +10,8 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ALL_STAGES, DOK_PATH_LABELS, DOK_STAGE_LABELS, firstStageOf } from './dok-stages';
 import { DokCaseFormComponent } from './dok-case-form.component';
 import { PastoralNotesService } from './pastoral-notes.service';
-import { PastoralNote } from './pastoral-note.model';
+import { NoteSharing, PastoralNote } from './pastoral-note.model';
+import { Permissions } from '../../core/auth/permissions';
 import { CaseDocumentsService } from './case-documents.service';
 import { CaseDocument } from './case-document.model';
 import { ToastService } from '../../core/notifications/toast.service';
@@ -59,6 +60,8 @@ export class DokCasesListComponent implements OnInit {
 
   readonly notesCase = signal<DokCase | null>(null);
   readonly notes = signal<PastoralNote[]>([]);
+  /** Moje udostępnienia notatek w otwartej sprawie (null = nie wczytano albo brak uprawnienia). */
+  readonly noteSharing = signal<NoteSharing | null>(null);
   newNoteContent = '';
   /** Pliki wybrane do nowej notatki; wysyłane zaraz po jej zapisaniu. */
   readonly newNoteFiles = signal<File[]>([]);
@@ -200,6 +203,36 @@ export class DokCasesListComponent implements OnInit {
     this.newNoteContent = '';
     this.newNoteFiles.set([]);
     this.loadNotes(dokCase.id);
+    this.noteSharing.set(null);
+    if (this.auth.hasPermission(Permissions.PastoralNotesWrite)) {
+      this.pastoralNotesService.sharing(dokCase.id).subscribe({ next: s => this.noteSharing.set(s), error: () => {} });
+    }
+  }
+
+  shareNotes(): void {
+    const dokCase = this.notesCase();
+    const sharing = this.noteSharing();
+    if (!dokCase || !sharing) return;
+    if (!confirm(`Udostępnić wszystkie Twoje notatki z tej sprawy (także przyszłe) katechiście: ${sharing.currentCatechistFullName}?`)) return;
+    this.pastoralNotesService.share(dokCase.id).subscribe({
+      next: s => {
+        this.noteSharing.set(s);
+        this.toast.success(`Udostępniono Twoje notatki: ${sharing.currentCatechistFullName}.`);
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się udostępnić notatek.'))
+    });
+  }
+
+  unshareNotes(personId: string): void {
+    const dokCase = this.notesCase();
+    if (!dokCase || !confirm('Cofnąć udostępnienie Twoich notatek tej osobie?')) return;
+    this.pastoralNotesService.unshare(dokCase.id, personId).subscribe({
+      next: s => {
+        this.noteSharing.set(s);
+        this.toast.success('Cofnięto udostępnienie notatek.');
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się cofnąć udostępnienia.'))
+    });
   }
 
   closeNotes(): void {

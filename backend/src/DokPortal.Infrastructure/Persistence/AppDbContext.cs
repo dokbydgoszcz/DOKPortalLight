@@ -28,6 +28,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<DokCase> DokCases => Set<DokCase>();
     public DbSet<CaseDocument> CaseDocuments => Set<CaseDocument>();
     public DbSet<DokCaseEvent> DokCaseEvents => Set<DokCaseEvent>();
+    public DbSet<PastoralNoteShare> PastoralNoteShares => Set<PastoralNoteShare>();
     public DbSet<PastoralNote> PastoralNotes => Set<PastoralNote>();
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<MeetingAttendee> MeetingAttendees => Set<MeetingAttendee>();
@@ -146,6 +147,15 @@ public class AppDbContext : IdentityDbContext<AppUser>
         {
             entity.Property(d => d.Name).IsRequired().HasMaxLength(200);
             entity.HasOne(d => d.DokCase).WithMany().HasForeignKey(d => d.DokCaseId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PastoralNoteShare>(entity =>
+        {
+            entity.Property(s => s.AuthorUserId).IsRequired().HasMaxLength(450);
+            entity.HasOne(s => s.DokCase).WithMany().HasForeignKey(s => s.DokCaseId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(s => s.SharedWithPerson).WithMany().HasForeignKey(s => s.SharedWithPersonId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(s => new { s.DokCaseId, s.AuthorUserId, s.SharedWithPersonId }).IsUnique();
+            entity.HasQueryFilter(s => s.DokCase!.DeletedAtUtc == null);
         });
 
         builder.Entity<DokCaseEvent>(entity =>

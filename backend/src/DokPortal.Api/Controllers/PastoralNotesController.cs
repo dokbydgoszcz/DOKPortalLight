@@ -85,7 +85,8 @@ public class PastoralNotesController : ControllerBase
         var dokCase = await _dokCaseService.GetByIdAsync(caseId, ct);
         if (dokCase is null) return NotFound();
         var currentUserId = GetCurrentUserId();
-        var own = (await _pastoralNoteService.GetVisibleForCaseAsync(caseId, currentUserId, false, ct)).FirstOrDefault(n => n.Id == noteId);
+        var own = (await _pastoralNoteService.GetVisibleForCaseAsync(caseId, currentUserId, false, ct))
+            .FirstOrDefault(n => n.Id == noteId && n.AuthorUserId == currentUserId);
         if (own is null) return NotFound();
 
         foreach (var attachment in own.Attachments)
@@ -95,6 +96,51 @@ public class PastoralNotesController : ControllerBase
         if (!await _pastoralNoteService.DeleteAsync(caseId, noteId, currentUserId, ct)) return NotFound();
         await _auditLogService.LogAsync(currentUserId, GetCurrentUserEmail(), "DeletePastoralNote", dokCase.PersonFullName, AuditResult.Allowed, ct);
         return NoContent();
+    }
+
+    [HttpGet("sharing")]
+    [HasPermission(Permissions.PastoralNotesWrite)]
+    public async Task<ActionResult<NoteSharingDto>> Sharing(Guid caseId, CancellationToken ct)
+    {
+        if (!await CanManageSharingAsync(caseId, ct)) return NotFound();
+        return Ok(await _pastoralNoteService.GetSharingAsync(caseId, GetCurrentUserId(), ct));
+    }
+
+    /// <summary>Sprawy z moimi notatkami, które prowadzi już ktoś inny (tam mogę udostępnić notatki następcy).</summary>
+    [HttpGet("~/api/pastoral-notes/handed-over")]
+    [HasPermission(Permissions.PastoralNotesWrite)]
+    public async Task<ActionResult<IReadOnlyList<HandedOverCaseDto>>> HandedOver(CancellationToken ct)
+        => Ok(await _pastoralNoteService.GetHandedOverAsync(GetCurrentUserId(), ct));
+
+    /// <summary>
+    /// Udostępnianiem zarządza autor notatek: także w sprawie, której już nie widzi (przekazanej innemu katechiście),
+    /// ale tylko gdy ma w niej własne notatki. Inne sprawy spoza zakresu zachowują się jak nieistniejące.
+    /// </summary>
+    private async Task<bool> CanManageSharingAsync(Guid caseId, CancellationToken ct) =>
+        await _dokCaseService.GetByIdAsync(caseId, ct) is not null
+        || await _pastoralNoteService.HasOwnNotesAsync(caseId, GetCurrentUserId(), ct);
+
+    /// <summary>„Udostępnij moje notatki”: obecny katechista prowadzący zobaczy wszystkie notatki autora w tej sprawie.</summary>
+    [HttpPost("share")]
+    [HasPermission(Permissions.PastoralNotesWrite)]
+    public async Task<ActionResult<NoteSharingDto>> Share(Guid caseId, CancellationToken ct)
+    {
+        if (!await CanManageSharingAsync(caseId, ct)) return NotFound();
+        var result = await _pastoralNoteService.ShareWithCurrentCatechistAsync(caseId, GetCurrentUserId(), ct);
+        await _auditLogService.LogAsync(GetCurrentUserId(), GetCurrentUserEmail(), "SharePastoralNotes",
+            $"{result.CasePersonFullName} → {result.CurrentCatechistFullName}", AuditResult.Allowed, ct);
+        return Ok(result);
+    }
+
+    [HttpDelete("share/{personId:guid}")]
+    [HasPermission(Permissions.PastoralNotesWrite)]
+    public async Task<ActionResult<NoteSharingDto>> Unshare(Guid caseId, Guid personId, CancellationToken ct)
+    {
+        if (!await CanManageSharingAsync(caseId, ct)) return NotFound();
+        var result = await _pastoralNoteService.RevokeShareAsync(caseId, GetCurrentUserId(), personId, ct);
+        await _auditLogService.LogAsync(GetCurrentUserId(), GetCurrentUserEmail(), "UnsharePastoralNotes",
+            $"{result.CasePersonFullName} [personId={personId}]", AuditResult.Allowed, ct);
+        return Ok(result);
     }
 
     [HttpPost("{noteId:guid}/attachments")]

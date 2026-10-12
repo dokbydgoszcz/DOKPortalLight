@@ -18,4 +18,13 @@ public interface IPastoralNoteService
     Task<PastoralNoteDto?> UpdateAsync(Guid caseId, Guid noteId, string currentUserId, CreatePastoralNoteRequest request, CancellationToken ct);
     /// <summary>Usuwa notatkę na stałe (sprostowanie/usunięcie danych); tylko autor. Załączniki usuwa wywołujący.</summary>
     Task<bool> DeleteAsync(Guid caseId, Guid noteId, string currentUserId, CancellationToken ct);
+    /// <summary>Czy użytkownik ma notatki w sprawie (autor może udostępniać je także po przekazaniu sprawy).</summary>
+    Task<bool> HasOwnNotesAsync(Guid caseId, string currentUserId, CancellationToken ct);
+    /// <summary>Sprawy z notatkami użytkownika, które prowadzi już inny katechista.</summary>
+    Task<IReadOnlyList<HandedOverCaseDto>> GetHandedOverAsync(string currentUserId, CancellationToken ct);
+    Task<NoteSharingDto> GetSharingAsync(Guid caseId, string currentUserId, CancellationToken ct);
+    /// <summary>Udostępnia wszystkie notatki użytkownika w sprawie jej obecnemu katechiście prowadzącemu.</summary>
+    /// <exception cref="InvalidOperationException">Brak własnych notatek albo użytkownik sam prowadzi sprawę.</exception>
+    Task<NoteSharingDto> ShareWithCurrentCatechistAsync(Guid caseId, string currentUserId, CancellationToken ct);
+    Task<NoteSharingDto> RevokeShareAsync(Guid caseId, string currentUserId, Guid personId, CancellationToken ct);
 }

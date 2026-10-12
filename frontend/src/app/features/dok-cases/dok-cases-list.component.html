@@ -70,8 +70,20 @@
       </div>
       <div class="modal-body">
         <div class="access-note">
-          Widzisz tylko własne notatki, chyba że masz rolę Administratora lub Dyrektora DOK — wtedy widzisz wszystkie.
+          Widzisz własne notatki i te, które udostępnili Ci inni (np. poprzedni katechista); Administrator i Dyrektor DOK widzą wszystkie.
         </div>
+        @if (noteSharing(); as sharing) {
+          @if (sharing.hasOwnNotes) {
+            <div class="note-sharing" style="margin-bottom:12px">
+              @if (sharing.canShareWithCurrentCatechist) {
+                <button class="btn ghost small" type="button" (click)="shareNotes()">Udostępnij moje notatki: {{ sharing.currentCatechistFullName }}</button>
+              }
+              @for (share of sharing.sharedWith; track share.personId) {
+                <div class="list-sub">Udostępnione: {{ share.fullName }} ({{ share.sharedAtUtc | date:'short' }}) · <span class="link" (click)="unshareNotes(share.personId)">Cofnij udostępnienie</span></div>
+              }
+            </div>
+          }
+        }
         <div class="list" style="margin-bottom:16px">
           @for (note of notes(); track note.id) {
             <div class="list-row" style="align-items:flex-start">

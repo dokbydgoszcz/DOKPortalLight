@@ -396,6 +396,72 @@ describe('DokCasesListComponent', () => {
       expect(toastMessages()).toContain('Nie udało się usunąć notatki.');
     });
 
+    describe('sharing my notes', () => {
+      const sharingUrl = api('/api/dok-cases/1/notes/sharing');
+      const notShared = {
+        casePersonFullName: 'Jan Kowalski', hasOwnNotes: true, currentCatechistPersonId: 'c1', currentCatechistFullName: 'Anna Maj',
+        canShareWithCurrentCatechist: true, sharedWith: []
+      };
+      const shared = { ...notShared, canShareWithCurrentCatechist: false, sharedWith: [{ personId: 'c1', fullName: 'Anna Maj', sharedAtUtc: '2026-10-12T09:00:00Z' }] };
+
+      async function openWithSharing(sharing: object) {
+        const ctx = await openNotes([note]);
+        ctx.http.expectOne(sharingUrl).flush(sharing);
+        ctx.fixture.detectChanges();
+        return ctx;
+      }
+
+      it('shares my notes with the current catechist after confirmation', async () => {
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        const ctx = await openWithSharing(notShared);
+
+        clickByText(ctx.el, 'Udostępnij moje notatki: Anna Maj', 'button');
+        expect(confirmSpy).toHaveBeenCalled();
+        ctx.http.expectOne(r => r.method === 'POST' && r.url === api('/api/dok-cases/1/notes/share')).flush(shared);
+        ctx.fixture.detectChanges();
+
+        expect(toastMessages()).toContain('Udostępniono Twoje notatki: Anna Maj.');
+        expect(textOf(ctx.el)).toContain('Udostępnione: Anna Maj');
+      });
+
+      it('revokes a share, and does nothing when sharing is not confirmed', async () => {
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+        const ctx = await openWithSharing(shared);
+
+        clickByText(ctx.el, 'Cofnij udostępnienie', '.link');
+        ctx.http.expectNone(r => r.method === 'DELETE');
+        confirmSpy.mockReturnValue(true);
+        clickByText(ctx.el, 'Cofnij udostępnienie', '.link');
+        ctx.http.expectOne(r => r.method === 'DELETE' && r.url === api('/api/dok-cases/1/notes/share/c1')).flush(notShared);
+        ctx.fixture.detectChanges();
+
+        expect(toastMessages()).toContain('Cofnięto udostępnienie notatek.');
+        expect(textOf(ctx.el)).not.toContain('Udostępnione:');
+      });
+
+      it('hides sharing when I have no notes', async () => {
+        const ctx = await openWithSharing({ ...notShared, hasOwnNotes: false, canShareWithCurrentCatechist: false });
+        expect(textOf(ctx.el)).not.toContain('Udostępnij moje notatki');
+      });
+
+      it('hides sharing when it cannot be loaded', async () => {
+        const failing = await openNotes([note]);
+        failing.http.expectOne(sharingUrl).flush('x', { status: 500, statusText: 'Server Error' });
+        failing.fixture.detectChanges();
+        expect(textOf(failing.el)).not.toContain('Udostępnij moje notatki');
+      });
+
+      it('shows the server message when sharing is refused', async () => {
+        vi.spyOn(window, 'confirm').mockReturnValue(true);
+        const ctx = await openWithSharing(notShared);
+
+        clickByText(ctx.el, 'Udostępnij moje notatki: Anna Maj', 'button');
+        ctx.http.expectOne(r => r.method === 'POST').flush({ title: 'W tej sprawie nie masz notatek do udostępnienia.' }, { status: 400, statusText: 'Bad Request' });
+
+        expect(toastMessages()).toContain('W tej sprawie nie masz notatek do udostępnienia.');
+      });
+    });
+
     it('shows toasts when notes cannot be loaded or added', async () => {
       const ctx = boot();
       clickByText(ctx.el, 'Notatki');

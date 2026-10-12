@@ -247,23 +247,53 @@ public class DokCaseService : IDokCaseService
         personId is null ? null : await _db.People.IgnoreQueryFilters().Where(p => p.Id == personId)
             .Select(p => p.FirstName + " " + p.LastName).FirstOrDefaultAsync(ct);
 
-    /// <summary>Nowy katechista prowadzący dostaje e-mail o przekazaniu sprawy. Błąd poczty nie cofa zmiany.</summary>
+    /// <summary>
+    /// Nowy katechista prowadzący dostaje e-mail o przekazaniu sprawy, a poprzedni (jeśli pisał notatki) – informację, że może je udostępnić.
+    /// Błąd poczty nie cofa zmiany.
+    /// </summary>
     private async Task NotifyNewCatechistAsync(DokCaseDto dokCase, Guid previousCatechistId, CancellationToken ct)
     {
         if (_emailSender is null) return;
         var email = await _db.People.Where(p => p.Id == dokCase.CatechistPersonId).Select(p => p.Email).FirstOrDefaultAsync(ct);
-        if (string.IsNullOrWhiteSpace(email)) return;
-        var previous = await NameOfAsync(previousCatechistId, ct) ?? "—";
-        var body = $"Szczęść Boże,\n\nzostała Ci przekazana sprawa DOK podopiecznego {dokCase.PersonFullName} " +
-                   $"(ścieżka: {DokStages.Label(dokCase.Path)}, etap: {DokStages.Label(dokCase.Stage)}).\n" +
-                   $"Dotychczas prowadził(a) ją: {previous}.\n\nSprawę znajdziesz w DOK Portal → Podopieczni DOK.";
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var previous = await NameOfAsync(previousCatechistId, ct) ?? "—";
+            var body = $"Szczęść Boże,\n\nzostała Ci przekazana sprawa DOK podopiecznego {dokCase.PersonFullName} " +
+                       $"(ścieżka: {DokStages.Label(dokCase.Path)}, etap: {DokStages.Label(dokCase.Stage)}).\n" +
+                       $"Dotychczas prowadził(a) ją: {previous}.\n\nSprawę znajdziesz w DOK Portal → Podopieczni DOK.";
+            try
+            {
+                await _emailSender.SendAsync(email, "Przekazanie sprawy DOK", body, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Nie udało się powiadomić nowego katechisty o przekazaniu sprawy {DokCaseId}", dokCase.Id);
+            }
+        }
+        await TellPreviousCatechistAboutSharingAsync(dokCase, previousCatechistId, ct);
+    }
+
+    /// <summary>
+    /// Poprzedni katechista, który pisał notatki w sprawie, dostaje informację, że może je udostępnić następcy
+    /// (notatki są poufne – udostępnia tylko autor; bez tego następca ich nie widzi).
+    /// </summary>
+    private async Task TellPreviousCatechistAboutSharingAsync(DokCaseDto dokCase, Guid previousCatechistId, CancellationToken ct)
+    {
+        var account = await _db.Users.Where(u => u.PersonId == previousCatechistId && !u.IsDeactivated)
+            .Select(u => new { u.Id, u.Email }).FirstOrDefaultAsync(ct);
+        if (account is null || string.IsNullOrWhiteSpace(account.Email)) return;
+        if (!await _db.PastoralNotes.AnyAsync(n => n.DokCaseId == dokCase.Id && n.AuthorUserId == account.Id, ct)) return;
+
+        var body = $"Szczęść Boże,\n\nsprawę DOK podopiecznego {dokCase.PersonFullName} prowadzi teraz: {dokCase.CatechistFullName}.\n" +
+                   "Twoje notatki duszpasterskie z tej sprawy są poufne i następca ich nie widzi. Jeśli chcesz mu je przekazać, " +
+                   "otwórz DOK Portal → Pulpit → „Twoje notatki w przekazanych sprawach” i kliknij „Udostępnij”.";
         try
         {
-            await _emailSender.SendAsync(email, "Przekazanie sprawy DOK", body, ct);
+            await _emailSender!.SendAsync(account.Email, "Sprawa DOK przekazana – Twoje notatki", body, ct);
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Nie udało się powiadomić nowego katechisty o przekazaniu sprawy {DokCaseId}", dokCase.Id);
+            _logger?.LogWarning(ex, "Nie udało się powiadomić poprzedniego katechisty o możliwości udostępnienia notatek {DokCaseId}", dokCase.Id);
         }
     }
 

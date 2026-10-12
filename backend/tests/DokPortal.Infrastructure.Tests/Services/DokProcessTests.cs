@@ -197,6 +197,27 @@ public class DokProcessTests
         Assert.Contains("Anna Maj", mail.Body);
     }
 
+    [Fact]
+    public async Task ChangingTheCatechist_TellsThePreviousOneTheyCanShareTheirNotes()
+    {
+        await using var db = CreateContext();
+        var student = await AddPersonAsync(db, "Jan", "Kowalski");
+        var anna = await AddPersonAsync(db, "Anna", "Maj", "anna@example.org");
+        var beata = await AddPersonAsync(db, "Beata", "Lis", "beata@example.org");
+        var annaAccount = new DokPortal.Infrastructure.Identity.AppUser { Id = "anna-user", UserName = "anna", Email = "anna-konto@example.org", PersonId = anna.Id };
+        db.Users.Add(annaAccount);
+        var dokCase = await AddCaseAsync(db, student, anna);
+        db.PastoralNotes.Add(new PastoralNote { Id = Guid.NewGuid(), DokCaseId = dokCase.Id, AuthorUserId = "anna-user", Content = "x", CreatedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+        var sender = new RecordingEmailSender();
+
+        await new DokCaseService(db, emailSender: sender).UpdateAsync(dokCase.Id, Update(dokCase, catechist: beata.Id), default, Actor);
+
+        var toPrevious = Assert.Single(sender.Sent, m => m.To == "anna-konto@example.org");
+        Assert.Contains("Udostępnij", toPrevious.Body);
+        Assert.Contains("Beata Lis", toPrevious.Body);
+    }
+
     // ---------- Absolwenci ----------
 
     [Fact]

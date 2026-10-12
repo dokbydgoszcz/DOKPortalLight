@@ -2,10 +2,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DashboardComponent } from './dashboard.component';
 import { environment } from '../../../environments/environment';
-import { provideFakeAuth } from '../../testing/test-helpers';
+import { clickByText, provideFakeAuth } from '../../testing/test-helpers';
 
 describe('DashboardComponent', () => {
   let fixture: ComponentFixture<DashboardComponent>;
@@ -108,6 +108,71 @@ describe('DashboardComponent', () => {
       const text = (el.querySelector('.attention')!.textContent ?? '').replace(/\s+/g, ' ');
       expect(text).toContain('(27)');
       expect(text).toContain('i 26 więcej');
+    });
+  });
+
+  describe('my notes in handed-over cases', () => {
+    const handedOver = (caseId: string, shared: boolean) => ({
+      caseId, personFullName: 'Jan Kowalski', currentCatechistPersonId: 'c2', currentCatechistFullName: 'Beata Lis', notesCount: 3,
+      sharedWithCurrentCatechist: shared
+    });
+    const url = `${environment.apiBaseUrl}/api/pastoral-notes/handed-over`;
+
+    function renderHandedOver(items: unknown[]) {
+      fixture.detectChanges();
+      httpMock.expectOne(`${environment.apiBaseUrl}/api/dashboard/summary`).flush(summary);
+      httpMock.expectOne(url).flush(items);
+      fixture.detectChanges();
+      return fixture.nativeElement as HTMLElement;
+    }
+
+    it('lists cases someone else now leads and shares my notes there', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const el = renderHandedOver([handedOver('k1', false)]);
+
+      const card = el.querySelector('.handed-over') as HTMLElement;
+      expect((card.textContent ?? '').replace(/\s+/g, ' ')).toContain('Jan Kowalski — prowadzi teraz Beata Lis (3 notatki)');
+      (card.querySelector('button') as HTMLButtonElement).click();
+      expect(confirmSpy).toHaveBeenCalled();
+      httpMock.expectOne(r => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/dok-cases/k1/notes/share`).flush({});
+      httpMock.expectOne(url).flush([handedOver('k1', true)]);
+      fixture.detectChanges();
+
+      expect(card.textContent).toContain('udostępnione');
+      confirmSpy.mockRestore();
+    });
+
+    it('revokes the share from the card, and hides the card when there is nothing', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const el = renderHandedOver([handedOver('k1', true)]);
+
+      clickByText(el.querySelector('.handed-over') as HTMLElement, 'Cofnij', '.link');
+      httpMock.expectOne(r => r.method === 'DELETE' && r.url === `${environment.apiBaseUrl}/api/dok-cases/k1/notes/share/c2`).flush({});
+      httpMock.expectOne(url).flush([]);
+      fixture.detectChanges();
+
+      expect(el.querySelector('.handed-over')).toBeNull();
+      confirmSpy.mockRestore();
+    });
+
+    it('does not ask without the right to write notes, and keeps the card on a failed share', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const el = renderHandedOver([handedOver('k1', false)]);
+      (el.querySelector('.handed-over button') as HTMLButtonElement).click();
+      httpMock.expectOne(r => r.method === 'POST').flush('x', { status: 500, statusText: 'Server Error' });
+      fixture.detectChanges();
+      expect(el.querySelector('.handed-over')).not.toBeNull();
+      confirmSpy.mockRestore();
+
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [DashboardComponent],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideFakeAuth(['DokCases.View'])]
+      });
+      const limited = TestBed.createComponent(DashboardComponent);
+      const http = TestBed.inject(HttpTestingController);
+      limited.detectChanges();
+      http.expectNone(r => r.url === url);
     });
   });
 

@@ -792,6 +792,36 @@ namespace DokPortal.Infrastructure.Migrations
                     b.ToTable("PastoralNotes");
                 });
 
+            modelBuilder.Entity("DokPortal.Domain.Entities.PastoralNoteShare", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AuthorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid>("DokCaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("SharedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("SharedWithPersonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SharedWithPersonId");
+
+                    b.HasIndex("DokCaseId", "AuthorUserId", "SharedWithPersonId")
+                        .IsUnique();
+
+                    b.ToTable("PastoralNoteShares");
+                });
+
             modelBuilder.Entity("DokPortal.Domain.Entities.Person", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1337,6 +1367,25 @@ namespace DokPortal.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("DokCase");
+                });
+
+            modelBuilder.Entity("DokPortal.Domain.Entities.PastoralNoteShare", b =>
+                {
+                    b.HasOne("DokPortal.Domain.Entities.DokCase", "DokCase")
+                        .WithMany()
+                        .HasForeignKey("DokCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DokPortal.Domain.Entities.Person", "SharedWithPerson")
+                        .WithMany()
+                        .HasForeignKey("SharedWithPersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DokCase");
+
+                    b.Navigation("SharedWithPerson");
                 });
 
             modelBuilder.Entity("DokPortal.Domain.Entities.Person", b =>
