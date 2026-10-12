@@ -176,7 +176,7 @@ describe('UsersListComponent', () => {
       setInput(el, 'input[name="newPersonLastName"]', 'Nowak');
       clickByText(el, 'Utwórz konto');
       const personReq = http.expectOne(r => r.method === 'POST' && r.url === api('/api/people'));
-      expect(personReq.request.body).toEqual({ firstName: 'Ewa', lastName: 'Nowak' });
+      expect(personReq.request.body).toEqual({ firstName: 'Ewa', lastName: 'Nowak', email: 'ewa@example.org' });
       personReq.flush({ ...person, id: 'new-1', firstName: 'Ewa', lastName: 'Nowak', fullName: 'Ewa Nowak' });
 
       const userReq = http.expectOne(r => r.method === 'POST' && r.url === api('/api/users'));
@@ -212,6 +212,29 @@ describe('UsersListComponent', () => {
       fixture.detectChanges();
 
       expect(textOf(el)).toContain('Nie udało się utworzyć konta użytkownika.');
+    });
+
+    it('shows the server reason when the person or the account is refused', () => {
+      const { fixture, http, el } = boot();
+      clickByText(el, 'Dodaj nową osobę');
+      fixture.detectChanges();
+      fillAccount(el, 'ewa@example.org', 'Sekret123!', 'Sekret123!');
+      setInput(el, 'input[name="newPersonFirstName"]', 'Ewa');
+      setInput(el, 'input[name="newPersonLastName"]', 'Nowak');
+
+      clickByText(el, 'Utwórz konto');
+      const person = http.expectOne(r => r.method === 'POST' && r.url === api('/api/people'));
+      expect(person.request.body).toEqual({ firstName: 'Ewa', lastName: 'Nowak', email: 'ewa@example.org' });
+      person.flush({ title: 'Ten adres e-mail ma już: Ewa Kowalska.' }, { status: 409, statusText: 'Conflict' });
+      fixture.detectChanges();
+      expect(textOf(el)).toContain('Ten adres e-mail ma już: Ewa Kowalska.');
+
+      clickByText(el, 'Utwórz konto');
+      http.expectOne(r => r.method === 'POST' && r.url === api('/api/people')).flush({ id: 'p7' });
+      http.expectOne(r => r.method === 'POST' && r.url === api('/api/users'))
+        .flush({ title: 'Nie udało się utworzyć użytkownika: hasło za krótkie' }, { status: 400, statusText: 'Bad Request' });
+      fixture.detectChanges();
+      expect(textOf(el)).toContain('hasło za krótkie');
     });
   });
 

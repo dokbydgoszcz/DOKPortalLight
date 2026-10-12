@@ -132,10 +132,11 @@ export class UsersListComponent implements OnInit {
         return;
       }
       this.peopleService
-        .create({ firstName: this.newPersonFirstName.trim(), lastName: this.newPersonLastName.trim() })
+        // E-mail konta jest też adresem kontaktowym nowej osoby (jedna osoba = jedno konto).
+        .create({ firstName: this.newPersonFirstName.trim(), lastName: this.newPersonLastName.trim(), email: this.newUser.email.trim() || undefined })
         .subscribe({
           next: person => this.submitCreateUser(person.id),
-          error: () => this.createError.set('Nie udało się utworzyć nowej osoby.')
+          error: err => this.createError.set(serverMessage(err, 'Nie udało się utworzyć nowej osoby.'))
         });
       return;
     }
@@ -156,7 +157,7 @@ export class UsersListComponent implements OnInit {
         this.toast.success('Konto użytkownika utworzone.');
         this.load();
       },
-      error: () => this.createError.set('Nie udało się utworzyć konta użytkownika.')
+      error: err => this.createError.set(serverMessage(err, 'Nie udało się utworzyć konta użytkownika.'))
     });
   }
 
