@@ -412,6 +412,48 @@ namespace DokPortal.Infrastructure.Migrations
                     b.ToTable("DokCases");
                 });
 
+            modelBuilder.Entity("DokPortal.Domain.Entities.DokCaseEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DokCaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FromValue")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PerformedByEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("PerformedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ToValue")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DokCaseId", "Sequence")
+                        .IsUnique();
+
+                    b.ToTable("DokCaseEvents");
+                });
+
             modelBuilder.Entity("DokPortal.Domain.Entities.Formator", b =>
                 {
                     b.Property<Guid>("Id")
@@ -739,6 +781,9 @@ namespace DokPortal.Infrastructure.Migrations
 
                     b.Property<Guid>("DokCaseId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
@@ -1181,6 +1226,17 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Navigation("MentorPerson");
 
                     b.Navigation("Person");
+                });
+
+            modelBuilder.Entity("DokPortal.Domain.Entities.DokCaseEvent", b =>
+                {
+                    b.HasOne("DokPortal.Domain.Entities.DokCase", "DokCase")
+                        .WithMany()
+                        .HasForeignKey("DokCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DokCase");
                 });
 
             modelBuilder.Entity("DokPortal.Domain.Entities.Formator", b =>

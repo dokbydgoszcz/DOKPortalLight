@@ -27,6 +27,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<BudgetEntry> BudgetEntries => Set<BudgetEntry>();
     public DbSet<DokCase> DokCases => Set<DokCase>();
     public DbSet<CaseDocument> CaseDocuments => Set<CaseDocument>();
+    public DbSet<DokCaseEvent> DokCaseEvents => Set<DokCaseEvent>();
     public DbSet<PastoralNote> PastoralNotes => Set<PastoralNote>();
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<MeetingAttendee> MeetingAttendees => Set<MeetingAttendee>();
@@ -145,6 +146,17 @@ public class AppDbContext : IdentityDbContext<AppUser>
         {
             entity.Property(d => d.Name).IsRequired().HasMaxLength(200);
             entity.HasOne(d => d.DokCase).WithMany().HasForeignKey(d => d.DokCaseId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<DokCaseEvent>(entity =>
+        {
+            entity.Property(e => e.FromValue).HasMaxLength(200);
+            entity.Property(e => e.ToValue).HasMaxLength(200);
+            entity.Property(e => e.PerformedByUserId).HasMaxLength(450);
+            entity.Property(e => e.PerformedByEmail).HasMaxLength(256);
+            entity.HasOne(e => e.DokCase).WithMany().HasForeignKey(e => e.DokCaseId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.DokCaseId, e.Sequence }).IsUnique();
+            entity.HasQueryFilter(e => e.DokCase!.DeletedAtUtc == null);
         });
 
         builder.Entity<PastoralNote>(entity =>

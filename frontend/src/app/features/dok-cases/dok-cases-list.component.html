@@ -38,6 +38,8 @@
               <span class="row-actions">
                 <span *appHasPermission="'PastoralNotes.View'" class="link" (click)="openNotes(dokCase)">Notatki</span>
                 <span *appHasPermission="'CaseDocuments.View'" class="link" (click)="openDocuments(dokCase)">Dokumenty</span>
+                <span *appHasPermission="'DokCases.Manage'" class="link" (click)="openEditForm(dokCase)">Edytuj</span>
+                <span class="link" (click)="openHistory(dokCase)">Historia</span>
                 <span *appHasPermission="'DokCases.Manage'" class="link" style="color:var(--danger)" (click)="deleteCase(dokCase)">Usuń</span>
               </span>
             </td>
@@ -54,6 +56,7 @@
 <app-dok-case-form
   [open]="isFormOpen()"
   [value]="formValue"
+  [editingName]="editingCase()?.personFullName ?? null"
   (save)="onSave($event)"
   (cancel)="onCancel()">
 </app-dok-case-form>
@@ -74,7 +77,16 @@
             <div class="list-row" style="align-items:flex-start">
               <div class="list-main">
                 <div class="list-title" style="white-space:normal">{{ note.content }}</div>
-                <div class="list-sub">{{ note.authorEmail ?? note.authorUserId }} · {{ note.createdAtUtc | date:'short' }}</div>
+                <div class="list-sub">
+                  {{ note.authorEmail ?? note.authorUserId }} · {{ note.createdAtUtc | date:'short' }}
+                  @if (note.updatedAtUtc) { · poprawiona {{ note.updatedAtUtc | date:'short' }} }
+                  @if (isOwnNote(note)) {
+                    <ng-container *appHasPermission="'PastoralNotes.Write'">
+                      · <span class="link" (click)="editNote(note)">Edytuj</span>
+                      · <span class="link" style="color:var(--danger)" (click)="deleteNote(note)">Usuń</span>
+                    </ng-container>
+                  }
+                </div>
                 <app-attachments
                   [attachments]="note.attachments"
                   [baseUrl]="noteAttachmentsUrl(dokCase.id, note.id)"
@@ -145,6 +157,10 @@
                 @if (document.hasFile) {
                   <span class="link" (click)="downloadDocument(document)">Pobierz</span>
                 }
+                <ng-container *appHasPermission="'CaseDocuments.Manage'">
+                  <span class="link" (click)="renameDocument(document)">Zmień nazwę</span>
+                  <span class="link" style="color:var(--danger)" (click)="deleteDocument(document)">Usuń</span>
+                </ng-container>
                 <label *appHasPermission="'CaseDocuments.Manage'" class="btn ghost" style="cursor:pointer">
                   {{ document.hasFile ? 'Zamień plik' : 'Prześlij plik' }}
                   <input type="file" style="display:none" [accept]="accept" (change)="onFileSelected(document, $event)">
@@ -163,6 +179,34 @@
       <div class="modal-foot">
         <button class="btn ghost" (click)="closeDocuments()">Zamknij</button>
         <button *appHasPermission="'CaseDocuments.Manage'" class="btn primary" (click)="addDocument()">Dodaj pozycję</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (historyCase(); as dokCase) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Historia sprawy — {{ dokCase.personFullName }}</h3>
+        <button class="close" (click)="closeHistory()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="list">
+          @for (event of history(); track $index) {
+            <div class="list-row">
+              <div class="list-main">
+                <div class="list-title" style="white-space:normal">{{ event.description }}</div>
+                <div class="list-sub">{{ event.atUtc | date:'short' }}@if (event.performedByEmail) { · {{ event.performedByEmail }} }</div>
+              </div>
+            </div>
+          } @empty {
+            <div class="empty">Brak zmian etapu, ścieżki, katechisty ani mentora.</div>
+          }
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="closeHistory()">Zamknij</button>
       </div>
     </div>
   </div>

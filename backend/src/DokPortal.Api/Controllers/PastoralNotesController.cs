@@ -64,6 +64,39 @@ public class PastoralNotesController : ControllerBase
         return CreatedAtAction(nameof(GetAll), new { caseId }, created);
     }
 
+    /// <summary>Autor poprawia treść swojej notatki; cudza zachowuje się jak nieistniejąca.</summary>
+    [HttpPut("{noteId:guid}")]
+    [HasPermission(Permissions.PastoralNotesWrite)]
+    public async Task<ActionResult<PastoralNoteDto>> Update(Guid caseId, Guid noteId, CreatePastoralNoteRequest request, CancellationToken ct)
+    {
+        var dokCase = await _dokCaseService.GetByIdAsync(caseId, ct);
+        if (dokCase is null) return NotFound();
+        var updated = await _pastoralNoteService.UpdateAsync(caseId, noteId, GetCurrentUserId(), request, ct);
+        if (updated is null) return NotFound();
+        await _auditLogService.LogAsync(GetCurrentUserId(), GetCurrentUserEmail(), "UpdatePastoralNote", dokCase.PersonFullName, AuditResult.Allowed, ct);
+        return Ok(updated);
+    }
+
+    /// <summary>Autor usuwa swoją notatkę na stałe, razem z jej załącznikami.</summary>
+    [HttpDelete("{noteId:guid}")]
+    [HasPermission(Permissions.PastoralNotesWrite)]
+    public async Task<IActionResult> Delete(Guid caseId, Guid noteId, CancellationToken ct)
+    {
+        var dokCase = await _dokCaseService.GetByIdAsync(caseId, ct);
+        if (dokCase is null) return NotFound();
+        var currentUserId = GetCurrentUserId();
+        var own = (await _pastoralNoteService.GetVisibleForCaseAsync(caseId, currentUserId, false, ct)).FirstOrDefault(n => n.Id == noteId);
+        if (own is null) return NotFound();
+
+        foreach (var attachment in own.Attachments)
+        {
+            await _attachmentService.DeleteAsync(AttachmentOwnerType.PastoralNote, noteId, attachment.Id, ct);
+        }
+        if (!await _pastoralNoteService.DeleteAsync(caseId, noteId, currentUserId, ct)) return NotFound();
+        await _auditLogService.LogAsync(currentUserId, GetCurrentUserEmail(), "DeletePastoralNote", dokCase.PersonFullName, AuditResult.Allowed, ct);
+        return NoContent();
+    }
+
     [HttpPost("{noteId:guid}/attachments")]
     [HasPermission(Permissions.PastoralNotesWrite)]
     [RequestSizeLimit(AttachmentRules.MaxRequestBytes)]

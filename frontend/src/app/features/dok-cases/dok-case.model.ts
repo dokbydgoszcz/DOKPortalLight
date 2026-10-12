@@ -18,6 +18,13 @@ export interface DokCase {
   meetingsAttended: number;
 }
 
+export interface DokCaseEvent {
+  kind: string;
+  description: string;
+  atUtc: string;
+  performedByEmail: string | null;
+}
+
 export interface DokCaseFormValue {
   personId: string;
   path: DokPath;

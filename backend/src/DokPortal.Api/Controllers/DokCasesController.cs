@@ -45,8 +45,19 @@ public class DokCasesController : ControllerBase
     [HasPermission(Permissions.DokCasesManage)]
     public async Task<ActionResult<DokCaseDto>> Update(Guid id, UpdateDokCaseRequest request, CancellationToken ct)
     {
-        var updated = await _dokCaseService.UpdateAsync(id, request, ct);
+        var actor = new DokCaseActor(
+            User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value,
+            User.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Email)?.Value ?? "");
+        var updated = await _dokCaseService.UpdateAsync(id, request, ct, actor);
         return updated is null ? NotFound() : Ok(updated);
+    }
+
+    [HttpGet("{id:guid}/history")]
+    [HasPermission(Permissions.DokCasesView)]
+    public async Task<ActionResult<IReadOnlyList<DokCaseEventDto>>> History(Guid id, CancellationToken ct)
+    {
+        var history = await _dokCaseService.GetHistoryAsync(id, ct);
+        return history is null ? NotFound() : Ok(history);
     }
 
     [HttpDelete("{id:guid}")]

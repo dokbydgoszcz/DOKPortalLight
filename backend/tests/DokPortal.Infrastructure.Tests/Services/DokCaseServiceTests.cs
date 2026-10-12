@@ -56,9 +56,10 @@ public class DokCaseServiceTests
         {
             PersonId = personId, Path = DokPath.Communion, Stage = DokStage.Evangelization, CatechistPersonId = catechistId
         }, default);
+        var (secondPersonId, _) = await SeedPeopleAsync(db);
         await service.CreateAsync(new CreateDokCaseRequest
         {
-            PersonId = personId, Path = DokPath.Communion, Stage = DokStage.CloserFormation, CatechistPersonId = catechistId
+            PersonId = secondPersonId, Path = DokPath.Communion, Stage = DokStage.CloserFormation, CatechistPersonId = catechistId
         }, default);
 
         var evangelization = await service.SearchAsync(null, 1, 20, default, DokStage.Evangelization);

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { PagedResult } from '../people/person.model';
-import { DokCase, DokCaseFormValue, DokPath, DokStage } from './dok-case.model';
+import { DokCase, DokCaseEvent, DokCaseFormValue, DokPath, DokStage } from './dok-case.model';
 
 @Injectable({ providedIn: 'root' })
 export class DokCasesService {
@@ -23,6 +23,14 @@ export class DokCasesService {
 
   create(value: DokCaseFormValue) {
     return this.http.post<DokCase>(this.baseUrl, value);
+  }
+
+  update(id: string, value: DokCaseFormValue) {
+    return this.http.put<DokCase>(`${this.baseUrl}/${id}`, value);
+  }
+
+  history(id: string) {
+    return this.http.get<DokCaseEvent[]>(`${this.baseUrl}/${id}/history`);
   }
 
   delete(id: string) {

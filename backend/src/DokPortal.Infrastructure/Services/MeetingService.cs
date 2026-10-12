@@ -106,6 +106,11 @@ public class MeetingService : IMeetingService
         meeting.DokCaseId = request.DokCaseId;
         meeting.GroupLabel = request.GroupLabel;
         meeting.CatechistPersonId = request.DokCaseId is null ? meeting.CatechistPersonId ?? scope.PersonId : null;
+        if (meeting.MeetingDate != request.MeetingDate)
+        {
+            // Przesunięte spotkanie dostaje przypomnienie na nowy termin.
+            meeting.ReminderSentAtUtc = null;
+        }
         meeting.MeetingDate = request.MeetingDate;
         meeting.IsAttended = request.IsAttended;
         meeting.Notes = request.Notes;

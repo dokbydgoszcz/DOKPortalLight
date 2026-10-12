@@ -2,6 +2,7 @@ using DokPortal.Application.Common;
 using DokPortal.Application.NameDays;
 using DokPortal.Application.Reminders;
 using DokPortal.Domain.Constants;
+using DokPortal.Domain.Enums;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -41,6 +42,7 @@ public class ReminderService : IReminderService
             join person in _db.People on dokCase.PersonId equals person.Id
             join catechist in _db.People on dokCase.CatechistPersonId equals catechist.Id
             where !doc.IsProvided && (doc.LastReminderSentAtUtc == null || doc.LastReminderSentAtUtc <= cutoff)
+            where dokCase.Stage != DokStage.Graduate
             select new MissingDocumentRow(doc.Id, doc.Name, dokCase.Id, person.FirstName, person.LastName, catechist.Email)
         ).ToListAsync(ct);
 
@@ -138,12 +140,15 @@ public class ReminderService : IReminderService
 
     public async Task<UpcomingMeetingsReminderResultDto> RunUpcomingMeetingsReminderAsync(CancellationToken ct)
     {
-        var tomorrow = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
+        // Okno „dziś–jutro”: spóźniony przebieg (opóźniony cron) nadal przypomni o dzisiejszym spotkaniu.
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var tomorrow = today.AddDays(1);
 
         var rows = await (
             from meeting in _db.Meetings
-            where meeting.DokCaseId != null && meeting.MeetingDate == tomorrow && meeting.ReminderSentAtUtc == null
+            where meeting.DokCaseId != null && meeting.MeetingDate >= today && meeting.MeetingDate <= tomorrow && meeting.ReminderSentAtUtc == null
             join dokCase in _db.DokCases on meeting.DokCaseId equals dokCase.Id
+            where dokCase.Stage != DokStage.Graduate
             join person in _db.People on dokCase.PersonId equals person.Id
             join catechist in _db.People on dokCase.CatechistPersonId equals catechist.Id
             select new UpcomingMeetingRow(meeting.Id, meeting.MeetingDate, person.FirstName, person.LastName, catechist.Email)
@@ -161,7 +166,8 @@ public class ReminderService : IReminderService
             }
 
             var personFullName = $"{row.PersonFirstName} {row.PersonLastName}";
-            var body = $"Przypomnienie: jutro ({row.MeetingDate:yyyy-MM-dd}) odbywa się spotkanie z podopiecznym {personFullName}.";
+            var when = row.MeetingDate == today ? "dziś" : "jutro";
+            var body = $"Przypomnienie: {when} ({row.MeetingDate:yyyy-MM-dd}) odbywa się spotkanie z podopiecznym {personFullName}.";
             try
             {
                 await _emailSender.SendAsync(row.CatechistEmail!, "Nadchodzące spotkanie — przypomnienie", body, ct);

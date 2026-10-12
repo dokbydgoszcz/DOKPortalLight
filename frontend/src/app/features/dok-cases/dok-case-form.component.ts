@@ -15,6 +15,8 @@ import { DOK_PATH_LABELS, DOK_STAGE_LABELS, firstStageOf, stagesOf } from './dok
 export class DokCaseFormComponent implements OnInit {
   @Input() open = false;
   @Input() value: DokCaseFormValue = { personId: '', path: 'BaptismCandidate', stage: 'Prekatechumenate', catechistPersonId: '' };
+  /** Imię i nazwisko podopiecznego edytowanej sprawy; pusty = nowa sprawa. Przy edycji podopiecznego nie można zmienić. */
+  @Input() editingName: string | null = null;
   @Output() save = new EventEmitter<DokCaseFormValue>();
   @Output() cancel = new EventEmitter<void>();
 
@@ -42,7 +44,9 @@ export class DokCaseFormComponent implements OnInit {
     }
   }
 
+  /** Pusty mentor nie jest wysyłany (serwer traktuje brak jako „bez mentora”). */
   submit(): void {
-    this.save.emit(this.value);
+    const { mentorPersonId, ...rest } = this.value;
+    this.save.emit(mentorPersonId ? { ...rest, mentorPersonId } : rest);
   }
 }

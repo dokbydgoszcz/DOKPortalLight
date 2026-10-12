@@ -127,6 +127,100 @@ describe('DokCasesListComponent', () => {
     });
   });
 
+  describe('editing a case', () => {
+    const mentor = { id: 'm1', firstName: 'Marek', lastName: 'Mentor', fullName: 'Marek Mentor', email: null, phone: null, birthDate: null, parishId: null, parishName: null, notes: null };
+    const editLink = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll<HTMLElement>('tbody tr')[0].querySelectorAll<HTMLElement>('.link')).find(l => l.textContent!.trim() === 'Edytuj')!;
+
+    async function openEdit() {
+      const ctx = setup(DokCasesListComponent);
+      ctx.fixture.detectChanges();
+      ctx.http.match(r => r.url === casesUrl).forEach(r => r.flush(paged([dokCase, secondCase])));
+      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged([...people, mentor]));
+      ctx.fixture.detectChanges();
+      editLink(ctx.el).click();
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      ctx.fixture.detectChanges();
+      return ctx;
+    }
+
+    it('opens the form filled with the case, without letting the student change', async () => {
+      const ctx = await openEdit();
+
+      expect(textOf(ctx.el)).toContain('Edytuj sprawę — Jan Kowalski');
+      expect(ctx.el.querySelector<HTMLSelectElement>('select[name="personId"]')!.disabled).toBe(true);
+      expect(ctx.el.querySelector<HTMLSelectElement>('select[name="stage"]')!.value).toBe('Evangelization');
+      expect(ctx.el.querySelector<HTMLSelectElement>('select[name="catechistPersonId"]')!.value).toBe('c1');
+    });
+
+    it('saves the new stage, catechist and mentor with PUT and reloads', async () => {
+      const ctx = await openEdit();
+      setSelect(ctx.el, 'select[name="stage"]', 'Graduate');
+      setSelect(ctx.el, 'select[name="mentorPersonId"]', 'm1');
+      ctx.fixture.detectChanges();
+
+      clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+      const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${casesUrl}/1`);
+      expect(req.request.body).toEqual({ personId: 'p1', path: 'Confirmation', stage: 'Graduate', catechistPersonId: 'c1', mentorPersonId: 'm1' });
+      req.flush({ ...dokCase, stage: 'Graduate' });
+
+      expect(toastMessages()).toContain('Zapisano zmiany w sprawie.');
+      flushReload(ctx);
+    });
+
+    it('shows the server message when the change is refused', async () => {
+      const ctx = await openEdit();
+
+      clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+      ctx.http.expectOne(r => r.method === 'PUT').flush({ title: 'Nie znaleziono mentora.' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(toastMessages()).toContain('Nie znaleziono mentora.');
+    });
+
+    it('goes back to adding a new case after an edit', async () => {
+      const ctx = await openEdit();
+      clickByText(ctx.el, 'Anuluj', '.modal-foot button');
+      ctx.fixture.detectChanges();
+
+      clickByText(ctx.el, 'Nowy podopieczny');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+
+      expect(textOf(ctx.el)).toContain('Nowy podopieczny DOK');
+      expect(ctx.el.querySelector<HTMLSelectElement>('select[name="personId"]')!.disabled).toBe(false);
+    });
+
+    it('shows the history of changes with their authors', async () => {
+      const ctx = boot();
+      clickByText(ctx.el, 'Historia');
+      ctx.http.expectOne(`${casesUrl}/1/history`).flush([
+        { kind: 'StageChanged', description: 'Etap: Ewangelizacja → Absolwent', atUtc: '2026-10-10T10:00:00Z', performedByEmail: 'dyr@example.org' }
+      ]);
+      ctx.fixture.detectChanges();
+
+      expect(textOf(ctx.el)).toContain('Etap: Ewangelizacja → Absolwent');
+      expect(textOf(ctx.el)).toContain('dyr@example.org');
+      clickByText(ctx.el, 'Zamknij', '.modal-foot button');
+      ctx.fixture.detectChanges();
+      expect(ctx.el.querySelector('.modal')).toBeNull();
+    });
+
+    it('says when there is no history, and reports a failure to load it', async () => {
+      const ctx = boot();
+      clickByText(ctx.el, 'Historia');
+      ctx.http.expectOne(`${casesUrl}/1/history`).flush([]);
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Brak zmian');
+
+      clickByText(ctx.el, 'Zamknij', '.modal-foot button');
+      ctx.fixture.detectChanges();
+      clickByText(ctx.el, 'Historia');
+      ctx.http.expectOne(`${casesUrl}/1/history`).flush('x', { status: 500, statusText: 'Server Error' });
+      expect(toastMessages()).toContain('Nie udało się wczytać historii sprawy.');
+    });
+  });
+
   describe('filtering by stage', () => {
     const withStage = (stage: string | null) =>
       setup(DokCasesListComponent, {
@@ -255,6 +349,51 @@ describe('DokCasesListComponent', () => {
       ctx.http.expectOne(r => r.method === 'GET' && r.url === notesUrl).flush([note]);
 
       expect(toastMessages()).toContain('Dodano notatkę.');
+    });
+
+    it('lets the author edit and delete their own note, but not someone else’s', async () => {
+      const own = { ...note, id: 'n2', authorUserId: 'me', content: 'Moja notatka' };
+      const ctx = await openNotes([own, note]);
+      const rows = () => Array.from(ctx.el.querySelectorAll<HTMLElement>('.modal .list-row'));
+      expect(rows()[1].textContent).not.toContain('Edytuj');
+
+      vi.spyOn(window, 'prompt').mockReturnValue('  Poprawiona  ');
+      clickByText(rows()[0], 'Edytuj', '.link');
+      const put = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${notesUrl}/n2`);
+      expect(put.request.body).toEqual({ content: 'Poprawiona' });
+      put.flush({ ...own, content: 'Poprawiona' });
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === notesUrl).flush([own, note]);
+      expect(toastMessages()).toContain('Zapisano notatkę.');
+
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      ctx.fixture.detectChanges();
+      clickByText(rows()[0], 'Usuń', '.link');
+      ctx.http.expectOne(r => r.method === 'DELETE' && r.url === `${notesUrl}/n2`).flush(null);
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === notesUrl).flush([note]);
+      expect(toastMessages()).toContain('Notatka usunięta.');
+    });
+
+    it('does not save an unchanged or emptied note, and reports failures', async () => {
+      const own = { ...note, id: 'n2', authorUserId: 'me', content: 'Moja notatka' };
+      const ctx = await openNotes([own]);
+      const prompt = vi.spyOn(window, 'prompt').mockReturnValue(null);
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      clickByText(ctx.el, 'Edytuj', '.modal .link');
+      prompt.mockReturnValue('   ');
+      clickByText(ctx.el, 'Edytuj', '.modal .link');
+      clickByText(ctx.el, 'Usuń', '.modal .link');
+      ctx.http.expectNone(r => r.method === 'PUT' || r.method === 'DELETE');
+
+      prompt.mockReturnValue('Nowa');
+      clickByText(ctx.el, 'Edytuj', '.modal .link');
+      ctx.http.expectOne(r => r.method === 'PUT').flush('x', { status: 500, statusText: 'Server Error' });
+      confirmSpy.mockReturnValue(true);
+      clickByText(ctx.el, 'Usuń', '.modal .link');
+      ctx.http.expectOne(r => r.method === 'DELETE').flush('x', { status: 500, statusText: 'Server Error' });
+
+      expect(toastMessages()).toContain('Nie udało się zapisać notatki.');
+      expect(toastMessages()).toContain('Nie udało się usunąć notatki.');
     });
 
     it('shows toasts when notes cannot be loaded or added', async () => {
@@ -430,6 +569,50 @@ describe('DokCasesListComponent', () => {
       ctx.http.expectOne(r => r.method === 'GET' && r.url === docsUrl).flush([missing]);
 
       expect(toastMessages()).toContain('Dodano pozycję na liście dokumentów.');
+    });
+
+    it('renames a position and deletes it together with its file', async () => {
+      const ctx = await openDocuments();
+      const row = () => Array.from(ctx.el.querySelectorAll<HTMLElement>('.modal .list-row'))[1];
+
+      vi.spyOn(window, 'prompt').mockReturnValue(' Zaświadczenie o chrzcie ');
+      clickByText(row(), 'Zmień nazwę', '.link');
+      const put = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${docsUrl}/d2/name`);
+      expect(put.request.body).toEqual({ name: 'Zaświadczenie o chrzcie' });
+      put.flush(provided);
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === docsUrl).flush([missing, provided]);
+      ctx.fixture.detectChanges();
+
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      clickByText(row(), 'Usuń', '.link');
+      expect(confirmSpy).toHaveBeenCalledWith('Usunąć dokument „Zaświadczenie” razem z plikiem?');
+      ctx.http.expectOne(r => r.method === 'DELETE' && r.url === `${docsUrl}/d2`).flush(null);
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === docsUrl).flush([missing]);
+
+      expect(toastMessages()).toContain('Zmieniono nazwę dokumentu.');
+      expect(toastMessages()).toContain('Dokument usunięty.');
+    });
+
+    it('skips renaming or deleting when cancelled, and shows server messages on failure', async () => {
+      const ctx = await openDocuments([missing]);
+      const prompt = vi.spyOn(window, 'prompt').mockReturnValue(null);
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      clickByText(ctx.el, 'Zmień nazwę', '.modal .link');
+      prompt.mockReturnValue('  ');
+      clickByText(ctx.el, 'Zmień nazwę', '.modal .link');
+      clickByText(ctx.el, 'Usuń', '.modal .link');
+      ctx.http.expectNone(r => r.method === 'PUT' || r.method === 'DELETE');
+
+      prompt.mockReturnValue('Nowa');
+      clickByText(ctx.el, 'Zmień nazwę', '.modal .link');
+      ctx.http.expectOne(r => r.method === 'PUT').flush({ title: 'Za długa nazwa' }, { status: 400, statusText: 'Bad Request' });
+      confirmSpy.mockReturnValue(true);
+      clickByText(ctx.el, 'Usuń', '.modal .link');
+      ctx.http.expectOne(r => r.method === 'DELETE').flush('x', { status: 500, statusText: 'Server Error' });
+
+      expect(toastMessages()).toContain('Za długa nazwa');
+      expect(toastMessages()).toContain('Nie udało się usunąć dokumentu.');
     });
 
     it('uploads the chosen file as form data and reloads the list', async () => {

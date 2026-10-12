@@ -16,6 +16,7 @@ export function provideFakeAuth(granted: string[] = ['*']): Provider {
       hasPermission: allowed,
       hasAnyPermission: (permissions: string[]) => permissions.some(allowed),
       roles: () => [],
+      userId: () => 'me',
       permissions: () => granted,
       token: null,
       logout: vi.fn()

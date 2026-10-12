@@ -88,6 +88,21 @@ describe('AuthService', () => {
     expect(fresh.isAuthenticated()).toBe(true);
   });
 
+  it('exposes the account id from the token, and none when logged out or the token is broken', () => {
+    localStorage.setItem('dokportal.permissionsAware', '1');
+    localStorage.setItem('dokportal.token', createFakeJwt({ sub: 'user-7', exp: 9999999999 }));
+    expect(new AuthService(TestBed.inject(HttpClient), TestBed.inject(Router)).userId()).toBe('user-7');
+
+    localStorage.setItem('dokportal.token', createFakeJwt({ exp: 9999999999 }));
+    expect(new AuthService(TestBed.inject(HttpClient), TestBed.inject(Router)).userId()).toBeNull();
+
+    localStorage.setItem('dokportal.token', 'not-a-jwt');
+    expect(new AuthService(TestBed.inject(HttpClient), TestBed.inject(Router)).userId()).toBeNull();
+
+    localStorage.clear();
+    expect(new AuthService(TestBed.inject(HttpClient), TestBed.inject(Router)).userId()).toBeNull();
+  });
+
   it('treats a malformed token as having no roles or permissions', () => {
     localStorage.setItem('dokportal.permissionsAware', '1');
     for (const broken of ['not-a-jwt', 'a.%%%.c', 'a.bm90LWpzb24.c']) {

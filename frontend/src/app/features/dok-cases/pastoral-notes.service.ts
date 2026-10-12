@@ -18,4 +18,12 @@ export class PastoralNotesService {
   create(caseId: string, content: string) {
     return this.http.post<PastoralNote>(this.baseUrl(caseId), { content });
   }
+
+  update(caseId: string, noteId: string, content: string) {
+    return this.http.put<PastoralNote>(`${this.baseUrl(caseId)}/${noteId}`, { content });
+  }
+
+  delete(caseId: string, noteId: string) {
+    return this.http.delete<void>(`${this.baseUrl(caseId)}/${noteId}`);
+  }
 }

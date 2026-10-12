@@ -39,6 +39,11 @@ export class AuthService {
   readonly isAuthenticated = computed(() => this.tokenSignal() !== null);
   readonly roles = computed(() => this.decodeClaimList(this.tokenSignal(), 'role'));
   readonly permissions = computed(() => this.decodeClaimList(this.tokenSignal(), 'permission'));
+  /** Identyfikator zalogowanego konta (claim „sub”), np. do rozpoznania własnych notatek. */
+  readonly userId = computed(() => {
+    const token = this.tokenSignal();
+    return token ? this.decodeToken(token)?.sub ?? null : null;
+  });
 
   constructor(private readonly http: HttpClient, private readonly router: Router) {}
 

@@ -7,5 +7,6 @@ export interface PastoralNote {
   authorEmail: string | null;
   content: string;
   createdAtUtc: string;
+  updatedAtUtc?: string | null;
   attachments: Attachment[];
 }

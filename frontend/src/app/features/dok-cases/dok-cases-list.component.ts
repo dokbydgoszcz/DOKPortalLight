@@ -5,7 +5,8 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { DokCasesService } from './dok-cases.service';
-import { DokCase, DokCaseFormValue, DokStage } from './dok-case.model';
+import { DokCase, DokCaseEvent, DokCaseFormValue, DokStage } from './dok-case.model';
+import { AuthService } from '../../core/auth/auth.service';
 import { ALL_STAGES, DOK_PATH_LABELS, DOK_STAGE_LABELS, firstStageOf } from './dok-stages';
 import { DokCaseFormComponent } from './dok-case-form.component';
 import { PastoralNotesService } from './pastoral-notes.service';
@@ -44,6 +45,11 @@ export class DokCasesListComponent implements OnInit {
   readonly totalCount = signal(0);
   readonly pageSize = PAGE_SIZE;
   readonly isFormOpen = signal(false);
+  /** Sprawa otwarta do edycji; pusta = formularz nowej sprawy. */
+  readonly editingCase = signal<DokCase | null>(null);
+  readonly historyCase = signal<DokCase | null>(null);
+  readonly history = signal<DokCaseEvent[]>([]);
+  private readonly auth = inject(AuthService);
   formValue: DokCaseFormValue = { personId: '', path: 'BaptismCandidate', stage: firstStageOf('BaptismCandidate'), catechistPersonId: '' };
 
   readonly baptismCount = signal(0);
@@ -119,20 +125,50 @@ export class DokCasesListComponent implements OnInit {
   }
 
   openAddForm(): void {
+    this.editingCase.set(null);
     this.formValue = { personId: '', path: 'BaptismCandidate', stage: firstStageOf('BaptismCandidate'), catechistPersonId: '' };
     this.isFormOpen.set(true);
   }
 
+  openEditForm(dokCase: DokCase): void {
+    this.editingCase.set(dokCase);
+    this.formValue = {
+      personId: dokCase.personId, path: dokCase.path, stage: dokCase.stage,
+      catechistPersonId: dokCase.catechistPersonId, mentorPersonId: dokCase.mentorPersonId ?? ''
+    };
+    this.isFormOpen.set(true);
+  }
+
   onSave(value: DokCaseFormValue): void {
-    this.dokCasesService.create(value).subscribe({
+    const editing = this.editingCase();
+    const request$ = editing ? this.dokCasesService.update(editing.id, value) : this.dokCasesService.create(value);
+    request$.subscribe({
       next: () => {
         this.isFormOpen.set(false);
-        this.toast.success('Dodano podopiecznego.');
+        this.editingCase.set(null);
+        this.toast.success(editing ? 'Zapisano zmiany w sprawie.' : 'Dodano podopiecznego.');
         this.load();
         this.loadStats();
       },
-      error: () => this.toast.error('Nie udało się dodać podopiecznego.')
+      error: err => this.toast.error(editing
+        ? serverMessage(err, 'Nie udało się zapisać zmian w sprawie.')
+        : serverMessage(err, 'Nie udało się dodać podopiecznego.'))
     });
+  }
+
+  openHistory(dokCase: DokCase): void {
+    this.dokCasesService.history(dokCase.id).subscribe({
+      next: events => {
+        this.history.set(events);
+        this.historyCase.set(dokCase);
+      },
+      error: () => this.toast.error('Nie udało się wczytać historii sprawy.')
+    });
+  }
+
+  closeHistory(): void {
+    this.historyCase.set(null);
+    this.history.set([]);
   }
 
   onCancel(): void {
@@ -176,6 +212,36 @@ export class DokCasesListComponent implements OnInit {
     this.pastoralNotesService.list(caseId).subscribe({
       next: notes => this.notes.set(notes),
       error: () => this.toast.error('Nie udało się wczytać notatek.')
+    });
+  }
+
+  /** Notatkę poprawia i usuwa tylko jej autor. */
+  isOwnNote(note: PastoralNote): boolean {
+    return note.authorUserId === this.auth.userId();
+  }
+
+  editNote(note: PastoralNote): void {
+    const dokCase = this.notesCase();
+    const content = prompt('Popraw treść notatki:', note.content)?.trim();
+    if (!dokCase || !content || content === note.content) return;
+    this.pastoralNotesService.update(dokCase.id, note.id, content).subscribe({
+      next: () => {
+        this.toast.success('Zapisano notatkę.');
+        this.loadNotes(dokCase.id);
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się zapisać notatki.'))
+    });
+  }
+
+  deleteNote(note: PastoralNote): void {
+    const dokCase = this.notesCase();
+    if (!dokCase || !confirm('Usunąć tę notatkę na stałe (razem z załącznikami)?')) return;
+    this.pastoralNotesService.delete(dokCase.id, note.id).subscribe({
+      next: () => {
+        this.toast.success('Notatka usunięta.');
+        this.loadNotes(dokCase.id);
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć notatki.'))
     });
   }
 
@@ -286,6 +352,31 @@ export class DokCasesListComponent implements OnInit {
         this.toast.success(summary.uploaded === 1 ? 'Przesłano dokument.' : `Przesłano dokumenty: ${summary.uploaded}.`);
       }
       this.loadDocuments(dokCase.id);
+    });
+  }
+
+  renameDocument(caseDocument: CaseDocument): void {
+    const dokCase = this.documentsCase();
+    const name = prompt('Nowa nazwa dokumentu:', caseDocument.name)?.trim();
+    if (!dokCase || !name) return;
+    this.caseDocumentsService.rename(dokCase.id, caseDocument.id, name).subscribe({
+      next: () => {
+        this.toast.success('Zmieniono nazwę dokumentu.');
+        this.loadDocuments(dokCase.id);
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się zmienić nazwy dokumentu.'))
+    });
+  }
+
+  deleteDocument(caseDocument: CaseDocument): void {
+    const dokCase = this.documentsCase();
+    if (!dokCase || !confirm(`Usunąć dokument „${caseDocument.name}” razem z plikiem?`)) return;
+    this.caseDocumentsService.delete(dokCase.id, caseDocument.id).subscribe({
+      next: () => {
+        this.toast.success('Dokument usunięty.');
+        this.loadDocuments(dokCase.id);
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć dokumentu.'))
     });
   }
 

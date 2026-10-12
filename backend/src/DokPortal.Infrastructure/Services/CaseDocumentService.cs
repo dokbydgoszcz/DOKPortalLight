@@ -79,6 +79,11 @@ public class CaseDocumentService : ICaseDocumentService
         var storedContentType = AttachmentRules.ContentTypeFor(cleanName);
         var blobPath = $"case-documents/{caseId}/{documentId}/{cleanName}";
         await _fileStorageService.UploadAsync(blobPath, content, storedContentType, ct);
+        if (document.BlobPath is { } previous && previous != blobPath)
+        {
+            // Poprzedni plik zastąpiony nowym nie może zostać osierocony w magazynie.
+            await _fileStorageService.DeleteAsync(previous, ct);
+        }
 
         document.BlobPath = blobPath;
         document.OriginalFileName = cleanName;
@@ -89,6 +94,32 @@ public class CaseDocumentService : ICaseDocumentService
         await _db.SaveChangesAsync(ct);
 
         return ToDto(document);
+    }
+
+    public async Task<CaseDocumentDto?> RenameAsync(Guid caseId, Guid documentId, string name, CancellationToken ct)
+    {
+        if (!await CanAccessAsync(caseId, ct)) return null;
+        var document = await _db.CaseDocuments.FirstOrDefaultAsync(d => d.Id == documentId && d.DokCaseId == caseId, ct);
+        if (document is null) return null;
+        var clean = name?.Trim() ?? "";
+        if (clean.Length == 0) throw new InvalidOperationException("Podaj nazwę dokumentu.");
+        if (clean.Length > 200) throw new InvalidOperationException("Nazwa dokumentu może mieć najwyżej 200 znaków.");
+
+        document.Name = clean;
+        await _db.SaveChangesAsync(ct);
+        return ToDto(document);
+    }
+
+    public async Task<bool> DeleteAsync(Guid caseId, Guid documentId, CancellationToken ct)
+    {
+        if (!await CanAccessAsync(caseId, ct)) return false;
+        var document = await _db.CaseDocuments.FirstOrDefaultAsync(d => d.Id == documentId && d.DokCaseId == caseId, ct);
+        if (document is null) return false;
+
+        if (document.BlobPath is not null) await _fileStorageService.DeleteAsync(document.BlobPath, ct);
+        _db.CaseDocuments.Remove(document);
+        await _db.SaveChangesAsync(ct);
+        return true;
     }
 
     public async Task<(StoredFile File, string FileName)?> DownloadFileAsync(Guid caseId, Guid documentId, CancellationToken ct)

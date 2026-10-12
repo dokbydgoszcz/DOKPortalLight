@@ -8,5 +8,9 @@ public interface ICaseDocumentService
     Task<CaseDocumentDto?> CreateAsync(Guid caseId, CreateCaseDocumentRequest request, CancellationToken ct);
     Task<CaseDocumentDto?> SetProvidedAsync(Guid caseId, Guid documentId, bool isProvided, CancellationToken ct);
     Task<CaseDocumentDto?> UploadFileAsync(Guid caseId, Guid documentId, Stream content, string fileName, string contentType, long fileSizeBytes, CancellationToken ct);
+    /// <exception cref="InvalidOperationException">Pusta nazwa.</exception>
+    Task<CaseDocumentDto?> RenameAsync(Guid caseId, Guid documentId, string name, CancellationToken ct);
+    /// <summary>Usuwa pozycję dokumentu razem z plikiem.</summary>
+    Task<bool> DeleteAsync(Guid caseId, Guid documentId, CancellationToken ct);
     Task<(StoredFile File, string FileName)?> DownloadFileAsync(Guid caseId, Guid documentId, CancellationToken ct);
 }

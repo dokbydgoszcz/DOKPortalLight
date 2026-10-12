@@ -37,6 +37,19 @@ public class CaseDocumentsController : ControllerBase
         return updated is null ? NotFound() : Ok(updated);
     }
 
+    [HttpPut("{id:guid}/name")]
+    [HasPermission(Permissions.CaseDocumentsManage)]
+    public async Task<ActionResult<CaseDocumentDto>> Rename(Guid caseId, Guid id, CreateCaseDocumentRequest request, CancellationToken ct)
+    {
+        var updated = await _caseDocumentService.RenameAsync(caseId, id, request.Name, ct);
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [HasPermission(Permissions.CaseDocumentsManage)]
+    public async Task<IActionResult> Delete(Guid caseId, Guid id, CancellationToken ct)
+        => await _caseDocumentService.DeleteAsync(caseId, id, ct) ? NoContent() : NotFound();
+
     [HttpPost("{id:guid}/upload")]
     [HasPermission(Permissions.CaseDocumentsManage)]
     [RequestSizeLimit(AttachmentRules.MaxRequestBytes)]

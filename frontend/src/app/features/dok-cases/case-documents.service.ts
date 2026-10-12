@@ -28,6 +28,14 @@ export class CaseDocumentsService {
     return this.http.put<CaseDocument>(`${this.baseUrl(caseId)}/${id}`, { isProvided });
   }
 
+  rename(caseId: string, id: string, name: string) {
+    return this.http.put<CaseDocument>(`${this.baseUrl(caseId)}/${id}/name`, { name });
+  }
+
+  delete(caseId: string, id: string) {
+    return this.http.delete<void>(`${this.baseUrl(caseId)}/${id}`);
+  }
+
   upload(caseId: string, id: string, file: File) {
     const formData = new FormData();
     formData.append('file', file);

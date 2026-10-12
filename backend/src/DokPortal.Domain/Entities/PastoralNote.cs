@@ -8,4 +8,6 @@ public class PastoralNote
     public required string AuthorUserId { get; set; }
     public required string Content { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+    /// <summary>Ostatnia poprawka treści przez autora; pusta, gdy notatki nie zmieniano.</summary>
+    public DateTime? UpdatedAtUtc { get; set; }
 }

@@ -30,6 +30,14 @@ describe('GraduatesListComponent', () => {
     expect(textOf(el)).toContain('Piotr Nowak');
   });
 
+  it('names the path in Polish and shows the catechist', () => {
+    const { el } = boot();
+
+    expect(textOf(el)).toContain('Kandydaci do Chrztu');
+    expect(textOf(el)).not.toContain('BaptismCandidate');
+    expect(textOf(el)).toContain('Joanna Lis');
+  });
+
   it('shows the completion date as a date, not a raw timestamp', () => {
     const { el } = boot();
 

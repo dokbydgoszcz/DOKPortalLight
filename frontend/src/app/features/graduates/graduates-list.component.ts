@@ -1,7 +1,8 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { GraduatesService } from './graduates.service';
-import { DokCase } from '../dok-cases/dok-case.model';
+import { DokCase, DokPath } from '../dok-cases/dok-case.model';
+import { DOK_PATH_LABELS } from '../dok-cases/dok-stages';
 import { ToastService } from '../../core/notifications/toast.service';
 import { PaginationComponent } from '../../shared/pagination.component';
 
@@ -44,6 +45,10 @@ export class GraduatesListComponent implements OnInit {
     this.query.set(value);
     this.page.set(1);
     this.load();
+  }
+
+  pathLabel(path: DokPath): string {
+    return DOK_PATH_LABELS[path] ?? path;
   }
 
   onPageChange(page: number): void {

@@ -58,6 +58,30 @@ public class PastoralNoteService : IPastoralNoteService
     public Task<bool> HasNotesFromOthersAsync(Guid caseId, string currentUserId, CancellationToken ct) =>
         _db.PastoralNotes.AnyAsync(n => n.DokCaseId == caseId && n.AuthorUserId != currentUserId, ct);
 
+    public async Task<PastoralNoteDto?> UpdateAsync(Guid caseId, Guid noteId, string currentUserId, CreatePastoralNoteRequest request, CancellationToken ct)
+    {
+        var note = await _db.PastoralNotes.FirstOrDefaultAsync(n => n.Id == noteId && n.DokCaseId == caseId && n.AuthorUserId == currentUserId, ct);
+        if (note is null) return null;
+        var content = request.Content?.Trim() ?? "";
+        if (content.Length == 0) throw new InvalidOperationException("Treść notatki nie może być pusta.");
+
+        note.Content = content;
+        note.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+        var authorEmail = await _db.Users.Where(u => u.Id == currentUserId).Select(u => u.Email).FirstOrDefaultAsync(ct);
+        var attachments = await AttachmentLookup.ForOwnersAsync(_db, AttachmentOwnerType.PastoralNote, new[] { noteId }, ct);
+        return ToDto(note, authorEmail, attachments.GetValueOrDefault(noteId));
+    }
+
+    public async Task<bool> DeleteAsync(Guid caseId, Guid noteId, string currentUserId, CancellationToken ct)
+    {
+        var note = await _db.PastoralNotes.FirstOrDefaultAsync(n => n.Id == noteId && n.DokCaseId == caseId && n.AuthorUserId == currentUserId, ct);
+        if (note is null) return false;
+        _db.PastoralNotes.Remove(note);
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     private static PastoralNoteDto ToDto(PastoralNote n, string? authorEmail, IReadOnlyList<DokPortal.Application.Attachments.AttachmentDto>? attachments = null) => new()
     {
         Id = n.Id,
@@ -66,6 +90,7 @@ public class PastoralNoteService : IPastoralNoteService
         AuthorEmail = authorEmail,
         Content = n.Content,
         CreatedAtUtc = n.CreatedAtUtc,
+        UpdatedAtUtc = n.UpdatedAtUtc,
         Attachments = attachments ?? Array.Empty<DokPortal.Application.Attachments.AttachmentDto>()
     };
 }

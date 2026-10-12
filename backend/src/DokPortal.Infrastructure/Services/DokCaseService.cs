@@ -5,6 +5,7 @@ using DokPortal.Domain.Enums;
 using DokPortal.Domain.Formation;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DokPortal.Infrastructure.Services;
 
@@ -14,12 +15,17 @@ public class DokCaseService : IDokCaseService
     private readonly ICaseScopeProvider _scope;
 
     private readonly TimeProvider _time;
+    private readonly IEmailSender? _emailSender;
+    private readonly ILogger<DokCaseService>? _logger;
 
-    public DokCaseService(AppDbContext db, ICaseScopeProvider? scope = null, TimeProvider? time = null)
+    public DokCaseService(AppDbContext db, ICaseScopeProvider? scope = null, TimeProvider? time = null,
+        IEmailSender? emailSender = null, ILogger<DokCaseService>? logger = null)
     {
         _db = db;
         _scope = scope ?? new AllCasesScopeProvider();
         _time = time ?? TimeProvider.System;
+        _emailSender = emailSender;
+        _logger = logger;
     }
 
     public async Task<PagedResult<DokCaseDto>> SearchAsync(DokPath? path, int page, int pageSize, CancellationToken ct, DokStage? stage = null)
@@ -59,7 +65,8 @@ public class DokCaseService : IDokCaseService
 
     public async Task<PagedResult<DokCaseDto>> SearchGraduatesAsync(string? query, int page, int pageSize, CancellationToken ct)
     {
-        var q = _db.DokCases
+        var scope = await _scope.GetAsync(ct);
+        var q = _db.DokCases.ForScope(scope)
             .Include(c => c.Person).ThenInclude(p => p!.Parish)
             .Include(c => c.CatechistPerson)
             .Include(c => c.MentorPerson)
@@ -141,9 +148,24 @@ public class DokCaseService : IDokCaseService
         }
     }
 
+    /// <summary>Osoby wskazane w sprawie muszą istnieć; podopieczny ma na danej ścieżce tylko jedną trwającą (nie absolwencką) sprawę.</summary>
+    private async Task ValidatePeopleAsync(CreateDokCaseRequest request, Guid? selfId, CancellationToken ct)
+    {
+        if (!await _db.People.AnyAsync(p => p.Id == request.PersonId, ct))
+            throw new InvalidOperationException("Nie znaleziono podopiecznego.");
+        if (!await _db.People.AnyAsync(p => p.Id == request.CatechistPersonId, ct))
+            throw new InvalidOperationException("Nie znaleziono katechisty prowadzącego.");
+        if (request.MentorPersonId is { } mentorId && !await _db.People.AnyAsync(p => p.Id == mentorId, ct))
+            throw new InvalidOperationException("Nie znaleziono mentora.");
+        if (request.Stage != DokStage.Graduate && await _db.DokCases.AnyAsync(
+                c => c.PersonId == request.PersonId && c.Path == request.Path && c.Id != selfId && c.Stage != DokStage.Graduate, ct))
+            throw new InvalidOperationException("Ta osoba ma już sprawę DOK w toku na tej ścieżce – zmień ją zamiast zakładać nową.");
+    }
+
     public async Task<DokCaseDto> CreateAsync(CreateDokCaseRequest request, CancellationToken ct)
     {
         EnsureStageMatchesPath(request.Path, request.Stage);
+        await ValidatePeopleAsync(request, null, ct);
         var dokCase = new DokCase
         {
             Id = Guid.NewGuid(),
@@ -162,33 +184,110 @@ public class DokCaseService : IDokCaseService
         return (await LoadAsync(_db.DokCases, dokCase.Id, ct))!;
     }
 
-    public async Task<DokCaseDto?> UpdateAsync(Guid id, UpdateDokCaseRequest request, CancellationToken ct)
+    public async Task<DokCaseDto?> UpdateAsync(Guid id, UpdateDokCaseRequest request, CancellationToken ct, DokCaseActor? actor = null)
     {
         EnsureStageMatchesPath(request.Path, request.Stage);
         var scope = await _scope.GetAsync(ct);
         var dokCase = await _db.DokCases.ForScope(scope).FirstOrDefaultAsync(c => c.Id == id, ct);
         if (dokCase is null) return null;
+        if (request.PersonId != dokCase.PersonId)
+            throw new InvalidOperationException("Nie można zmienić podopiecznego w istniejącej sprawie – załóż nową sprawę.");
+        await ValidatePeopleAsync(request, id, ct);
 
-        var isNewlyGraduate = request.Stage == DokStage.Graduate && dokCase.Stage != DokStage.Graduate;
+        var now = _time.GetUtcNow().UtcDateTime;
+        var events = new List<DokCaseEvent>();
+        void Track(DokCaseEventKind kind, string? from, string? to)
+        {
+            events.Add(new DokCaseEvent
+            {
+                Id = Guid.NewGuid(), DokCaseId = id, Kind = kind, FromValue = from, ToValue = to, AtUtc = now,
+                PerformedByUserId = actor?.UserId, PerformedByEmail = actor?.Email
+            });
+        }
 
-        dokCase.PersonId = request.PersonId;
-        dokCase.Path = request.Path;
+        var previousCatechistId = dokCase.CatechistPersonId;
+        if (dokCase.Path != request.Path) Track(DokCaseEventKind.PathChanged, DokStages.Label(dokCase.Path), DokStages.Label(request.Path));
         if (dokCase.Stage != request.Stage)
         {
-            dokCase.StageSinceUtc = _time.GetUtcNow().UtcDateTime;
+            Track(DokCaseEventKind.StageChanged, DokStages.Label(dokCase.Stage), DokStages.Label(request.Stage));
+            dokCase.StageSinceUtc = now;
+            dokCase.CompletedAtUtc = request.Stage == DokStage.Graduate ? now : null;
         }
+        if (dokCase.CatechistPersonId != request.CatechistPersonId)
+            Track(DokCaseEventKind.CatechistChanged, await NameOfAsync(dokCase.CatechistPersonId, ct), await NameOfAsync(request.CatechistPersonId, ct));
+        if (dokCase.MentorPersonId != request.MentorPersonId)
+            Track(DokCaseEventKind.MentorChanged, await NameOfAsync(dokCase.MentorPersonId, ct), await NameOfAsync(request.MentorPersonId, ct));
+
+        dokCase.Path = request.Path;
         dokCase.Stage = request.Stage;
         dokCase.CatechistPersonId = request.CatechistPersonId;
         dokCase.MentorPersonId = request.MentorPersonId;
         dokCase.UpdatedAtUtc = DateTime.UtcNow;
-        if (isNewlyGraduate)
+
+        var sequence = await _db.DokCaseEvents.Where(e => e.DokCaseId == id).Select(e => (int?)e.Sequence).MaxAsync(ct) ?? 0;
+        foreach (var e in events)
         {
-            dokCase.CompletedAtUtc = DateTime.UtcNow;
+            e.Sequence = ++sequence;
+            _db.DokCaseEvents.Add(e);
         }
 
         await _db.SaveChangesAsync(ct);
-        return await LoadAsync(_db.DokCases, id, ct);
+        var result = await LoadAsync(_db.DokCases, id, ct);
+        if (previousCatechistId != request.CatechistPersonId)
+        {
+            await NotifyNewCatechistAsync(result!, previousCatechistId, ct);
+        }
+        return result;
     }
+
+    private async Task<string?> NameOfAsync(Guid? personId, CancellationToken ct) =>
+        personId is null ? null : await _db.People.IgnoreQueryFilters().Where(p => p.Id == personId)
+            .Select(p => p.FirstName + " " + p.LastName).FirstOrDefaultAsync(ct);
+
+    /// <summary>Nowy katechista prowadzący dostaje e-mail o przekazaniu sprawy. Błąd poczty nie cofa zmiany.</summary>
+    private async Task NotifyNewCatechistAsync(DokCaseDto dokCase, Guid previousCatechistId, CancellationToken ct)
+    {
+        if (_emailSender is null) return;
+        var email = await _db.People.Where(p => p.Id == dokCase.CatechistPersonId).Select(p => p.Email).FirstOrDefaultAsync(ct);
+        if (string.IsNullOrWhiteSpace(email)) return;
+        var previous = await NameOfAsync(previousCatechistId, ct) ?? "—";
+        var body = $"Szczęść Boże,\n\nzostała Ci przekazana sprawa DOK podopiecznego {dokCase.PersonFullName} " +
+                   $"(ścieżka: {DokStages.Label(dokCase.Path)}, etap: {DokStages.Label(dokCase.Stage)}).\n" +
+                   $"Dotychczas prowadził(a) ją: {previous}.\n\nSprawę znajdziesz w DOK Portal → Podopieczni DOK.";
+        try
+        {
+            await _emailSender.SendAsync(email, "Przekazanie sprawy DOK", body, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Nie udało się powiadomić nowego katechisty o przekazaniu sprawy {DokCaseId}", dokCase.Id);
+        }
+    }
+
+    public async Task<IReadOnlyList<DokCaseEventDto>?> GetHistoryAsync(Guid id, CancellationToken ct)
+    {
+        var scope = await _scope.GetAsync(ct);
+        if (!await _db.DokCases.ForScope(scope).AnyAsync(c => c.Id == id, ct)) return null;
+
+        var events = await _db.DokCaseEvents.AsNoTracking().Where(e => e.DokCaseId == id)
+            .OrderByDescending(e => e.AtUtc).ThenByDescending(e => e.Sequence).ToListAsync(ct);
+        return events.Select(e => new DokCaseEventDto
+        {
+            Kind = e.Kind.ToString(),
+            Description = $"{EventLabel(e.Kind)}: {e.FromValue ?? "—"} → {e.ToValue ?? "—"}",
+            AtUtc = e.AtUtc,
+            PerformedByEmail = e.PerformedByEmail
+        }).ToList();
+    }
+
+    private static string EventLabel(DokCaseEventKind kind) => kind switch
+    {
+        DokCaseEventKind.StageChanged => "Etap",
+        DokCaseEventKind.PathChanged => "Ścieżka",
+        DokCaseEventKind.CatechistChanged => "Katechista",
+        DokCaseEventKind.MentorChanged => "Mentor",
+        _ => kind.ToString()
+    };
 
     public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
     {
