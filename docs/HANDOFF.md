@@ -75,6 +75,6 @@ Zrobione w 8 commitach na `master` (testy: backend 33+372+345, frontend 612, pok
 6. **Pisma**: ostrzeżenie „Wzór do uzupełnienia” w generatorze i na PDF.
 7. Drobne: jedna kandydatura na osobę, daty misji, data ostatniego spotkania liczona ze spotkań, komunikaty.
 
-Decyzje do potwierdzenia przez użytkownika: notatki duszpasterskie nadal widzi tylko autor (+ ReadAll) – nowy katechista nie widzi notatek poprzednika; Katechista/Superwizor/Biskup domyślnie bez `People.View`; jedna trwająca sprawa osoby **na ścieżkę** (nie globalnie).
+Decyzje do potwierdzenia przez użytkownika: notatki duszpasterskie nadal widzi tylko autor (+ ReadAll) – nowy katechista nie widzi notatek poprzednika; Katechista/Superwizor/Biskup dostali `People.View` (decyzja 2026-10-12); jedna trwająca sprawa osoby **na ścieżkę** (nie globalnie).
 
 Nadal otwarte (z przeglądu, nie zrobione): asynchroniczna wysyłka kampanii (C4), zajęcia grupowe bez właściciela (C10), uprawnienia SKŚP do potwierdzenia (C11), RODO – anonimizacja/eksport danych osoby (B5), wypis z mailingu, przypomnienia o zajęciach grupowych, nagłówki bezpieczeństwa SPA, listy wyboru osób ograniczone do 200 (C7). Plus sprawy z sekcji 6 pkt 1, 4, 5 (Gmail, powiązanie kont, ustawienia Azure) – wymagają użytkownika.

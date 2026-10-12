@@ -41,7 +41,9 @@ public class AccessControlTests : IntegrationTestBase
     {
         var admin = await AdminAsync();
         var personId = await SeedPersonAsync(admin, "Ukryta", "Osoba");
-        var catechist = await CreateAuthenticatedClientAsync($"kat-{Guid.NewGuid():N}@example.org", "Sekret123!", "KatechistaProwadzacy");
+        var noPeople = $"BezOsob{Guid.NewGuid():N}"[..14];
+        await CreateRoleAsync(admin, noPeople, "DokCases.View");
+        var catechist = await CreateAuthenticatedClientAsync($"kat-{Guid.NewGuid():N}@example.org", "Sekret123!", noPeople);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await catechist.GetAsync("/api/people")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await catechist.GetAsync($"/api/people/{personId}")).StatusCode);

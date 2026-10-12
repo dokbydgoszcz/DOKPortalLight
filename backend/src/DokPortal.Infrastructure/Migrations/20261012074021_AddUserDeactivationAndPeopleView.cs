@@ -11,12 +11,16 @@ namespace DokPortal.Infrastructure.Migrations
     /// </summary>
     public partial class AddUserDeactivationAndPeopleView : Migration
     {
+        // People.View: role zarządzające osobami oraz – decyzja właściciela 2026-10-12 – Katechista prowadzący, Superwizor i Biskup.
         public const string GrantSql = @"
 INSERT INTO RolePermissions (RoleName, Permission)
-SELECT DISTINCT m.RoleName, 'People.View'
-FROM RolePermissions m
-WHERE m.Permission = 'People.Manage'
-  AND NOT EXISTS (SELECT 1 FROM RolePermissions x WHERE x.RoleName = m.RoleName AND x.Permission = 'People.View')";
+SELECT DISTINCT r.RoleName, 'People.View'
+FROM (
+    SELECT m.RoleName FROM RolePermissions m WHERE m.Permission = 'People.Manage'
+    UNION SELECT 'KatechistaProwadzacy' UNION SELECT 'Superwizor' UNION SELECT 'Biskup'
+) r
+WHERE EXISTS (SELECT 1 FROM RolePermissions e WHERE e.RoleName = r.RoleName)
+  AND NOT EXISTS (SELECT 1 FROM RolePermissions x WHERE x.RoleName = r.RoleName AND x.Permission = 'People.View')";
 
         public const string RevokeSql = "DELETE FROM RolePermissions WHERE Permission = 'People.View'";
 

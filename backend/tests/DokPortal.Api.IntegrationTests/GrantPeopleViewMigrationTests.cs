@@ -7,11 +7,11 @@ using Xunit;
 
 namespace DokPortal.Api.IntegrationTests;
 
-/// <summary>People.View dostają tylko role, które już zarządzają osobami – raz.</summary>
+/// <summary>People.View dostają role zarządzające osobami oraz Katechista, Superwizor i Biskup – raz.</summary>
 public class GrantPeopleViewMigrationTests
 {
     [Fact]
-    public async Task GrantSql_GivesPeopleViewToRolesManagingPeople_Once()
+    public async Task GrantSql_GivesPeopleViewToPeopleManagers_AndCatechistSupervisorBishop_Once()
     {
         using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync();
@@ -21,13 +21,16 @@ public class GrantPeopleViewMigrationTests
             new RolePermission { RoleName = "DyrektorDOK", Permission = "People.Manage" },
             new RolePermission { RoleName = "Wlasna", Permission = "People.Manage" },
             new RolePermission { RoleName = "Wlasna", Permission = "People.View" },
-            new RolePermission { RoleName = "KatechistaProwadzacy", Permission = "DokCases.View" });
+            new RolePermission { RoleName = "KatechistaProwadzacy", Permission = "DokCases.View" },
+            new RolePermission { RoleName = "Superwizor", Permission = "DokCases.View" },
+            new RolePermission { RoleName = "Inna", Permission = "DokCases.View" });
         await db.SaveChangesAsync();
 
         await db.Database.ExecuteSqlRawAsync(AddUserDeactivationAndPeopleView.GrantSql);
         await db.Database.ExecuteSqlRawAsync(AddUserDeactivationAndPeopleView.GrantSql);
 
         var viewers = await db.RolePermissions.AsNoTracking().Where(p => p.Permission == "People.View").Select(p => p.RoleName).ToListAsync();
-        Assert.Equal(new[] { "DyrektorDOK", "Wlasna" }, viewers.OrderBy(r => r));
+        // Biskupa nie ma w tabeli (seeder nie wypełnił) – nie dostaje wpisu; rola „Inna” bez People.Manage też nie.
+        Assert.Equal(new[] { "DyrektorDOK", "KatechistaProwadzacy", "Superwizor", "Wlasna" }, viewers.OrderBy(r => r, StringComparer.Ordinal));
     }
 }
