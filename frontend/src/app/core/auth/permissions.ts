@@ -1,4 +1,5 @@
 export const Permissions = {
+  PeopleView: 'People.View',
   PeopleManage: 'People.Manage',
   PeopleExport: 'People.Export',
   ParishesManage: 'Parishes.Manage',

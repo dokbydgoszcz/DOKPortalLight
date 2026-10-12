@@ -25,6 +25,19 @@ public class PermissionPolicyProvider : IAuthorizationPolicyProvider
             return Task.FromResult<AuthorizationPolicy?>(policy);
         }
 
+        if (policyName.StartsWith(HasAnyPermissionAttribute.Prefix, StringComparison.Ordinal))
+        {
+            var anyOf = policyName[HasAnyPermissionAttribute.Prefix.Length..].Split('|');
+            if (anyOf.Length > 0 && anyOf.All(PermissionCatalog.IsKnown))
+            {
+                var policy = new AuthorizationPolicyBuilder()
+                    .RequireAuthenticatedUser()
+                    .AddRequirements(new PermissionRequirement(anyOf))
+                    .Build();
+                return Task.FromResult<AuthorizationPolicy?>(policy);
+            }
+        }
+
         return _fallback.GetPolicyAsync(policyName);
     }
 }

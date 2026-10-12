@@ -146,6 +146,22 @@ describe('DashboardComponent', () => {
       expect((el.querySelector('.name-days')!.textContent ?? '')).toContain('W najbliższych 14 dniach nikt nie ma imienin.');
     });
 
+    it('does not ask for name days without access to people', () => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [DashboardComponent],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideFakeAuth(['DokCases.View'])]
+      });
+      const limited = TestBed.createComponent(DashboardComponent);
+      const http = TestBed.inject(HttpTestingController);
+      limited.detectChanges();
+      http.expectOne(`${environment.apiBaseUrl}/api/dashboard/summary`).flush(summary);
+      limited.detectChanges();
+
+      http.expectNone(r => r.url === `${environment.apiBaseUrl}/api/name-days/upcoming`);
+      expect((limited.nativeElement as HTMLElement).querySelector('.name-days')).toBeNull();
+    });
+
     it('leaves the rest of the dashboard alone when the name days cannot be loaded', () => {
       const el = renderNameDays('error');
 

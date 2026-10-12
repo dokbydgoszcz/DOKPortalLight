@@ -36,14 +36,15 @@ public class UsersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<UserDto>> Create(CreateUserRequest request, CancellationToken ct)
     {
-        var created = await _userService.CreateAsync(request, ct);
+        var created = await _userService.CreateAsync(request, ct, CurrentActor());
+        await _auditLogService.LogAsync(CurrentActor().UserId, CurrentEmail(), "CreateUser", created.Email, DokPortal.Domain.Enums.AuditResult.Allowed, ct);
         return CreatedAtAction(nameof(List), created);
     }
 
     [HttpPut("{id}/roles")]
     public async Task<ActionResult<UserDto>> AssignRoles(string id, AssignRolesRequest request, CancellationToken ct)
     {
-        var updated = await _userService.AssignRolesAsync(id, request.Roles, ct);
+        var updated = await _userService.AssignRolesAsync(id, request.Roles, ct, CurrentActor());
         if (updated is null) return NotFound();
 
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
@@ -52,6 +53,23 @@ public class UsersController : ControllerBase
 
         return Ok(updated);
     }
+
+    /// <summary>Wyłącza (np. po odejściu katechisty) albo ponownie włącza konto.</summary>
+    [HttpPut("{id}/active")]
+    public async Task<ActionResult<UserDto>> SetActive(string id, SetUserActiveRequest request, CancellationToken ct)
+    {
+        var updated = await _userService.SetActiveAsync(id, request.IsActive, CurrentActor(), ct);
+        if (updated is null) return NotFound();
+        await _auditLogService.LogAsync(CurrentActor().UserId, CurrentEmail(),
+            request.IsActive ? "ActivateUser" : "DeactivateUser", updated.Email, DokPortal.Domain.Enums.AuditResult.Allowed, ct);
+        return Ok(updated);
+    }
+
+    private UserActor CurrentActor() => new(
+        User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value,
+        User.IsInRole(AppRoles.Administrator));
+
+    private string CurrentEmail() => User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Email).Value;
 
     [HttpPut("{id}/person")]
     public async Task<ActionResult<UserDto>> SetPerson(string id, SetUserPersonRequest request, CancellationToken ct)

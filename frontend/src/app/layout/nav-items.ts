@@ -9,8 +9,8 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', icon: '◫', path: '/dashboard' },
-  { label: 'Osoby', icon: '◎', path: '/people' },
-  { label: 'Kalendarz imienin', icon: '✿', path: '/name-days' },
+  { label: 'Osoby', icon: '◎', path: '/people', permission: Permissions.PeopleView },
+  { label: 'Kalendarz imienin', icon: '✿', path: '/name-days', permission: Permissions.PeopleView },
   { label: 'Dokumenty i pisma', icon: '✎', path: '/documents', permission: Permissions.DocumentsView },
   { label: 'Zasoby dla katechistów', icon: '❖', path: '/resources', permission: Permissions.ResourcesView },
   { label: 'Mailing', icon: '✉', path: '/mailing', permission: Permissions.MailingView },

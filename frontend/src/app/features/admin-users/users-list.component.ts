@@ -6,6 +6,7 @@ import { AppUserAccount, CreateUserValue } from './user.model';
 import { PeopleService } from '../people/people.service';
 import { Person } from '../people/person.model';
 import { ToastService } from '../../core/notifications/toast.service';
+import { serverMessage } from '../../shared/http-error';
 
 @Component({
   selector: 'app-users-list',
@@ -149,7 +150,22 @@ export class UsersListComponent implements OnInit {
     const roles = checked ? [...user.roles, role] : user.roles.filter(r => r !== role);
     this.usersService.assignRoles(user.id, roles).subscribe({
       next: () => this.load(),
-      error: () => this.toast.error('Nie udało się zaktualizować ról.')
+      error: err => {
+        this.toast.error(serverMessage(err, 'Nie udało się zaktualizować ról.'));
+        this.load();
+      }
+    });
+  }
+
+  /** Wyłączone konto nie zaloguje się, a jego otwarte sesje wygasają; można je włączyć z powrotem. */
+  setActive(user: AppUserAccount, isActive: boolean): void {
+    if (!isActive && !confirm(`Wyłączyć konto ${user.email}? Osoba nie zaloguje się, a jej otwarte sesje wygasną.`)) return;
+    this.usersService.setActive(user.id, isActive).subscribe({
+      next: () => {
+        this.toast.success(isActive ? 'Konto włączone.' : 'Konto wyłączone.');
+        this.load();
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się zmienić stanu konta.'))
     });
   }
 

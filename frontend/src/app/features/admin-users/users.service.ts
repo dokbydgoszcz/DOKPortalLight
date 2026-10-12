@@ -29,6 +29,10 @@ export class UsersService {
     return this.http.put<AppUserAccount>(`${this.baseUrl}/${id}/person`, { personId });
   }
 
+  setActive(id: string, isActive: boolean) {
+    return this.http.put<AppUserAccount>(`${this.baseUrl}/${id}/active`, { isActive });
+  }
+
   resetPassword(id: string, newPassword: string) {
     return this.http.put<void>(`${this.baseUrl}/${id}/reset-password`, { newPassword });
   }

@@ -124,6 +124,15 @@ describe('LoginComponent', () => {
       expect(toggle().getAttribute('aria-label')).toBe('Ukryj hasło');
     });
 
+    it('tells the user the session ended when the server rejected it', () => {
+      history.replaceState({ reason: 'expired' }, '');
+      const expiredFixture = TestBed.createComponent(LoginComponent);
+      expiredFixture.detectChanges();
+
+      expect(expiredFixture.nativeElement.textContent).toContain('Sesja wygasła lub konto zostało zmienione');
+      history.replaceState(null, '');
+    });
+
     it('tells the user the session expired after an idle logout', () => {
       history.replaceState({ reason: 'idle' }, '');
       const idleFixture = TestBed.createComponent(LoginComponent);

@@ -7,4 +7,5 @@ public class UserDto
     public Guid? PersonId { get; init; }
     public string? PersonFullName { get; init; }
     public required IReadOnlyList<string> Roles { get; init; }
+    public bool IsActive { get; init; } = true;
 }

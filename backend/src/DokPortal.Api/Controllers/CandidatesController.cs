@@ -32,7 +32,10 @@ public class CandidatesController : ControllerBase
     [HasPermission(Permissions.CandidatesView)]
     public async Task<ActionResult<PagedResult<CandidateDto>>> Search(
         [FromQuery] int? year, [FromQuery] int page = 1, [FromQuery] int pageSize = 100, CancellationToken ct = default)
-        => Ok(await _candidateService.SearchAsync(year, page, pageSize, ct));
+    {
+        (page, pageSize) = Paging.Normalize(page, pageSize);
+        return Ok(await _candidateService.SearchAsync(year, page, pageSize, ct));
+    }
 
     [HttpGet("{id:guid}")]
     [HasPermission(Permissions.CandidatesView)]

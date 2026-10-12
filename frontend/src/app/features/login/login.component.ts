@@ -33,6 +33,8 @@ export class LoginComponent {
     const reason = navigationState?.reason ?? historyState?.reason;
     if (reason === 'idle') {
       this.sessionExpiredMessage.set('Sesja wygasła z powodu braku aktywności. Zaloguj się ponownie.');
+    } else if (reason === 'expired') {
+      this.sessionExpiredMessage.set('Sesja wygasła lub konto zostało zmienione (np. role). Zaloguj się ponownie.');
     }
   }
 

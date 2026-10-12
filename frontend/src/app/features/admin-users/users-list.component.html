@@ -78,7 +78,12 @@
       <tbody>
         @for (user of users(); track user.id) {
           <tr>
-            <td>{{ user.email }}</td>
+            <td>
+              {{ user.email }}
+              @if (user.isActive === false) {
+                <span class="pill">nieaktywne</span>
+              }
+            </td>
             <td>
               @if (linkingUserId() === user.id) {
                 <div>
@@ -127,6 +132,11 @@
                 </div>
               } @else {
                 <button class="btn ghost small" type="button" (click)="startResetPassword(user.id)">Resetuj hasło</button>
+                @if (user.isActive === false) {
+                  <button class="btn ghost small" type="button" (click)="setActive(user, true)">Włącz konto</button>
+                } @else {
+                  <button class="btn ghost small" type="button" style="color:var(--danger)" (click)="setActive(user, false)">Wyłącz konto</button>
+                }
               }
             </td>
           </tr>

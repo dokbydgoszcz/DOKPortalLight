@@ -10,7 +10,7 @@ public static class DefaultRolePermissions
         },
         [AppRoles.DyrektorSKSP] = new[]
         {
-            Permissions.PeopleManage, Permissions.PeopleExport,
+            Permissions.PeopleView, Permissions.PeopleManage, Permissions.PeopleExport,
             Permissions.CandidatesView, Permissions.CandidatesManage, Permissions.CandidatesExport,
             Permissions.MissionsView, Permissions.MissionsManage, Permissions.MissionsExport,
             Permissions.FormatorsView, Permissions.FormatorsManage, Permissions.FormatorsExport,
@@ -23,7 +23,7 @@ public static class DefaultRolePermissions
         },
         [AppRoles.DyrektorDOK] = new[]
         {
-            Permissions.PeopleManage, Permissions.PeopleExport,
+            Permissions.PeopleView, Permissions.PeopleManage, Permissions.PeopleExport,
             Permissions.DokCasesView, Permissions.DokCasesViewAll, Permissions.DokCasesManage, Permissions.DokCasesExport,
             Permissions.CaseDocumentsView, Permissions.CaseDocumentsManage,
             Permissions.PastoralNotesView, Permissions.PastoralNotesWrite, Permissions.PastoralNotesReadAll,

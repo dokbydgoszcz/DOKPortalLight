@@ -19,10 +19,12 @@ export const routes: Routes = [
       },
       {
         path: 'people',
+        canActivate: [permissionGuard(Permissions.PeopleView)],
         loadComponent: () => import('./features/people/people-list.component').then(m => m.PeopleListComponent)
       },
       {
         path: 'name-days',
+        canActivate: [permissionGuard(Permissions.PeopleView)],
         loadComponent: () => import('./features/name-days/name-days-list.component').then(m => m.NameDaysListComponent)
       },
       {

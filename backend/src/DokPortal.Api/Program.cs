@@ -104,6 +104,7 @@ builder.Services.AddScoped<IMailingService, MailingService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddMemoryCache();
+builder.Services.AddScoped<SessionValidator>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 
 var blobConnectionString = builder.Configuration["BlobStorage:ConnectionString"];
@@ -149,6 +150,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtOptions.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
             RoleClaimType = "role"
+        };
+        // Token musi nadal pasować do konta: wyłączone konto albo zmienione role/hasło (nowy znacznik) kończą sesję od razu.
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var validator = context.HttpContext.RequestServices.GetRequiredService<SessionValidator>();
+                var principal = context.Principal!;
+                var userId = principal.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+                var stamp = principal.FindFirst(JwtTokenGenerator.StampClaim)?.Value;
+                if (!await validator.IsValidAsync(userId, stamp, context.HttpContext.RequestAborted))
+                {
+                    context.Fail("Sesja wygasła – zaloguj się ponownie.");
+                }
+            }
         };
     });
 builder.Services.AddAuthorization();

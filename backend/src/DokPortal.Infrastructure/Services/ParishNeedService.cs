@@ -182,7 +182,7 @@ public class ParishNeedService : IParishNeedService
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Nie udało się wysłać powiadomienia o skierowaniu do {Recipient}", to);
+            _logger?.LogWarning(ex, "Nie udało się wysłać powiadomienia o skierowaniu do zapotrzebowania {NeedSubject}", subject);
         }
     }
 

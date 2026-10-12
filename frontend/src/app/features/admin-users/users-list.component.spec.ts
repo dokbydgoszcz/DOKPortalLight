@@ -226,6 +226,61 @@ describe('UsersListComponent', () => {
 
       expect(toasts().map(t => t.message)).toContain('Nie udało się zaktualizować ról.');
     });
+
+    it('shows why the roles cannot be changed (e.g. the last administrator)', () => {
+      const { http, el } = boot();
+      const box = el.querySelectorAll<HTMLInputElement>('tbody input[type="checkbox"]')[0];
+
+      box.checked = false;
+      box.dispatchEvent(new Event('change'));
+      http.expectOne(r => r.method === 'PUT').flush({ title: 'To ostatni aktywny administrator.' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(toasts().map(t => t.message)).toContain('To ostatni aktywny administrator.');
+      flushAll(http, api('/api/users'), [user]);
+    });
+  });
+
+  describe('deactivating an account', () => {
+    it('deactivates an active account after confirmation and reloads', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const { http, el } = boot([{ ...linkedUser, isActive: true }]);
+
+      clickByText(el, 'Wyłącz konto', 'button');
+      expect(confirmSpy).toHaveBeenCalledWith('Wyłączyć konto anna@example.org? Osoba nie zaloguje się, a jej otwarte sesje wygasną.');
+      const req = http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u2/active'));
+      expect(req.request.body).toEqual({ isActive: false });
+      req.flush({ ...linkedUser, isActive: false });
+
+      expect(toasts().map(t => t.message)).toContain('Konto wyłączone.');
+      flushAll(http, api('/api/users'), [{ ...linkedUser, isActive: false }]);
+      confirmSpy.mockRestore();
+    });
+
+    it('marks an inactive account and turns it back on', () => {
+      const { http, el, fixture } = boot([{ ...linkedUser, isActive: false }]);
+      fixture.detectChanges();
+
+      expect(textOf(el)).toContain('nieaktywne');
+      clickByText(el, 'Włącz konto', 'button');
+      http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u2/active')).flush({ ...linkedUser, isActive: true });
+
+      expect(toasts().map(t => t.message)).toContain('Konto włączone.');
+      flushAll(http, api('/api/users'), [linkedUser]);
+    });
+
+    it('does nothing without confirmation and shows the server message on failure', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      const { http, el } = boot([{ ...user, isActive: true }]);
+
+      clickByText(el, 'Wyłącz konto', 'button');
+      http.expectNone(r => r.method === 'PUT');
+      confirmSpy.mockReturnValue(true);
+      clickByText(el, 'Wyłącz konto', 'button');
+      http.expectOne(r => r.method === 'PUT').flush({ title: 'Nie możesz wyłączyć własnego konta.' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(toasts().map(t => t.message)).toContain('Nie możesz wyłączyć własnego konta.');
+      confirmSpy.mockRestore();
+    });
   });
 
   describe('resetting a password', () => {

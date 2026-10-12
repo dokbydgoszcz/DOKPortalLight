@@ -4,6 +4,8 @@ export interface AppUserAccount {
   personId: string | null;
   personFullName: string | null;
   roles: string[];
+  /** Brak = konto aktywne (starsze odpowiedzi). */
+  isActive?: boolean;
 }
 
 export interface CreateUserValue {

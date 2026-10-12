@@ -60,7 +60,7 @@ export class AuthService {
     this.tokenSignal.set(response.token);
   }
 
-  logout(reason?: 'idle'): void {
+  logout(reason?: 'idle' | 'expired'): void {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(PERMISSIONS_AWARE_KEY);
     this.tokenSignal.set(null);

@@ -421,6 +421,7 @@ public class ReminderServiceTests
         var userA = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "a@example.org", Email = "a@example.org" };
         var userB = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "b@example.org", Email = "b@example.org" };
         db.Users.AddRange(userA, userB);
+        GrantRole(db, "Administrator", userA, userB);
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
@@ -450,6 +451,7 @@ public class ReminderServiceTests
         var userWithEmail = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "with@example.org", Email = "with@example.org" };
         var userWithoutEmail = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "without" };
         db.Users.AddRange(userWithEmail, userWithoutEmail);
+        GrantRole(db, "Administrator", userWithEmail, userWithoutEmail);
         await db.SaveChangesAsync();
 
         var emailSender = new RecordingEmailSender();
@@ -477,6 +479,7 @@ public class ReminderServiceTests
         var okUser = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "ok@example.org", Email = "ok@example.org" };
         var failingUser = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "failing@example.org", Email = "failing@example.org" };
         db.Users.AddRange(okUser, failingUser);
+        GrantRole(db, "Administrator", okUser, failingUser);
         await db.SaveChangesAsync();
 
         var emailSender = new SelectivelyFailingEmailSender("failing@example.org");
@@ -488,6 +491,41 @@ public class ReminderServiceTests
         Assert.Equal(1, result.FailedSends);
         Assert.Single(emailSender.Sent);
         Assert.Equal("ok@example.org", emailSender.Sent[0]);
+    }
+
+    /// <summary>Nadaje rolę (tworząc ją, jeśli trzeba) – imieniny dostają tylko konta z dostępem do osób.</summary>
+    private static void GrantRole(AppDbContext db, string roleName, params AppUser[] users)
+    {
+        var role = db.Roles.Local.FirstOrDefault(r => r.Name == roleName)
+            ?? new IdentityRole(roleName) { Id = Guid.NewGuid().ToString(), NormalizedName = roleName.ToUpperInvariant() };
+        if (db.Entry(role).State == EntityState.Detached) db.Roles.Add(role);
+        foreach (var user in users) db.UserRoles.Add(new IdentityUserRole<string> { UserId = user.Id, RoleId = role.Id });
+    }
+
+    [Fact]
+    public async Task RunUpcomingNameDaysReminderAsync_GoesOnlyToActiveAccountsWithAccessToPeople()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var soon = DateTime.UtcNow.AddDays(1);
+        db.People.Add(new Person
+        {
+            Id = Guid.NewGuid(), FirstName = "Ewa", LastName = "Imieninowa", NameDayMonth = soon.Month, NameDayDay = soon.Day,
+            CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow
+        });
+        var director = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "dyr@example.org", Email = "dyr@example.org" };
+        var catechist = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "kat@example.org", Email = "kat@example.org" };
+        var gone = new AppUser { Id = Guid.NewGuid().ToString(), UserName = "gone@example.org", Email = "gone@example.org", IsDeactivated = true };
+        db.Users.AddRange(director, catechist, gone);
+        GrantRole(db, "DyrektorDOK", director, gone);
+        GrantRole(db, "KatechistaProwadzacy", catechist);
+        db.RolePermissions.Add(new RolePermission { RoleName = "DyrektorDOK", Permission = Permissions.PeopleView });
+        db.RolePermissions.Add(new RolePermission { RoleName = "KatechistaProwadzacy", Permission = Permissions.DokCasesView });
+        await db.SaveChangesAsync();
+        var emailSender = new RecordingEmailSender();
+
+        await new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db)).RunUpcomingNameDaysReminderAsync(default);
+
+        Assert.Equal("dyr@example.org", Assert.Single(emailSender.Sent).To);
     }
 
     private class SelectivelyFailingEmailSender : IEmailSender

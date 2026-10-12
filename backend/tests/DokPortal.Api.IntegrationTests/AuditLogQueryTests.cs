@@ -31,9 +31,9 @@ public class AuditLogQueryTests : IntegrationTestBase
         var found = await admin.GetFromJsonAsync<List<AuditLogEntryDto>>($"/api/audit-log?search={marker.ToUpperInvariant()}", EnumJsonOptions);
         var none = await admin.GetFromJsonAsync<List<AuditLogEntryDto>>("/api/audit-log?search=takiego-tekstu-nie-ma-nigdzie", EnumJsonOptions);
 
-        var entry = Assert.Single(found!);
-        Assert.Equal("AssignUserRoles", entry.Action);
-        Assert.Contains(marker, entry.ObjectDescription);
+        // Założenie konta i zmiana jego ról – oba trafiają do audytu.
+        Assert.Equal(new[] { "AssignUserRoles", "CreateUser" }, found!.Select(e => e.Action).OrderBy(a => a));
+        Assert.All(found!, e => Assert.Contains(marker, e.ObjectDescription));
         Assert.Empty(none!);
     }
 
@@ -53,7 +53,7 @@ public class AuditLogQueryTests : IntegrationTestBase
         Assert.Single(byAction!);
         Assert.Empty(otherAction!);
         Assert.Empty(blocked!);
-        Assert.Single(inRange!);
+        Assert.Equal(2, inRange!.Count);
         Assert.Empty(future!);
     }
 

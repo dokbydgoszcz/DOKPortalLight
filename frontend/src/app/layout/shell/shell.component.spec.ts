@@ -75,9 +75,20 @@ describe('ShellComponent', () => {
     setup(['Meetings.View']);
     const text = fixture.nativeElement.textContent as string;
 
-    expect(text).toContain('Osoby');
+    expect(text).toContain('Dashboard');
     expect(text).toContain('Harmonogram i obecności');
     expect(text).not.toContain('Budżet SKŚP');
+    // Osoby i imieniny to dane osobowe – tylko z „Osoby — przeglądanie”.
+    expect(text).not.toContain('Osoby');
+    expect(text).not.toContain('Kalendarz imienin');
+  });
+
+  it('shows people and name days to accounts with access to people', () => {
+    setup(['People.View']);
+    const text = fixture.nativeElement.textContent as string;
+
+    expect(text).toContain('Osoby');
+    expect(text).toContain('Kalendarz imienin');
   });
 
   it('shows the roles of the signed-in user in the top bar', () => {

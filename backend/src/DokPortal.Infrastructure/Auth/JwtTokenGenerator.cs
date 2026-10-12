@@ -12,7 +12,9 @@ public class JwtTokenGenerator : IJwtTokenGenerator
 
     public JwtTokenGenerator(JwtOptions options) => _options = options;
 
-    public string GenerateToken(string userId, string email, Guid? personId, IEnumerable<string> roles, IEnumerable<string> permissions)
+    public const string StampClaim = "stamp";
+
+    public string GenerateToken(string userId, string email, Guid? personId, IEnumerable<string> roles, IEnumerable<string> permissions, string? securityStamp = null)
     {
         var claims = new List<Claim>
         {
@@ -20,6 +22,11 @@ public class JwtTokenGenerator : IJwtTokenGenerator
             new(JwtRegisteredClaimNames.Email, email),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+
+        if (securityStamp is not null)
+        {
+            claims.Add(new Claim(StampClaim, securityStamp));
+        }
 
         if (personId.HasValue)
         {

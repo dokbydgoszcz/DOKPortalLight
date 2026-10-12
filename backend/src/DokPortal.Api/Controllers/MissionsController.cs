@@ -31,7 +31,10 @@ public class MissionsController : ControllerBase
     [HasPermission(Permissions.MissionsView)]
     public async Task<ActionResult<PagedResult<MissionDto>>> Search(
         [FromQuery] string? query, [FromQuery] int page = 1, [FromQuery] int pageSize = 100, CancellationToken ct = default)
-        => Ok(await _missionService.SearchAsync(query, page, pageSize, ct));
+    {
+        (page, pageSize) = Paging.Normalize(page, pageSize);
+        return Ok(await _missionService.SearchAsync(query, page, pageSize, ct));
+    }
 
     [HttpGet("pending")]
     [HasPermission(Permissions.MissionsView)]

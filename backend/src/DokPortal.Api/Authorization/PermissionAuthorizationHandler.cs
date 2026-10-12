@@ -18,7 +18,7 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
         }
 
         var permissions = await _permissionService.GetPermissionsForRolesAsync(roles, CancellationToken.None);
-        if (permissions.Contains(requirement.Permission))
+        if (requirement.AnyOf.Any(permissions.Contains))
         {
             context.Succeed(requirement);
         }

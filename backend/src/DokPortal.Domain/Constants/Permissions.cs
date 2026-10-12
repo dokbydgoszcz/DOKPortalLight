@@ -2,6 +2,7 @@ namespace DokPortal.Domain.Constants;
 
 public static class Permissions
 {
+    public const string PeopleView = "People.View";
     public const string PeopleManage = "People.Manage";
     public const string PeopleExport = "People.Export";
     public const string ParishesManage = "Parishes.Manage";
@@ -54,6 +55,7 @@ public static class PermissionCatalog
 {
     public static readonly IReadOnlyList<PermissionInfo> All = new PermissionInfo[]
     {
+        new(Permissions.PeopleView, "Osoby", "Przeglądanie osób z danymi kontaktowymi i kalendarza imienin"),
         new(Permissions.PeopleManage, "Osoby", "Dodawanie, edycja i usuwanie osób"),
         new(Permissions.PeopleExport, "Osoby", "Eksport osób do Excela"),
         new(Permissions.ParishesManage, "Rejestr parafii", "Dodawanie i usuwanie parafii"),

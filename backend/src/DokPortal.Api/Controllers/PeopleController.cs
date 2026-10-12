@@ -18,13 +18,26 @@ public class PeopleController : ControllerBase
 
     public PeopleController(IPersonService personService) => _personService = personService;
 
+    /// <summary>
+    /// Dane osób (kontakt, data urodzenia, uwagi) widzi rola z „Osoby — przeglądanie/zarządzanie” albo rola, która wybiera osoby
+    /// do swojej pracy (sprawy DOK, kandydaci, misje, giełda, formatorzy, pisma, konta). Katechista prowadzący domyślnie nie.
+    /// </summary>
+    private const int MaxPageSize = 200;
+
     [HttpGet]
+    [HasAnyPermission(Permissions.PeopleView, Permissions.PeopleManage, Permissions.DokCasesManage, Permissions.CandidatesManage,
+        Permissions.MissionsManage, Permissions.ParishNeedsManage, Permissions.FormatorsManage, Permissions.DocumentsGenerate, Permissions.UsersManage)]
     public async Task<ActionResult<PagedResult<PersonDto>>> Search(
         [FromQuery] string? query, [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
         [FromQuery] FunctionType? function = null, CancellationToken ct = default)
-        => Ok(await _personService.SearchAsync(query, page, pageSize, ct, function));
+    {
+        (page, pageSize) = Paging.Normalize(page, pageSize, MaxPageSize);
+        return Ok(await _personService.SearchAsync(query, page, pageSize, ct, function));
+    }
 
     [HttpGet("{id:guid}")]
+    [HasAnyPermission(Permissions.PeopleView, Permissions.PeopleManage, Permissions.DokCasesManage, Permissions.CandidatesManage,
+        Permissions.MissionsManage, Permissions.ParishNeedsManage, Permissions.FormatorsManage, Permissions.DocumentsGenerate, Permissions.UsersManage)]
     public async Task<ActionResult<PersonDto>> GetById(Guid id, CancellationToken ct)
     {
         var person = await _personService.GetByIdAsync(id, ct);

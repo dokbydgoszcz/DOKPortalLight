@@ -1,4 +1,6 @@
+using DokPortal.Api.Authorization;
 using DokPortal.Application.NameDays;
+using DokPortal.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,6 +16,7 @@ public class NameDaysController : ControllerBase
     public NameDaysController(INameDayService nameDayService) => _nameDayService = nameDayService;
 
     [HttpGet("upcoming")]
+    [HasAnyPermission(Permissions.PeopleView, Permissions.PeopleManage)]
     public async Task<ActionResult<IReadOnlyList<UpcomingNameDayDto>>> GetUpcoming([FromQuery] int days, CancellationToken ct)
     {
         var window = days <= 0 ? 30 : days;

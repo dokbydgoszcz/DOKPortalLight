@@ -1,5 +1,7 @@
 using DokPortal.Application.People;
 using DokPortal.Application.Users;
+using DokPortal.Domain.Constants;
+using DokPortal.Infrastructure.Auth;
 using DokPortal.Infrastructure.Identity;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -12,12 +14,53 @@ public class UserService : IUserService
     private readonly UserManager<AppUser> _userManager;
     private readonly IPersonService _personService;
     private readonly AppDbContext _db;
+    private readonly SessionValidator? _sessions;
 
-    public UserService(UserManager<AppUser> userManager, IPersonService personService, AppDbContext db)
+    public UserService(UserManager<AppUser> userManager, IPersonService personService, AppDbContext db, SessionValidator? sessions = null)
     {
         _userManager = userManager;
         _personService = personService;
         _db = db;
+        _sessions = sessions;
+    }
+
+    private static void EnsureMayGrant(IEnumerable<string> roles, UserActor? actor)
+    {
+        if (actor is { IsAdministrator: false } && roles.Contains(AppRoles.Administrator))
+        {
+            throw new InvalidOperationException("Rolę Administrator może nadać tylko administrator.");
+        }
+    }
+
+    /// <summary>Czy poza wskazanym kontem zostaje jakiś aktywny administrator.</summary>
+    private async Task<bool> OtherActiveAdministratorExistsAsync(string exceptUserId)
+    {
+        var admins = await _userManager.GetUsersInRoleAsync(AppRoles.Administrator);
+        return admins.Any(u => u.Id != exceptUserId && !u.IsDeactivated);
+    }
+
+    /// <summary>Nowy znacznik bezpieczeństwa unieważnia wydane tokeny; czyścimy też pamięć sprawdzania sesji.</summary>
+    private async Task EndSessionsAsync(AppUser user)
+    {
+        await _userManager.UpdateSecurityStampAsync(user);
+        _sessions?.Invalidate(user.Id);
+    }
+
+    public async Task<UserDto?> SetActiveAsync(string userId, bool isActive, UserActor actor, CancellationToken ct)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return null;
+        if (!isActive)
+        {
+            if (user.Id == actor.UserId) throw new InvalidOperationException("Nie możesz wyłączyć własnego konta.");
+            if (await _userManager.IsInRoleAsync(user, AppRoles.Administrator) && !await OtherActiveAdministratorExistsAsync(user.Id))
+                throw new InvalidOperationException("To ostatni aktywny administrator – jego konta nie można wyłączyć.");
+        }
+
+        user.IsDeactivated = !isActive;
+        await _userManager.UpdateAsync(user);
+        await EndSessionsAsync(user);
+        return ToDto(user, await _userManager.GetRolesAsync(user), await PersonNameAsync(user.PersonId, ct));
     }
 
     public async Task<IReadOnlyList<UserDto>> ListAsync(CancellationToken ct)
@@ -37,8 +80,9 @@ public class UserService : IUserService
         return result;
     }
 
-    public async Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken ct)
+    public async Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken ct, UserActor? actor = null)
     {
+        EnsureMayGrant(request.Roles, actor);
         if (request.PersonId is { } personId)
         {
             await EnsurePersonCanBeLinkedAsync(personId, null, ct);
@@ -103,12 +147,19 @@ public class UserService : IUserService
     private async Task<string?> PersonNameAsync(Guid? personId, CancellationToken ct) =>
         personId is { } id ? (await _personService.GetByIdAsync(id, ct))?.FullName : null;
 
-    public async Task<UserDto?> AssignRolesAsync(string userId, IReadOnlyList<string> roles, CancellationToken ct)
+    public async Task<UserDto?> AssignRolesAsync(string userId, IReadOnlyList<string> roles, CancellationToken ct, UserActor? actor = null)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null) return null;
 
         var currentRoles = await _userManager.GetRolesAsync(user);
+        if (!currentRoles.Contains(AppRoles.Administrator)) EnsureMayGrant(roles, actor);
+        if (actor is { IsAdministrator: false } && currentRoles.Contains(AppRoles.Administrator))
+            throw new InvalidOperationException("Role administratora może zmienić tylko administrator.");
+        if (currentRoles.Contains(AppRoles.Administrator) && !roles.Contains(AppRoles.Administrator)
+            && !user.IsDeactivated && !await OtherActiveAdministratorExistsAsync(user.Id))
+            throw new InvalidOperationException("To ostatni aktywny administrator – nie można odebrać mu tej roli.");
+
         if (currentRoles.Count > 0)
         {
             await _userManager.RemoveFromRolesAsync(user, currentRoles);
@@ -117,6 +168,7 @@ public class UserService : IUserService
         {
             await _userManager.AddToRolesAsync(user, roles);
         }
+        await EndSessionsAsync(user);
 
         return ToDto(user, await _userManager.GetRolesAsync(user), await PersonNameAsync(user.PersonId, ct));
     }
@@ -140,6 +192,8 @@ public class UserService : IUserService
             throw new InvalidOperationException($"Nie udało się zresetować hasła: {errors}");
         }
 
+        // Nowe hasło zmienia znacznik bezpieczeństwa (Identity) – stare sesje wygasają.
+        _sessions?.Invalidate(user.Id);
         return true;
     }
 
@@ -149,6 +203,7 @@ public class UserService : IUserService
         Email = user.Email!,
         PersonId = user.PersonId,
         PersonFullName = personFullName,
-        Roles = roles.ToList()
+        Roles = roles.ToList(),
+        IsActive = !user.IsDeactivated
     };
 }

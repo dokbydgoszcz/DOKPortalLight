@@ -57,11 +57,21 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Nieprawidłowy e-mail lub hasło." });
         }
 
+        if (user.IsDeactivated)
+        {
+            await _auditLogService.LogAsync(user.Id, request.Email, "Login", "Konto nieaktywne", AuditResult.Blocked, ct);
+            return Unauthorized(new { message = "Konto jest nieaktywne. Skontaktuj się z administratorem." });
+        }
+
         await _userManager.ResetAccessFailedCountAsync(user);
+        if (string.IsNullOrEmpty(user.SecurityStamp))
+        {
+            await _userManager.UpdateSecurityStampAsync(user);
+        }
 
         var roles = await _userManager.GetRolesAsync(user);
         var permissions = await _permissionService.GetPermissionsForRolesAsync(roles, ct);
-        var token = _tokenGenerator.GenerateToken(user.Id, user.Email!, user.PersonId, roles, permissions);
+        var token = _tokenGenerator.GenerateToken(user.Id, user.Email!, user.PersonId, roles, permissions, user.SecurityStamp);
 
         await _auditLogService.LogAsync(user.Id, user.Email!, "Login", "Zalogowano", AuditResult.Allowed, ct);
 

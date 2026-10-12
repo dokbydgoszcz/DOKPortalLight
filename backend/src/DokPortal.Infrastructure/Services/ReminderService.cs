@@ -116,7 +116,7 @@ public class ReminderService : IReminderService
                     catch (Exception ex)
                     {
                         failedSends++;
-                        _logger.LogWarning(ex, "Nie udało się wysłać podsumowania brakujących dokumentów do {Email}", email);
+                        _logger.LogWarning(ex, "Nie udało się wysłać podsumowania brakujących dokumentów do jednego z dyrektorów");
                     }
                 }
             }
@@ -219,11 +219,18 @@ public class ReminderService : IReminderService
         var lines = upcoming.Select(d => $"- {d.FullName} — {d.NameDayMonth:D2}.{d.NameDayDay:D2} (za {d.DaysUntil} dni)");
         var body = "Imieniny w najbliższym tygodniu:\n" + string.Join("\n", lines);
 
-        var recipientEmails = await _db.Users
-            .Where(u => u.Email != null && u.Email != "")
-            .Select(u => u.Email!)
-            .Distinct()
-            .ToListAsync(ct);
+        // Lista imienin to dane osób: dostają ją tylko aktywne konta z dostępem do Osób (administrator albo rola z People.View/Manage).
+        var rolesWithPeople = _db.RolePermissions
+            .Where(p => p.Permission == Permissions.PeopleView || p.Permission == Permissions.PeopleManage)
+            .Select(p => p.RoleName);
+        var recipientEmails = await (
+            from user in _db.Users
+            where user.Email != null && user.Email != "" && !user.IsDeactivated
+            join userRole in _db.UserRoles on user.Id equals userRole.UserId
+            join role in _db.Roles on userRole.RoleId equals role.Id
+            where role.Name == AppRoles.Administrator || rolesWithPeople.Contains(role.Name!)
+            select user.Email!
+        ).Distinct().ToListAsync(ct);
 
         var recipientsNotified = 0;
         var failedSends = 0;
@@ -237,7 +244,7 @@ public class ReminderService : IReminderService
             catch (Exception ex)
             {
                 failedSends++;
-                _logger.LogWarning(ex, "Nie udało się wysłać przypomnienia o imieninach do {Email}", email);
+                _logger.LogWarning(ex, "Nie udało się wysłać przypomnienia o imieninach do jednego z adresatów");
             }
         }
 

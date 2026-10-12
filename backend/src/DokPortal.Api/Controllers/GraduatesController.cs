@@ -20,5 +20,8 @@ public class GraduatesController : ControllerBase
     [HasPermission(Permissions.GraduatesView)]
     public async Task<ActionResult<PagedResult<DokCaseDto>>> Search(
         [FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
-        => Ok(await _dokCaseService.SearchGraduatesAsync(search, page, pageSize, ct));
+    {
+        (page, pageSize) = Paging.Normalize(page, pageSize);
+        return Ok(await _dokCaseService.SearchGraduatesAsync(search, page, pageSize, ct));
+    }
 }

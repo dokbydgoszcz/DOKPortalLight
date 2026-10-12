@@ -276,11 +276,11 @@ public class PermissionAuthorizationTests : IntegrationTestBase
     [Theory]
     [InlineData("KatechistaProwadzacy")]
     [InlineData("Biskup")]
-    public async Task People_AndParishes_Lists_AreOpenToEveryAuthenticatedUser(string role)
+    public async Task Parishes_AreOpenToEveryAuthenticatedUser_ButPeopleNeedAccessToThem(string role)
     {
         var client = await CreateAuthenticatedClientAsync($"user-{Guid.NewGuid():N}@example.org", "Sekret123!", role);
 
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/people")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/people")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/parishes")).StatusCode);
     }
 }
