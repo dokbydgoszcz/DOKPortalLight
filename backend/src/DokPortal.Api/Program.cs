@@ -23,6 +23,7 @@ using DokPortal.Application.Reminders;
 using DokPortal.Application.Supervisions;
 using DokPortal.Application.People;
 using DokPortal.Application.Users;
+using DokPortal.Api;
 using DokPortal.Api.Authorization;
 using DokPortal.Api.ErrorHandling;
 using Microsoft.AspNetCore.Authorization;
@@ -39,6 +40,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -57,8 +60,40 @@ builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Darmowa baza Azure SQL usypia się po godzinie bez ruchu: dłuższy czas łączenia i ponawianie przejściowych błędów,
+// żeby pierwsze żądanie po przerwie nie kończyło się błędem.
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+    options.UseSqlServer(DatabaseResilience.WithConnectTimeout(builder.Configuration.GetConnectionString("Default")), sql =>
+    {
+        sql.EnableRetryOnFailure(maxRetryCount: 6, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: null);
+        sql.CommandTimeout(60);
+    }));
+
+// Ograniczenie liczby prób logowania z jednego adresu (zgadywanie haseł, blokowanie cudzych kont, budzenie bazy)
+// oraz ręcznego sprawdzania /health/ready (każde wywołanie budzi płatny limit darmowej bazy).
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, ct) =>
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { message = "Zbyt wiele prób w krótkim czasie. Odczekaj minutę i spróbuj ponownie." }, ct);
+    options.AddPolicy("login", http => RateLimitPartition.GetFixedWindowLimiter(
+        DatabaseResilience.ClientAddress(http),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = http.RequestServices.GetRequiredService<IConfiguration>().GetValue("RateLimiting:LoginPerMinute", 10),
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+    options.AddPolicy("health-ready", http => RateLimitPartition.GetFixedWindowLimiter(
+        "health-ready",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = http.RequestServices.GetRequiredService<IConfiguration>().GetValue("RateLimiting:HealthReadyPerMinute", 6),
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+});
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>("database", tags: new[] { "ready" });
@@ -184,7 +219,9 @@ var app = builder.Build();
 if (!app.Environment.IsEnvironment("Testing"))
 {
     using var scope = app.Services.CreateScope();
-    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+    await DatabaseResilience.MigrateWithRetryAsync(
+        scope.ServiceProvider.GetRequiredService<AppDbContext>(),
+        scope.ServiceProvider.GetRequiredService<ILogger<Program>>());
     await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
 
@@ -195,7 +232,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
+app.UseRouting();
 app.UseCors("Frontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
@@ -203,7 +242,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
-});
+}).RequireRateLimiting("health-ready");
 
 app.Run();
 

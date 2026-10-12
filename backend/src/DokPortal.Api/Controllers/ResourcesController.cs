@@ -1,3 +1,4 @@
+using DokPortal.Api.Filters;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Api.Authorization;
 using DokPortal.Application.Attachments;
@@ -40,6 +41,7 @@ public class ResourcesController : ControllerBase
     }
 
     [HttpPost]
+    [Audit("CreateResource")]
     [HasPermission(Permissions.ResourcesManage)]
     public async Task<ActionResult<ResourceDto>> Create(CreateResourceRequest request, CancellationToken ct)
     {
@@ -48,6 +50,7 @@ public class ResourcesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Audit("UpdateResource")]
     [HasPermission(Permissions.ResourcesManage)]
     public async Task<ActionResult<ResourceDto>> Update(Guid id, UpdateResourceRequest request, CancellationToken ct)
     {
@@ -56,11 +59,13 @@ public class ResourcesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Audit("DeleteResource")]
     [HasPermission(Permissions.ResourcesManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         => await _resourceService.DeleteAsync(id, CurrentUserId, ct) ? NoContent() : NotFound();
 
     [HttpPost("{id:guid}/attachments")]
+    [Audit("UploadResourceAttachment")]
     [HasPermission(Permissions.ResourcesManage)]
     [RequestSizeLimit(AttachmentRules.MaxRequestBytes)]
     public async Task<ActionResult<AttachmentDto>> AddAttachment(Guid id, IFormFile file, CancellationToken ct)
@@ -72,6 +77,7 @@ public class ResourcesController : ControllerBase
     }
 
     [HttpGet("{id:guid}/attachments/{attachmentId:guid}/download")]
+    [Audit("DownloadResourceAttachment")]
     [HasPermission(Permissions.ResourcesView)]
     public async Task<IActionResult> DownloadAttachment(Guid id, Guid attachmentId, CancellationToken ct)
     {
@@ -85,6 +91,7 @@ public class ResourcesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/attachments/{attachmentId:guid}")]
+    [Audit("DeleteResourceAttachment")]
     [HasPermission(Permissions.ResourcesManage)]
     public async Task<IActionResult> DeleteAttachment(Guid id, Guid attachmentId, CancellationToken ct)
     {

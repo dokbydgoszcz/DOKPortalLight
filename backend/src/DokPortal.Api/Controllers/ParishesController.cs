@@ -1,3 +1,4 @@
+using DokPortal.Api.Filters;
 using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Parishes;
@@ -21,6 +22,7 @@ public class ParishesController : ControllerBase
         => Ok(await _parishService.GetAllAsync(ct));
 
     [HttpPost]
+    [Audit("CreateParish")]
     [HasPermission(Permissions.ParishesManage)]
     public async Task<ActionResult<ParishDto>> Create(CreateParishRequest request, CancellationToken ct)
     {
@@ -29,6 +31,7 @@ public class ParishesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Audit("UpdateParish")]
     [HasPermission(Permissions.ParishesManage)]
     public async Task<ActionResult<ParishDto>> Update(Guid id, UpdateParishRequest request, CancellationToken ct)
     {
@@ -37,6 +40,7 @@ public class ParishesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Audit("DeleteParish")]
     [HasPermission(Permissions.ParishesManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {

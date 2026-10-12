@@ -1,3 +1,4 @@
+using DokPortal.Api.Filters;
 using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Common;
@@ -45,6 +46,7 @@ public class PeopleController : ControllerBase
     }
 
     [HttpPost]
+    [Audit("CreatePerson")]
     [HasPermission(Permissions.PeopleManage)]
     public async Task<ActionResult<PersonDto>> Create(CreatePersonRequest request, CancellationToken ct)
     {
@@ -53,6 +55,7 @@ public class PeopleController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Audit("UpdatePerson")]
     [HasPermission(Permissions.PeopleManage)]
     public async Task<ActionResult<PersonDto>> Update(Guid id, UpdatePersonRequest request, CancellationToken ct)
     {
@@ -61,6 +64,7 @@ public class PeopleController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Audit("DeletePerson")]
     [HasPermission(Permissions.PeopleManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {

@@ -1,3 +1,4 @@
+using DokPortal.Api.Filters;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Api.Authorization;
 using DokPortal.Application.AuditLog;
@@ -29,16 +30,19 @@ public class MailingController : ControllerBase
         => Ok(await _mailingService.ListAsync(ct));
 
     [HttpPost]
+    [Audit("CreateCampaign")]
     [HasPermission(Permissions.MailingManage)]
     public async Task<ActionResult<MailingCampaignDto>> Create(CreateMailingCampaignRequest request, CancellationToken ct)
         => Ok(await _mailingService.CreateAsync(request, ct));
 
     [HttpDelete("{id:guid}")]
+    [Audit("DeleteCampaign")]
     [HasPermission(Permissions.MailingManage)]
     public async Task<IActionResult> DeleteDraft(Guid id, CancellationToken ct)
         => await _mailingService.DeleteDraftAsync(id, ct) ? NoContent() : NotFound();
 
     [HttpPost("{id:guid}/send")]
+    [Audit("SendCampaign")]
     [HasPermission(Permissions.MailingManage)]
     public async Task<ActionResult<MailingCampaignDto>> Send(Guid id, CancellationToken ct)
     {

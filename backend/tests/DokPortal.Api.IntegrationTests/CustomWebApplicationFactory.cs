@@ -17,6 +17,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        // Testy logują się setki razy z jednego „adresu” – limity ustawia tylko test limitów.
+        builder.UseSetting("RateLimiting:LoginPerMinute", "100000");
+        builder.UseSetting("RateLimiting:HealthReadyPerMinute", "100000");
         builder.UseContentRoot(GetApiProjectContentRoot());
 
         builder.ConfigureServices(services =>

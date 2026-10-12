@@ -1,3 +1,4 @@
+using DokPortal.Api.Filters;
 using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Common;
@@ -37,6 +38,7 @@ public class DokCasesController : ControllerBase
     }
 
     [HttpPost]
+    [Audit("CreateDokCase")]
     [HasPermission(Permissions.DokCasesManage)]
     public async Task<ActionResult<DokCaseDto>> Create(CreateDokCaseRequest request, CancellationToken ct)
     {
@@ -45,6 +47,7 @@ public class DokCasesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Audit("UpdateDokCase")]
     [HasPermission(Permissions.DokCasesManage)]
     public async Task<ActionResult<DokCaseDto>> Update(Guid id, UpdateDokCaseRequest request, CancellationToken ct)
     {
@@ -64,6 +67,7 @@ public class DokCasesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Audit("DeleteDokCase")]
     [HasPermission(Permissions.DokCasesManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {

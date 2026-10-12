@@ -1,3 +1,4 @@
+using DokPortal.Api.Filters;
 using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.ParishNeeds;
@@ -22,6 +23,7 @@ public class ParishNeedsController : ControllerBase
         => Ok(await _parishNeedService.GetAllAsync(ct));
 
     [HttpPost]
+    [Audit("CreateParishNeed")]
     [HasPermission(Permissions.ParishNeedsManage)]
     public async Task<ActionResult<ParishNeedDto>> Create(CreateParishNeedRequest request, CancellationToken ct)
     {
@@ -30,6 +32,7 @@ public class ParishNeedsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Audit("UpdateParishNeed")]
     [HasPermission(Permissions.ParishNeedsManage)]
     public async Task<ActionResult<ParishNeedDto>> Update(Guid id, UpdateParishNeedRequest request, CancellationToken ct)
     {
@@ -38,6 +41,7 @@ public class ParishNeedsController : ControllerBase
     }
 
     [HttpPut("{id:guid}/assign")]
+    [Audit("AssignParishNeed")]
     [HasPermission(Permissions.ParishNeedsManage)]
     public async Task<ActionResult<ParishNeedDto>> Assign(Guid id, AssignParishNeedRequest request, CancellationToken ct)
     {
@@ -46,6 +50,7 @@ public class ParishNeedsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/assign/{personId:guid}")]
+    [Audit("UnassignParishNeed")]
     [HasPermission(Permissions.ParishNeedsManage)]
     public async Task<ActionResult<ParishNeedDto>> Unassign(Guid id, Guid personId, CancellationToken ct)
     {
@@ -54,6 +59,7 @@ public class ParishNeedsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/close")]
+    [Audit("CloseParishNeed")]
     [HasPermission(Permissions.ParishNeedsManage)]
     public async Task<ActionResult<ParishNeedDto>> Close(Guid id, CancellationToken ct)
     {
@@ -62,6 +68,7 @@ public class ParishNeedsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/reopen")]
+    [Audit("ReopenParishNeed")]
     [HasPermission(Permissions.ParishNeedsManage)]
     public async Task<ActionResult<ParishNeedDto>> Reopen(Guid id, CancellationToken ct)
     {
@@ -70,6 +77,7 @@ public class ParishNeedsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Audit("DeleteParishNeed")]
     [HasPermission(Permissions.ParishNeedsManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {

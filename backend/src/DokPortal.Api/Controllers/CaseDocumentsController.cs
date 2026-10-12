@@ -1,3 +1,4 @@
+using DokPortal.Api.Filters;
 using DokPortal.Api.Authorization;
 using DokPortal.Application.Attachments;
 using DokPortal.Application.CaseDocuments;
@@ -22,6 +23,7 @@ public class CaseDocumentsController : ControllerBase
         => Ok(await _caseDocumentService.GetForCaseAsync(caseId, ct));
 
     [HttpPost]
+    [Audit("CreateCaseDocument")]
     [HasPermission(Permissions.CaseDocumentsManage)]
     public async Task<ActionResult<CaseDocumentDto>> Create(Guid caseId, CreateCaseDocumentRequest request, CancellationToken ct)
     {
@@ -30,6 +32,7 @@ public class CaseDocumentsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Audit("SetCaseDocumentProvided")]
     [HasPermission(Permissions.CaseDocumentsManage)]
     public async Task<ActionResult<CaseDocumentDto>> SetProvided(Guid caseId, Guid id, SetCaseDocumentProvidedRequest request, CancellationToken ct)
     {
@@ -38,6 +41,7 @@ public class CaseDocumentsController : ControllerBase
     }
 
     [HttpPut("{id:guid}/name")]
+    [Audit("RenameCaseDocument")]
     [HasPermission(Permissions.CaseDocumentsManage)]
     public async Task<ActionResult<CaseDocumentDto>> Rename(Guid caseId, Guid id, CreateCaseDocumentRequest request, CancellationToken ct)
     {
@@ -46,11 +50,13 @@ public class CaseDocumentsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Audit("DeleteCaseDocument")]
     [HasPermission(Permissions.CaseDocumentsManage)]
     public async Task<IActionResult> Delete(Guid caseId, Guid id, CancellationToken ct)
         => await _caseDocumentService.DeleteAsync(caseId, id, ct) ? NoContent() : NotFound();
 
     [HttpPost("{id:guid}/upload")]
+    [Audit("UploadCaseDocument")]
     [HasPermission(Permissions.CaseDocumentsManage)]
     [RequestSizeLimit(AttachmentRules.MaxRequestBytes)]
     public async Task<ActionResult<CaseDocumentDto>> UploadFile(Guid caseId, Guid id, IFormFile file, CancellationToken ct)
@@ -64,6 +70,7 @@ public class CaseDocumentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}/download")]
+    [Audit("DownloadCaseDocument")]
     [HasPermission(Permissions.CaseDocumentsView)]
     public async Task<IActionResult> DownloadFile(Guid caseId, Guid id, CancellationToken ct)
     {

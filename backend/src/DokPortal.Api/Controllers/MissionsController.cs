@@ -1,3 +1,4 @@
+using DokPortal.Api.Filters;
 using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Attachments;
@@ -43,6 +44,7 @@ public class MissionsController : ControllerBase
         => Ok(await _missionService.GetExpiringAsync(ct));
 
     [HttpPost("{id:guid}/renew")]
+    [Audit("RenewMission")]
     [HasPermission(Permissions.MissionsManage)]
     public async Task<ActionResult<MissionDto>> Renew(Guid id, CancellationToken ct)
     {
@@ -76,6 +78,7 @@ public class MissionsController : ControllerBase
     }
 
     [HttpPost]
+    [Audit("CreateMission")]
     [HasPermission(Permissions.MissionsManage)]
     public async Task<ActionResult<MissionDto>> Create(CreateMissionRequest request, CancellationToken ct)
     {
@@ -84,6 +87,7 @@ public class MissionsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Audit("UpdateMission")]
     [HasPermission(Permissions.MissionsManage)]
     public async Task<ActionResult<MissionDto>> Update(Guid id, UpdateMissionRequest request, CancellationToken ct)
     {
@@ -92,6 +96,7 @@ public class MissionsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Audit("DeleteMission")]
     [HasPermission(Permissions.MissionsManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
@@ -101,6 +106,7 @@ public class MissionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/attachments")]
+    [Audit("UploadMissionAttachment")]
     [HasPermission(Permissions.MissionsManage)]
     [RequestSizeLimit(AttachmentRules.MaxRequestBytes)]
     public async Task<ActionResult<AttachmentDto>> AddAttachment(Guid id, IFormFile file, CancellationToken ct)
@@ -113,6 +119,7 @@ public class MissionsController : ControllerBase
     }
 
     [HttpGet("{id:guid}/attachments/{attachmentId:guid}/download")]
+    [Audit("DownloadMissionAttachment")]
     [HasPermission(Permissions.MissionsView)]
     public async Task<IActionResult> DownloadAttachment(Guid id, Guid attachmentId, CancellationToken ct)
     {
@@ -126,6 +133,7 @@ public class MissionsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/attachments/{attachmentId:guid}")]
+    [Audit("DeleteMissionAttachment")]
     [HasPermission(Permissions.MissionsManage)]
     public async Task<IActionResult> DeleteAttachment(Guid id, Guid attachmentId, CancellationToken ct)
     {

@@ -1,3 +1,4 @@
+using DokPortal.Api.Filters;
 using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Attachments;
@@ -37,6 +38,7 @@ public class SupervisionsController : ControllerBase
     }
 
     [HttpPost]
+    [Audit("CreateSupervision")]
     [HasPermission(Permissions.SupervisionsManage)]
     public async Task<ActionResult<SupervisionDto>> Create(CreateSupervisionRequest request, CancellationToken ct)
     {
@@ -45,6 +47,7 @@ public class SupervisionsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Audit("UpdateSupervision")]
     [HasPermission(Permissions.SupervisionsManage)]
     public async Task<ActionResult<SupervisionDto>> Update(Guid id, CreateSupervisionRequest request, CancellationToken ct)
     {
@@ -53,6 +56,7 @@ public class SupervisionsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Audit("DeleteSupervision")]
     [HasPermission(Permissions.SupervisionsManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
@@ -62,6 +66,7 @@ public class SupervisionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/attachments")]
+    [Audit("UploadSupervisionAttachment")]
     [HasPermission(Permissions.SupervisionsManage)]
     [RequestSizeLimit(AttachmentRules.MaxRequestBytes)]
     public async Task<ActionResult<AttachmentDto>> AddAttachment(Guid id, IFormFile file, CancellationToken ct)
@@ -76,6 +81,7 @@ public class SupervisionsController : ControllerBase
     }
 
     [HttpGet("{id:guid}/attachments/{attachmentId:guid}/download")]
+    [Audit("DownloadSupervisionAttachment")]
     [HasPermission(Permissions.SupervisionsView)]
     public async Task<IActionResult> DownloadAttachment(Guid id, Guid attachmentId, CancellationToken ct)
     {
@@ -89,6 +95,7 @@ public class SupervisionsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/attachments/{attachmentId:guid}")]
+    [Audit("DeleteSupervisionAttachment")]
     [HasPermission(Permissions.SupervisionsManage)]
     public async Task<IActionResult> DeleteAttachment(Guid id, Guid attachmentId, CancellationToken ct)
     {

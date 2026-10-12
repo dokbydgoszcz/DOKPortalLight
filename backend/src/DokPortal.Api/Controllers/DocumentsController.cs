@@ -1,3 +1,4 @@
+using DokPortal.Api.Filters;
 using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.AuditLog;
@@ -28,6 +29,7 @@ public class DocumentsController : ControllerBase
         => Ok(await _documentService.GetHistoryAsync(ct));
 
     [HttpPost("generate")]
+    [Audit("GenerateDocument")]
     [HasPermission(Permissions.DocumentsGenerate)]
     public async Task<IActionResult> Generate(GenerateDocumentRequest request, CancellationToken ct)
     {
@@ -38,6 +40,7 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}/download")]
+    [Audit("DownloadDocument")]
     [HasPermission(Permissions.DocumentsView)]
     public async Task<IActionResult> Download(Guid id, CancellationToken ct)
     {

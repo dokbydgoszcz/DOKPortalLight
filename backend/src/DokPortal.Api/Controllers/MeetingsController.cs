@@ -1,3 +1,4 @@
+using DokPortal.Api.Filters;
 using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Meetings;
@@ -30,6 +31,7 @@ public class MeetingsController : ControllerBase
     }
 
     [HttpPost]
+    [Audit("CreateMeeting")]
     [HasPermission(Permissions.MeetingsManage)]
     public async Task<ActionResult<MeetingDto>> Create(CreateMeetingRequest request, CancellationToken ct)
     {
@@ -38,6 +40,7 @@ public class MeetingsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Audit("UpdateMeeting")]
     [HasPermission(Permissions.MeetingsManage)]
     public async Task<ActionResult<MeetingDto>> Update(Guid id, CreateMeetingRequest request, CancellationToken ct)
     {
@@ -62,6 +65,7 @@ public class MeetingsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Audit("DeleteMeeting")]
     [HasPermission(Permissions.MeetingsManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {

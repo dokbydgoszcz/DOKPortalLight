@@ -1,3 +1,4 @@
+using DokPortal.Api.Filters;
 using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.Formators;
@@ -30,6 +31,7 @@ public class FormatorsController : ControllerBase
     }
 
     [HttpPost]
+    [Audit("CreateFormator")]
     [HasPermission(Permissions.FormatorsManage)]
     public async Task<ActionResult<FormatorDto>> Create(CreateFormatorRequest request, CancellationToken ct)
     {
@@ -38,6 +40,7 @@ public class FormatorsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Audit("UpdateFormator")]
     [HasPermission(Permissions.FormatorsManage)]
     public async Task<ActionResult<FormatorDto>> Update(Guid id, CreateFormatorRequest request, CancellationToken ct)
     {
@@ -46,6 +49,7 @@ public class FormatorsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Audit("DeleteFormator")]
     [HasPermission(Permissions.FormatorsManage)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {

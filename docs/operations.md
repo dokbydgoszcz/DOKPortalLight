@@ -107,3 +107,65 @@ Konto `noreply@bydgoskateologia.pl` (Exchange Online / Microsoft 365):
 Wymagania po stronie Exchange: włączony **uwierzytelniony SMTP (SMTP AUTH)** dla tej skrzynki, brak wymuszonego MFA na koncie technicznym (logowanie hasłem), nadawca zgodny ze skrzynką. Microsoft stopniowo wycofuje Basic Auth dla SMTP AUTH – gdy przestanie działać, trzeba przejść na wysyłkę przez Microsoft Graph.
 
 Sprawdzenie: w ekranie **Mailing** przycisk „Wyślij wiadomość testową” wysyła wiadomość na adres zalogowanego użytkownika; przy błędzie pokazuje komunikat serwera poczty (np. `5.7.57 Client not authenticated` = SMTP AUTH wyłączony albo złe hasło).
+
+## Wdrożenie i bramka testów
+
+Push do `master` uruchamia:
+- `deploy.yml` – najpierw `test-backend` (`dotnet test`), dopiero po zielonych testach `deploy-backend` (publikacja do `dokportal-api`). Czerwone testy = brak wdrożenia backendu.
+- `azure-static-web-apps-…yml` – najpierw `test_frontend` (`ng test --coverage` z progami pokrycia), potem budowa i wdrożenie frontendu.
+
+Migracje bazy wykonują się przy starcie API (do 5 prób co 15–60 s, gdy darmowa baza się budzi). Połączenie z bazą ma 60 s na nawiązanie i ponawia przejściowe błędy (do 6 razy).
+
+Uwaga na migracje danych: część z nich zmienia dane nieodwracalnie (`Down` nie przywraca stanu sprzed migracji), m.in. `ResetDokCaseStages`, `RemoveMissionGrantedPlace`, `ManualFormationYears`, `LinkMissionsToParishesAndAssignments` (porządkuje dane po usuniętych osobach i parafiach). Przed wdrożeniem takiej migracji sprawdź, do kiedy da się odtworzyć bazę (niżej).
+
+## Kopie zapasowe i odtwarzanie
+
+### Baza (Azure SQL `sql-dokportal` / `DokPortalLight`)
+
+Azure SQL robi kopie automatycznie (pełne, różnicowe i dziennika) i pozwala odtworzyć bazę na wybrany moment (PITR) w okresie przechowywania. Ile dni wstecz można cofnąć – sprawdź (polecenie tylko czyta):
+
+```bash
+az sql db show -g rg-dokportal -s sql-dokportal -n DokPortalLight --query "{najwczesniej:earliestRestoreDate, oferta:freeLimitExhaustionBehavior}" -o json
+az sql db str-policy show -g rg-dokportal -s sql-dokportal -n DokPortalLight -o json
+```
+
+Odtworzenie **zawsze tworzy nową bazę** obok obecnej (obecna zostaje nietknięta). Nowa baza zwykle **nie jest objęta darmową ofertą** – to koszt, więc decyzja należy do właściciela. Wzór (najpierw pokaż polecenie i uzyskaj zgodę):
+
+```bash
+az sql db restore -g rg-dokportal -s sql-dokportal -n DokPortalLight \
+  --dest-name DokPortalLight-odtworzona --time "2026-10-10T08:00:00Z"
+```
+
+Po sprawdzeniu danych w odtworzonej bazie można: (a) skopiować z niej tylko brakujące rekordy, albo (b) przełączyć aplikację na odtworzoną bazę (zmiana connection stringa w App Service – robi właściciel, to sekret), a starą usunąć.
+
+Kopia „na półkę” (plik `.bacpac`, np. przed dużą zmianą) – eksport do Blob Storage wymaga loginu i hasła administratora SQL, więc wykonuje go właściciel (portal: baza → **Export**, albo `az sql db export`). Plik trzymaj w kontenerze innym niż pliki aplikacji.
+
+### Pliki (Blob Storage `dokportalfiles`)
+
+Dokumenty spraw, załączniki, pisma i zasoby leżą w Blob Storage. Sprawdź, czy jest włączone miękkie usuwanie (odzyskanie skasowanego pliku):
+
+```bash
+az storage account blob-service-properties show --account-name dokportalfiles -g rg-dokportal \
+  --query "{usuwanie:deleteRetentionPolicy, kontenery:containerDeleteRetentionPolicy, wersje:isVersioningEnabled}" -o json
+```
+
+Zalecenie (zmienia konfigurację konta – tylko za zgodą właściciela; przechowywane usunięte pliki zajmują miejsce):
+
+```bash
+az storage account blob-service-properties update --account-name dokportalfiles -g rg-dokportal \
+  --enable-delete-retention true --delete-retention-days 14 \
+  --enable-container-delete-retention true --container-delete-retention-days 14
+```
+
+Odzyskanie usuniętego pliku: portal → konto `dokportalfiles` → kontener → „Pokaż usunięte obiekty” → **Cofnij usunięcie**.
+
+### Próba odtworzenia
+
+Raz na kwartał warto sprawdzić, że odtworzenie działa: `earliestRestoreDate` jest sprzed co najmniej kilku dni, a w Blob Storage widać miękko usunięte pliki. Pełne odtworzenie bazy robić tylko, gdy właściciel zgodzi się na koszt.
+
+## Ochrona dostępu
+
+- **Logowanie**: najwyżej 10 prób na minutę z jednego adresu (potem 429 „Zbyt wiele prób…”), a po 5 błędnych hasłach konto jest blokowane na 15 minut. `/health/ready` (budzi bazę) – najwyżej 6 wywołań na minutę. Limity zmienisz ustawieniami `RateLimiting__LoginPerMinute` i `RateLimiting__HealthReadyPerMinute`.
+- **Sesje**: przy każdym żądaniu API sprawdza (z pamięcią 60 s), czy konto istnieje, nie jest wyłączone i czy token pasuje do jego znacznika bezpieczeństwa. Wyłączenie konta, zmiana ról albo hasła kończy otwarte sesje tego konta.
+- **Odejście katechisty**: Użytkownicy i role → „Wyłącz konto”. Jego sprawy DOK przekaż innemu katechiście (Podopieczni DOK → Edytuj → Katechista prowadzący); nowy katechista dostanie e-mail.
+- **Dziennik zmian**: zapisuje m.in. tworzenie, zmiany i usuwanie osób, spraw, kandydatów, misji, parafii, zapotrzebowań, spotkań, formatorów, superwizji, zasobów; wgrywanie i pobieranie plików; generowanie i pobieranie pism; wysyłkę kampanii; zmiany kont. Opis wpisu to nazwa obiektu i jego identyfikatory, np. `Metryka [caseId=…, id=…]`.
