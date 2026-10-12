@@ -8,6 +8,15 @@ import { Person } from '../people/person.model';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
 
+const ROLE_LABELS: Record<string, string> = {
+  Administrator: 'Administrator',
+  Biskup: 'Biskup',
+  DyrektorSKSP: 'Dyrektor SKŚP',
+  DyrektorDOK: 'Dyrektor DOK',
+  Superwizor: 'Superwizor',
+  KatechistaProwadzacy: 'Katechista prowadzący'
+};
+
 @Component({
   selector: 'app-users-list',
   standalone: true,
@@ -18,6 +27,11 @@ import { serverMessage } from '../../shared/http-error';
 export class UsersListComponent implements OnInit {
   readonly users = signal<AppUserAccount[]>([]);
   readonly allRoles = signal<string[]>([]);
+
+  /** Czytelne nazwy ról systemowych; role własne pokazujemy tak, jak je nazwano. */
+  roleLabel(role: string): string {
+    return ROLE_LABELS[role] ?? role;
+  }
 
   newUser: Omit<CreateUserValue, 'personId'> = { email: '', password: '', roles: [] };
   confirmPassword = '';

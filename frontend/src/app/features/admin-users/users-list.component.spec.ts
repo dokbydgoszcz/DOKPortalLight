@@ -48,6 +48,25 @@ describe('UsersListComponent', () => {
     expect(el.querySelectorAll('tbody input[type="checkbox"]').length).toBe(2);
   });
 
+  it('names the roles in readable Polish and keeps unknown (custom) roles as they are', () => {
+    const ctx = setup(UsersListComponent);
+    ctx.fixture.detectChanges();
+    flushAll(ctx.http, api('/api/users'), [user]);
+    flushAll(ctx.http, api('/api/users/roles'), ['Administrator', 'DyrektorSKSP', 'DyrektorDOK', 'KatechistaProwadzacy', 'Wlasna']);
+    ctx.fixture.detectChanges();
+
+    const headers = Array.from(ctx.el.querySelectorAll('thead th')).map(th => th.textContent!.trim());
+    expect(headers).toEqual(expect.arrayContaining(['Dyrektor SKŚP', 'Dyrektor DOK', 'Katechista prowadzący', 'Wlasna']));
+  });
+
+  it('keeps “brak” and the link apart, and puts the account actions in one row', () => {
+    const { el } = boot([unlinkedCatechist]);
+
+    const person = el.querySelector('.person-cell') as HTMLElement;
+    expect(Array.from(person.children).map(c => c.textContent!.trim()).slice(0, 2)).toEqual(['brak', 'Powiąż']);
+    expect(el.querySelector('.account-actions')!.querySelectorAll('button').length).toBe(2);
+  });
+
   it('shows toasts when the user list or the role list cannot be loaded', () => {
     const { fixture, http } = setup(UsersListComponent);
     fixture.detectChanges();
