@@ -66,7 +66,7 @@ Workflow `.github/workflows/uptime.yml` co 15 minut w dni robocze (UTC 5–19) w
 
 Mailing i przypomnienia wysyłają e-maile przez SMTP, gdy w ustawieniach App Service (`dokportal-api`) jest `Smtp__Host`. Bez niego aplikacja zgłasza czytelny błąd „nie jest skonfigurowane”, a reszta działa.
 
-### Wariant A (obecnie): Gmail `dokbydgoszcz@gmail.com`
+### Wariant A (obecnie, ustawiony 2026-10-12): Gmail `dokbydgoszcz@gmail.com`
 
 Działa od razu, bez udziału administratora Microsoft 365. Wymaga **hasła aplikacji** (zwykłe hasło do Gmaila nie zadziała przez SMTP).
 

@@ -78,3 +78,11 @@ Zrobione w 8 commitach na `master` (testy: backend 33+372+345, frontend 612, pok
 Decyzje do potwierdzenia przez użytkownika: notatki duszpasterskie nadal widzi tylko autor (+ ReadAll) – nowy katechista nie widzi notatek poprzednika; Katechista/Superwizor/Biskup dostali `People.View` (decyzja 2026-10-12); jedna trwająca sprawa osoby **na ścieżkę** (nie globalnie).
 
 Nadal otwarte (z przeglądu, nie zrobione): asynchroniczna wysyłka kampanii (C4), zajęcia grupowe bez właściciela (C10), uprawnienia SKŚP do potwierdzenia (C11), RODO – anonimizacja/eksport danych osoby (B5), wypis z mailingu, przypomnienia o zajęciach grupowych, nagłówki bezpieczeństwa SPA, listy wyboru osób ograniczone do 200 (C7). Plus sprawy z sekcji 6 pkt 1, 4, 5 (Gmail, powiązanie kont, ustawienia Azure) – wymagają użytkownika.
+
+## 9. Stan po wdrożeniu (2026-10-12, po południu)
+
+- Wszystko wypchnięte i wdrożone (`master` @ po `6edc995`); CI, Deploy i SWA zielone. Push: Claude ma dostęp przez aplikację Claude na GitHubie (organizacja `dokbydgoszcz`).
+- Azure (zmiany za zgodą właściciela): poczta przełączona na Gmail (`smtp.gmail.com:587`, `dokbydgoszcz@gmail.com`; hasło aplikacji wpisał właściciel), App Service **HTTPS Only włączone**, Blob `dokportalfiles`: minimalny TLS 1.2, soft-delete plików i kontenerów 14 dni.
+- Sprawdzone: `Jwt__Key` 48 znaków, `Reminders__ApiKey` 20, `SeedAdmin__Password` nie testowe, PITR bazy 7 dni, TLS 1.2 na App Service i SQL, SQL wpuszcza tylko usługi Azure.
+- Konta: w produkcji są tylko dwa konta administratorów (`admin@dokportal.local`, `szymon.luczak@gmial.com` – literówka w domenie); katechistów zakłada się w ekranie Użytkownicy od razu z osobą.
+- Do zrobienia: test poczty (Mailing → „Wyślij wiadomość testową”), wzory pism, pozostałości przeglądu (sekcja 8).
