@@ -12,7 +12,8 @@ jobs:
       - name: Wywołaj endpoint przypomnień
         run: |
           url="https://dokportal-api.azurewebsites.net/api/reminders/upcoming-name-days/run"
-          max_attempts=5
+          # Darmowa baza budzi się do ok. minuty – ponawiamy cierpliwie (API zwraca wtedy 503).
+          max_attempts=6
           for attempt in $(seq 1 $max_attempts); do
             response=$(curl -s --max-time 120 -w "\n%{http_code}" -X POST \
               -H "X-Reminders-Key: ${{ secrets.REMINDERS_API_KEY }}" "$url") || true
@@ -24,10 +25,10 @@ jobs:
             fi
             echo "Próba $attempt/$max_attempts: kod $http_code, odpowiedź: ${body:0:200}"
             case "$http_code" in
-              000|502|503|504) ;;
+              000|429|502|503|504) ;;
               *) echo "Błąd nieprzejściowy — bez ponawiania."; exit 1 ;;
             esac
-            if [ "$attempt" -lt "$max_attempts" ]; then sleep 30; fi
+            if [ "$attempt" -lt "$max_attempts" ]; then sleep 45; fi
           done
           echo "Endpoint niedostępny po $max_attempts próbach."
           exit 1
