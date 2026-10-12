@@ -37,7 +37,7 @@ public class DocumentService : IDocumentService
         if (person is null) return null;
 
         var createdAt = DateTime.UtcNow;
-        var pdfBytes = RenderPdf(DocumentTemplates.Title(request.Template), person, request.AdditionalNotes, createdAt);
+        var pdfBytes = RenderPdf(DocumentTemplates.Title(request.Template), person, request.AdditionalNotes, createdAt, DocumentTemplates.IsDraft(request.Template));
 
         var history = new GeneratedDocument
         {
@@ -88,7 +88,7 @@ public class DocumentService : IDocumentService
         {
             var person = await _db.People.Include(p => p.Parish).AsNoTracking().FirstOrDefaultAsync(p => p.Id == history.PersonId, ct)
                 ?? throw new InvalidOperationException("Nie można odtworzyć pisma: osoba została usunięta.");
-            bytes = RenderPdf(DocumentTemplates.Title(history.Template), person, history.AdditionalNotes, history.CreatedAtUtc);
+            bytes = RenderPdf(DocumentTemplates.Title(history.Template), person, history.AdditionalNotes, history.CreatedAtUtc, DocumentTemplates.IsDraft(history.Template));
         }
 
         history.DownloadCount++;
@@ -139,7 +139,7 @@ public class DocumentService : IDocumentService
         }
     }
 
-    private static byte[] RenderPdf(string title, Person person, string? additionalNotes, DateTime date)
+    private static byte[] RenderPdf(string title, Person person, string? additionalNotes, DateTime date, bool isDraft)
     {
         var document = Document.Create(container =>
         {
@@ -159,6 +159,10 @@ public class DocumentService : IDocumentService
                         column.Item().Text($"Uwagi dodatkowe: {additionalNotes}");
                     }
                 });
+                if (isDraft)
+                {
+                    page.Footer().AlignCenter().Text(DocumentTemplates.DraftNotice).FontSize(9).Italic();
+                }
             });
         });
         return document.GeneratePdf();

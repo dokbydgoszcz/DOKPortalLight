@@ -23,6 +23,15 @@ public static class DocumentTemplates
 
     public static bool IsOffered(DocumentTemplate template) => Offered.Contains(template);
 
+    /// <summary>Pisma z zatwierdzoną treścią; pozostałe są drukowane z ostrzeżeniem <see cref="DraftNotice"/>.</summary>
+    private static readonly HashSet<DocumentTemplate> Approved = new();
+
+    public const string DraftNotice =
+        "WZÓR DO UZUPEŁNIENIA – treść tego pisma czeka na zatwierdzenie; nie jest to dokument urzędowy.";
+
+    /// <summary>Czy pismo nie ma jeszcze zatwierdzonej treści (wszystkie, dopóki nie zostaną dostarczone wzory).</summary>
+    public static bool IsDraft(DocumentTemplate template) => !Approved.Contains(template);
+
     public static string Title(DocumentTemplate template) => template switch
     {
         DocumentTemplate.LetterToBishop => "Pismo do Biskupa",

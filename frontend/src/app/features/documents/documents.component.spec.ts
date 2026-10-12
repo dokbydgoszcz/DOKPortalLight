@@ -92,6 +92,13 @@ describe('DocumentsComponent', () => {
     expect(toastMessages()).toContain('Nie udało się wygenerować dokumentu.');
   });
 
+  it('warns that every letter is still a draft template awaiting approval', () => {
+    const { el } = boot();
+
+    expect(textOf(el)).toContain('Wzór do uzupełnienia');
+    expect(textOf(el)).toContain('nie są jeszcze dokumentami urzędowymi');
+  });
+
   it('shows no generator card without the Documents.Generate permission', () => {
     const ctx = setup(DocumentsComponent, { granted: ['Documents.View'] });
     ctx.fixture.detectChanges();
