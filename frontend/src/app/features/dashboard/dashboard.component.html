@@ -24,6 +24,22 @@
   </div>
 }
 
+@if (missionsToRenew().length > 0) {
+  <div class="card missions-to-renew">
+    <div class="card-head"><h3>Misje do odnowienia ({{ missionsToRenew().length }})</h3><a routerLink="/missions" class="link">Katechiści →</a></div>
+    <div class="card-body list">
+      @for (mission of missionsToRenew(); track mission.id) {
+        <div class="list-row">
+          <div class="list-main">
+            <div class="list-title">{{ mission.personFullName }}@if (mission.servicePlace) { — {{ mission.servicePlace }} }</div>
+            <div class="list-sub">{{ mission.status }} {{ mission.missionEndDate | date: 'dd.MM.yyyy' }}</div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+}
+
 @if (nameDays(); as upcoming) {
   <div class="card name-days">
     <div class="card-head"><h3>Nadchodzące imieniny</h3></div>
@@ -43,7 +59,7 @@
 }
 
 <div class="grid stats">
-  <a class="card stat" [class.linked]="can(null)" [routerLink]="can(null) ? '/people' : null">
+  <a class="card stat" [class.linked]="can(perm.PeopleView)" [routerLink]="can(perm.PeopleView) ? '/people' : null">
     <div class="stat-label">Osoby w bazie</div>
     <div class="stat-value">{{ summary()?.peopleCount ?? '—' }}</div>
   </a>

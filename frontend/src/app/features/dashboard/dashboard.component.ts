@@ -3,6 +3,8 @@ import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DashboardService } from './dashboard.service';
 import { NameDaysService } from '../name-days/name-days.service';
+import { MissionsService } from '../missions/missions.service';
+import { Mission } from '../missions/mission.model';
 import { UpcomingNameDay } from '../name-days/name-day.model';
 import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
@@ -22,12 +24,15 @@ export class DashboardComponent implements OnInit {
   readonly summary = signal<DashboardSummary | null>(null);
   /** Imieniny w najbliższych dniach; null, gdy się nie wczytały (reszta pulpitu działa bez nich). */
   readonly nameDays = signal<UpcomingNameDay[] | null>(null);
+  /** Misje kończące się w ciągu 30 dni albo wygasłe bez następczyni (tylko dla widzących Katechistów). */
+  readonly missionsToRenew = signal<Mission[]>([]);
 
   readonly perm = Permissions;
   readonly stageLabels = DOK_STAGE_LABELS;
   readonly pathLabels = DOK_PATH_LABELS;
 
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-12', text: 'Misje kanoniczne — na pulpicie jest karta „Misje do odnowienia”: misje, które kończą się w ciągu 30 dni, oraz wygasłe w ostatnim roku, po których osoba nie ma nowej misji (widzą ją osoby z dostępem do ekranu Katechiści). Na liście Katechiści przy takich misjach jest „Odnów” — zakłada kolejną misję na rok, od dnia po końcu poprzedniej (a gdy ta dawno wygasła — od dziś), z tym samym miejscem posługi i grupą superwizyjną; datą udzielenia jest dzisiejsza. Lista Katechiści pokazuje teraz najpierw misje ważne (najbliższy koniec na górze), a pod nimi wygasłe (najnowsze pierwsze); nad listą jest filtr „Tylko ważne” / „Tylko wygasłe”. Kafelek „Osoby w bazie” jest linkiem tylko dla osób z dostępem do Osób.' },
     { date: '2026-10-12', text: 'Dostęp i konta — nowe uprawnienie „Osoby — przeglądanie” (People.View): bez niego nie widać menu „Osoby” i „Kalendarz imienin”, karty imienin na pulpicie ani danych osób przez API (kontakt, data urodzenia, uwagi). Dostały je role, które już zarządzały osobami (Dyrektor DOK, Dyrektor SKŚP); Katechista prowadzący, Superwizor i Biskup domyślnie go nie mają — można je nadać w „Uprawnienia ról”. Formularze, w których wybiera się osobę (sprawa DOK, kandydat, misja, giełda, formatorzy, pisma, konta), działają jak dotąd. E-mail z imieninami dostają tylko konta z tym dostępem. Użytkownicy i role: „Wyłącz konto” (np. gdy katechista odchodzi) — wyłączone konto nie zaloguje się, a jego otwarte sesje kończą się od razu; „Włącz konto” przywraca dostęp. Zmiana ról albo hasła też kończy otwarte sesje tego konta, więc nowe role działają od razu. Rolę Administrator może nadać tylko administrator, a ostatniemu aktywnemu administratorowi nie da się jej odebrać ani wyłączyć konta; nie można wyłączyć własnego konta. Gdy sesja wygaśnie, aplikacja wraca do logowania z wyjaśnieniem. Uwaga: po tej aktualizacji wszyscy muszą zalogować się ponownie (raz).' },
     { date: '2026-10-12', text: 'Podopieczni DOK — przy sprawie jest teraz „Edytuj”: zmienisz etap (np. na Absolwent), ścieżkę, katechistę prowadzącego i mentora (podopiecznego w istniejącej sprawie zmienić nie można). Każda taka zmiana trafia do „Historia” przy sprawie — z datą i osobą, która jej dokonała. Nowy katechista prowadzący dostaje e-mail o przekazaniu sprawy (gdy ma adres e-mail i poczta jest skonfigurowana). Nie da się założyć drugiej trwającej sprawy tej samej osoby na tej samej ścieżce. Absolwenci nie dostają już przypomnień o brakujących dokumentach i spotkaniach, a cofnięcie z „Absolwent” na wcześniejszy etap usuwa datę ukończenia. Przypomnienie o spotkaniu przychodzi także, gdy cron spóźni się do dnia spotkania („dziś”), a przesunięte spotkanie dostaje przypomnienie na nowy termin. Notatki: autor może poprawić („Edytuj”) i usunąć („Usuń”) własną notatkę (usunięcie jest trwałe, razem z załącznikami). Dokumenty sprawy: „Zmień nazwę” i „Usuń” (razem z plikiem); zamiana pliku usuwa poprzedni z magazynu. Absolwenci: katechista widzi tylko swoich absolwentów, ścieżka jest po polsku, jest kolumna „Katechista”.' },
     { date: '2026-10-12', text: 'Spójność danych — osoby nie da się już usunąć, jeśli ma powiązane dane (sprawę DOK jako podopieczny, prowadzi sprawy jako katechista lub jest mentorem, kandydaturę SKŚP, misje, skierowania, pisma albo konto w systemie); komunikat mówi, co trzeba najpierw usunąć lub przekazać. Tak samo parafii z przypisanymi osobami, proboszczem, zapotrzebowaniami lub misjami. Wcześniej usunięta osoba „znikała” razem ze swoimi sprawami z list, a liczniki dalej ją liczyły — przy aktualizacji dane te zostały uporządkowane (katechista usuniętej osoby, który nadal prowadził sprawy, wrócił na listę osób). Giełda parafii: odpięcie osoby cofa misję założoną przez skierowanie (albo czyści wpisaną w niej parafię) i — jeśli osoba nie ma już żadnej misji — funkcję Katechista; skierowanie nie dopisuje parafii do wygasłej misji; zmiana nazwy parafii zmienia miejsce posługi w jej misjach; nie można przenieść zapotrzebowania do innej parafii, gdy są do niego skierowane osoby; kandydata w trakcie formacji nie można skierować; zapotrzebowanie można „Zamknąć” (bez kolejnych skierowań) i „Otworzyć ponownie”, a status jest po polsku. Funkcja Katechista idzie teraz za misjami: usunięcie ostatniej misji osoby albo przeniesienie misji na inną osobę zdejmuje funkcję, a zdjąć ją ręcznie można dopiero, gdy osoba nie ma ważnej misji.' },
@@ -102,6 +107,7 @@ export class DashboardComponent implements OnInit {
   constructor(
     private readonly dashboardService: DashboardService,
     private readonly nameDaysService: NameDaysService,
+    private readonly missionsService: MissionsService,
     private readonly auth: AuthService
   ) {}
 
@@ -123,6 +129,9 @@ export class DashboardComponent implements OnInit {
   ngOnInit(): void {
     this.dashboardService.getSummary().subscribe(summary => this.summary.set(summary));
     // Imieniny to dane osób – tylko dla kont z dostępem do Osób.
+    if (this.auth.hasPermission(Permissions.MissionsView)) {
+      this.missionsService.expiring().subscribe({ next: items => this.missionsToRenew.set(items), error: () => {} });
+    }
     if (this.auth.hasPermission(Permissions.PeopleView)) {
       this.nameDaysService.upcoming(NAME_DAYS_WINDOW).subscribe({ next: items => this.nameDays.set(items), error: () => {} });
     }

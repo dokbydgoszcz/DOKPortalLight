@@ -30,10 +30,24 @@ public class MissionsController : ControllerBase
     [HttpGet]
     [HasPermission(Permissions.MissionsView)]
     public async Task<ActionResult<PagedResult<MissionDto>>> Search(
-        [FromQuery] string? query, [FromQuery] int page = 1, [FromQuery] int pageSize = 100, CancellationToken ct = default)
+        [FromQuery] string? query, [FromQuery] int page = 1, [FromQuery] int pageSize = 100,
+        [FromQuery] MissionStatusFilter status = MissionStatusFilter.All, CancellationToken ct = default)
     {
         (page, pageSize) = Paging.Normalize(page, pageSize);
-        return Ok(await _missionService.SearchAsync(query, page, pageSize, ct));
+        return Ok(await _missionService.SearchAsync(query, page, pageSize, ct, status));
+    }
+
+    [HttpGet("expiring")]
+    [HasPermission(Permissions.MissionsView)]
+    public async Task<ActionResult<IReadOnlyList<MissionDto>>> Expiring(CancellationToken ct)
+        => Ok(await _missionService.GetExpiringAsync(ct));
+
+    [HttpPost("{id:guid}/renew")]
+    [HasPermission(Permissions.MissionsManage)]
+    public async Task<ActionResult<MissionDto>> Renew(Guid id, CancellationToken ct)
+    {
+        var renewed = await _missionService.RenewAsync(id, ct);
+        return renewed is null ? NotFound() : Ok(renewed);
     }
 
     [HttpGet("pending")]

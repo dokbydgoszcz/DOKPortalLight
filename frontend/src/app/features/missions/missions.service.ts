@@ -10,8 +10,21 @@ export class MissionsService {
 
   constructor(private readonly http: HttpClient) {}
 
-  search(query = '', page = 1, pageSize = 20) {
-    return this.http.get<PagedResult<Mission>>(this.baseUrl, { params: { query, page, pageSize } });
+  /** status: Current = ważne, Expired = wygasłe; bez = wszystkie (ważne na górze). */
+  search(query = '', page = 1, pageSize = 20, status?: 'Current' | 'Expired') {
+    const params: Record<string, string | number> = { query, page, pageSize };
+    if (status) params['status'] = status;
+    return this.http.get<PagedResult<Mission>>(this.baseUrl, { params });
+  }
+
+  /** Misje kończące się w ciągu 30 dni albo wygasłe w ostatnim roku, bez późniejszej misji tej osoby. */
+  expiring() {
+    return this.http.get<Mission[]>(`${this.baseUrl}/expiring`);
+  }
+
+  /** Kolejna misja na rok od dnia po końcu tej (najwcześniej od dziś), z tym samym miejscem i grupą. */
+  renew(id: string) {
+    return this.http.post<Mission>(`${this.baseUrl}/${id}/renew`, null);
   }
 
   pending() {

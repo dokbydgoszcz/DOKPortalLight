@@ -28,6 +28,7 @@ export class MissionsListComponent implements OnInit {
   readonly attachmentsMissionId = signal<string | null>(null);
   readonly attachmentsMission = computed(() => this.missions().find(m => m.id === this.attachmentsMissionId()) ?? null);
   readonly page = signal(1);
+  readonly statusFilter = signal<'' | 'Current' | 'Expired'>('');
   readonly totalCount = signal(0);
   readonly pageSize = PAGE_SIZE;
   readonly isFormOpen = signal(false);
@@ -45,7 +46,7 @@ export class MissionsListComponent implements OnInit {
   }
 
   load(): void {
-    this.missionsService.search('', this.page(), this.pageSize).subscribe({
+    this.missionsService.search('', this.page(), this.pageSize, this.statusFilter() || undefined).subscribe({
       next: result => {
         this.missions.set(result.items);
         this.totalCount.set(result.totalCount);
@@ -82,6 +83,26 @@ export class MissionsListComponent implements OnInit {
 
   closeAttachments(): void {
     this.attachmentsMissionId.set(null);
+  }
+
+  onStatusFilter(value: '' | 'Current' | 'Expired'): void {
+    this.statusFilter.set(value);
+    this.page.set(1);
+    this.load();
+  }
+
+  canRenew(mission: Mission): boolean {
+    return mission.status === 'wygasa' || mission.status === 'wygasła';
+  }
+
+  renew(mission: Mission): void {
+    this.missionsService.renew(mission.id).subscribe({
+      next: () => {
+        this.toast.success('Odnowiono misję na kolejny rok (od dnia po końcu poprzedniej).');
+        this.load();
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się odnowić misji.'))
+    });
   }
 
   onPageChange(page: number): void {

@@ -19,9 +19,12 @@ public class MissionService : IMissionService
         _time = time ?? TimeProvider.System;
     }
 
-    public async Task<PagedResult<MissionDto>> SearchAsync(string? query, int page, int pageSize, CancellationToken ct)
+    public async Task<PagedResult<MissionDto>> SearchAsync(string? query, int page, int pageSize, CancellationToken ct, MissionStatusFilter status = MissionStatusFilter.All)
     {
+        var today = _time.Today();
         var q = _db.CanonicalMissions.Include(m => m.Person).AsNoTracking().AsQueryable();
+        if (status == MissionStatusFilter.Current) q = q.Where(m => m.MissionEndDate >= today);
+        if (status == MissionStatusFilter.Expired) q = q.Where(m => m.MissionEndDate < today);
 
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -33,8 +36,11 @@ public class MissionService : IMissionService
         }
 
         var total = await q.CountAsync(ct);
+        // Ważne misje na górze (najbliższy koniec pierwszy), historia (wygasłe) pod nimi – od najnowszej.
         var entities = await q
-            .OrderBy(m => m.MissionEndDate)
+            .OrderBy(m => m.MissionEndDate < today ? 1 : 0)
+            .ThenBy(m => m.MissionEndDate < today ? DateOnly.MaxValue : m.MissionEndDate)
+            .ThenByDescending(m => m.MissionEndDate)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
@@ -48,6 +54,49 @@ public class MissionService : IMissionService
             Page = page,
             PageSize = pageSize
         };
+    }
+
+    public async Task<IReadOnlyList<MissionDto>> GetExpiringAsync(CancellationToken ct)
+    {
+        var today = _time.Today();
+        var horizon = today.AddDays(30);
+        var since = today.AddYears(-1);
+        var missions = await _db.CanonicalMissions.Include(m => m.Person).AsNoTracking()
+            .Where(m => m.MissionEndDate <= horizon && m.MissionEndDate >= since)
+            .Where(m => !_db.CanonicalMissions.Any(o => o.PersonId == m.PersonId && o.MissionEndDate > m.MissionEndDate))
+            .OrderBy(m => m.MissionEndDate)
+            .ToListAsync(ct);
+        return missions.Select(m => ToDto(m)).ToList();
+    }
+
+    public async Task<MissionDto?> RenewAsync(Guid id, CancellationToken ct)
+    {
+        var old = await _db.CanonicalMissions.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id, ct);
+        if (old is null) return null;
+        if (await _db.CanonicalMissions.AnyAsync(m => m.PersonId == old.PersonId && m.MissionEndDate > old.MissionEndDate, ct))
+            throw new InvalidOperationException("Ta osoba ma już nowszą misję – odnów ostatnią.");
+
+        var today = _time.Today();
+        var start = old.MissionEndDate.AddDays(1);
+        if (start < today) start = today;
+        var renewed = new CanonicalMission
+        {
+            Id = Guid.NewGuid(),
+            PersonId = old.PersonId,
+            ServicePlace = old.ServicePlace,
+            ParishId = old.ParishId,
+            SupervisionGroup = old.SupervisionGroup,
+            SentToDok = old.SentToDok,
+            MissionStartDate = start,
+            MissionEndDate = start.AddYears(1),
+            GrantedDate = today,
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        };
+        _db.CanonicalMissions.Add(renewed);
+        await CatechistFunction.EnsureAsync(_db, old.PersonId, ct);
+        await _db.SaveChangesAsync(ct);
+        return await GetByIdAsync(renewed.Id, ct);
     }
 
     public async Task<MissionDto?> GetByIdAsync(Guid id, CancellationToken ct)

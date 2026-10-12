@@ -111,6 +111,59 @@ describe('DashboardComponent', () => {
     });
   });
 
+  describe('missions to renew', () => {
+    const expiring = (id: string, name: string, end: string, status: string) => ({
+      id, personId: id, personFullName: name, servicePlace: 'Fara', missionStartDate: '2025-10-01', missionEndDate: end,
+      grantedDate: null, supervisionGroup: null, status, sentToDok: false, attachments: []
+    });
+
+    it('lists missions that expire soon or have expired, linking to the catechists', () => {
+      fixture.detectChanges();
+      httpMock.expectOne(`${environment.apiBaseUrl}/api/dashboard/summary`).flush(summary);
+      httpMock.expectOne(`${environment.apiBaseUrl}/api/missions/expiring`)
+        .flush([expiring('m1', 'Anna Maj', '2026-09-01', 'wygasła'), expiring('m2', 'Jan Nowak', '2026-10-20', 'wygasa')]);
+      fixture.detectChanges();
+
+      const card = (fixture.nativeElement as HTMLElement).querySelector('.missions-to-renew') as HTMLElement;
+      const text = (card.textContent ?? '').replace(/\s+/g, ' ');
+      expect(text).toContain('Misje do odnowienia (2)');
+      expect(text).toContain('Anna Maj — Fara');
+      expect(text).toContain('wygasła 01.09.2026');
+      expect(text).toContain('wygasa 20.10.2026');
+      expect(card.querySelector('a')!.getAttribute('href')).toBe('/missions');
+    });
+
+    it('hides the card when nothing needs renewing, the list fails, or the user cannot see missions', () => {
+      fixture.detectChanges();
+      httpMock.expectOne(`${environment.apiBaseUrl}/api/dashboard/summary`).flush(summary);
+      httpMock.expectOne(`${environment.apiBaseUrl}/api/missions/expiring`).flush([]);
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).querySelector('.missions-to-renew')).toBeNull();
+
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [DashboardComponent],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideFakeAuth(['People.View'])]
+      });
+      const limited = TestBed.createComponent(DashboardComponent);
+      const http = TestBed.inject(HttpTestingController);
+      limited.detectChanges();
+      http.expectNone(r => r.url === `${environment.apiBaseUrl}/api/missions/expiring`);
+
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [DashboardComponent],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideFakeAuth()]
+      });
+      const failing = TestBed.createComponent(DashboardComponent);
+      const failingHttp = TestBed.inject(HttpTestingController);
+      failing.detectChanges();
+      failingHttp.expectOne(`${environment.apiBaseUrl}/api/missions/expiring`).flush('x', { status: 500, statusText: 'Server Error' });
+      failing.detectChanges();
+      expect((failing.nativeElement as HTMLElement).querySelector('.missions-to-renew')).toBeNull();
+    });
+  });
+
   describe('upcoming name days', () => {
     const day = (fullName: string, daysUntil: number, month = 10, dayOfMonth = 9) =>
       ({ personId: fullName, fullName, nameDayMonth: month, nameDayDay: dayOfMonth, daysUntil });
@@ -250,7 +303,7 @@ describe('DashboardComponent', () => {
     it('does not link to screens the user may not open', () => {
       const el = render({}, ['Meetings.View']);
 
-      expect(tile(el, 'Osoby w bazie').getAttribute('href')).toBe('/people');
+      expect(tile(el, 'Osoby w bazie').hasAttribute('href')).toBe(false);
       expect(tile(el, 'Spotkania w ciągu 7 dni').getAttribute('href')).toBe('/meetings');
       expect(tile(el, 'Parafie').hasAttribute('href')).toBe(false);
       expect(tile(el, 'Kandydaci SKŚP').hasAttribute('href')).toBe(false);

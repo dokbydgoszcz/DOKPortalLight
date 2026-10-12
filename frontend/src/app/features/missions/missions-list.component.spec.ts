@@ -388,4 +388,43 @@ describe('MissionsListComponent', () => {
       expect(ctx.el.querySelector('input[name="grantedDate"]')).not.toBeNull();
     });
   });
+
+  describe('renewing and filtering', () => {
+    it('renews an expiring mission and reloads', () => {
+      const ctx = boot();
+
+      clickByText(ctx.el, 'Odnów', '.link');
+      ctx.http.expectOne(r => r.method === 'POST' && r.url === `${url}/1/renew`).flush({ ...mission, id: '9' });
+
+      expect(toastMessages()).toContain('Odnowiono misję na kolejny rok (od dnia po końcu poprzedniej).');
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush(paged([mission]));
+    });
+
+    it('offers renewal only for expiring or expired missions, to those who manage missions', () => {
+      const valid = boot([{ ...mission, status: 'ważna' }]);
+      expect(textOf(valid.el)).not.toContain('Odnów');
+    });
+
+    it('shows the server message when renewal is refused', () => {
+      const ctx = boot();
+
+      clickByText(ctx.el, 'Odnów', '.link');
+      ctx.http.expectOne(r => r.method === 'POST').flush({ title: 'Ta osoba ma już nowszą misję.' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(toastMessages()).toContain('Ta osoba ma już nowszą misję.');
+    });
+
+    it('filters by status from the first page', () => {
+      const ctx = boot();
+
+      setSelect(ctx.el, 'select[name="statusFilter"]', 'Expired');
+      const req = ctx.http.expectOne(r => r.method === 'GET' && r.url === url);
+      expect(req.request.params.get('status')).toBe('Expired');
+      expect(req.request.params.get('page')).toBe('1');
+      req.flush(paged([]));
+
+      setSelect(ctx.el, 'select[name="statusFilter"]', '');
+      expect(ctx.http.expectOne(r => r.method === 'GET' && r.url === url).request.params.has('status')).toBe(false);
+    });
+  });
 });
