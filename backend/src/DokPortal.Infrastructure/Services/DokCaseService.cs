@@ -130,11 +130,14 @@ public class DokCaseService : IDokCaseService
             .Select(g => new { CaseId = g.Key, Recorded = g.Count(), Attended = g.Count(a => a.IsAttended == true) })
             .ToDictionaryAsync(x => x.CaseId, ct);
 
+        var lastMeetings = await LastMeetingDates.ForCasesAsync(_db, ids, _time.Today(), ct);
+
         return entities.Select(e =>
         {
             individual.TryGetValue(e.Id, out var i);
             group.TryGetValue(e.Id, out var g);
-            return ToDto(e, (i?.Recorded ?? 0) + (g?.Recorded ?? 0), (i?.Attended ?? 0) + (g?.Attended ?? 0));
+            var dto = ToDto(e, (i?.Recorded ?? 0) + (g?.Recorded ?? 0), (i?.Attended ?? 0) + (g?.Attended ?? 0));
+            return lastMeetings.TryGetValue(e.Id, out var last) ? WithLastMeeting(dto, last) : dto;
         }).ToList();
     }
 
@@ -300,6 +303,14 @@ public class DokCaseService : IDokCaseService
         await _db.SaveChangesAsync(ct);
         return true;
     }
+
+    private static DokCaseDto WithLastMeeting(DokCaseDto d, DateOnly last) => new()
+    {
+        Id = d.Id, PersonId = d.PersonId, PersonFullName = d.PersonFullName, ParishName = d.ParishName, Path = d.Path, Stage = d.Stage,
+        CatechistPersonId = d.CatechistPersonId, CatechistFullName = d.CatechistFullName, MentorPersonId = d.MentorPersonId,
+        MentorFullName = d.MentorFullName, LastMeetingDate = last, CompletedAtUtc = d.CompletedAtUtc,
+        MeetingsRecorded = d.MeetingsRecorded, MeetingsAttended = d.MeetingsAttended
+    };
 
     private static DokCaseDto ToDto(DokCase c, int meetingsRecorded, int meetingsAttended) => new()
     {

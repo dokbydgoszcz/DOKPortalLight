@@ -57,12 +57,15 @@ public class ExportServiceTests
         var catechist = NewPerson("Anna", "Nowak");
         var mentor = NewPerson("Piotr", "Wiśniewski");
         db.People.AddRange(person, catechist, mentor);
+        // Data ostatniego spotkania pochodzi ze spotkań sprawy (dawne pole LastMeetingDate nie było uzupełniane).
+        var withMeeting = new DokCase
+        {
+            Id = Guid.NewGuid(), PersonId = person.Id, CatechistPersonId = catechist.Id,
+            Path = DokPath.Confirmation, Stage = DokStage.Evangelization
+        };
+        db.Meetings.Add(new Meeting { Id = Guid.NewGuid(), DokCaseId = withMeeting.Id, MeetingDate = new DateOnly(2026, 9, 30), CreatedAtUtc = DateTime.UtcNow });
         db.DokCases.AddRange(
-            new DokCase
-            {
-                Id = Guid.NewGuid(), PersonId = person.Id, CatechistPersonId = catechist.Id,
-                Path = DokPath.Confirmation, Stage = DokStage.Evangelization, LastMeetingDate = new DateOnly(2026, 9, 30)
-            },
+            withMeeting,
             new DokCase
             {
                 Id = Guid.NewGuid(), PersonId = mentor.Id, CatechistPersonId = catechist.Id, MentorPersonId = person.Id,

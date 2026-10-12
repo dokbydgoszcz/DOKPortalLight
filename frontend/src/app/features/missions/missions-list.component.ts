@@ -139,7 +139,7 @@ export class MissionsListComponent implements OnInit {
         this.toast.success(id ? 'Zapisano zmiany.' : 'Dodano misję.');
         this.load();
       },
-      error: () => this.toast.error(id ? 'Nie udało się zapisać zmian.' : 'Nie udało się dodać misji.')
+      error: err => this.toast.error(serverMessage(err, id ? 'Nie udało się zapisać zmian.' : 'Nie udało się dodać misji.'))
     });
   }
 

@@ -117,6 +117,11 @@ describe('CandidatesListComponent', () => {
       ctx.http.expectOne(r => r.method === 'POST').flush('x', { status: 400, statusText: 'Bad Request' });
       expect(toastMessages()).toContain('Nie udało się dodać kandydata.');
 
+      saveButton(ctx.el).click();
+      ctx.http.expectOne(r => r.method === 'POST')
+        .flush({ title: 'Ta osoba ma już kandydaturę w SKŚP.' }, { status: 400, statusText: 'Bad Request' });
+      expect(toastMessages()).toContain('Ta osoba ma już kandydaturę w SKŚP.');
+
       clickByText(ctx.el, 'Anuluj', '.modal-foot button');
       ctx.fixture.detectChanges();
       expect(ctx.el.querySelector('.modal')).toBeNull();

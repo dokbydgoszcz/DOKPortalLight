@@ -45,6 +45,7 @@ public class ExportService : IExportService
             .Include(c => c.Person).Include(c => c.CatechistPerson).Include(c => c.MentorPerson)
             .OrderBy(c => c.Person!.LastName).ThenBy(c => c.Person!.FirstName)
             .ToListAsync(ct);
+        var lastMeetings = await LastMeetingDates.ForCasesAsync(_db, cases.Select(c => c.Id).ToList(), _time.Today(), ct);
 
         return BuildWorkbook(
             "Podopieczni DOK",
@@ -52,7 +53,7 @@ public class ExportService : IExportService
             cases.Select(c => new object?[]
             {
                 c.Person?.FullName, DokStages.Label(c.Path), DokStages.Label(c.Stage), c.CatechistPerson?.FullName,
-                c.MentorPerson?.FullName, FormatDate(c.LastMeetingDate), c.CompletedAtUtc?.ToString("yyyy-MM-dd")
+                c.MentorPerson?.FullName, FormatDate(lastMeetings.TryGetValue(c.Id, out var last) ? last : null), c.CompletedAtUtc?.ToString("yyyy-MM-dd")
             }));
     }
 

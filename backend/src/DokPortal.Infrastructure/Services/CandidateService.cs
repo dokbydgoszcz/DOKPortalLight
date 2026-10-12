@@ -55,9 +55,17 @@ public class CandidateService : ICandidateService
         return candidate is null ? null : ToDto(candidate);
     }
 
+    /// <summary>Jedna osoba = jedna kandydatura (duplikaty zawyżały liczniki i listę oczekujących na posłanie).</summary>
+    private async Task EnsureSingleCandidacyAsync(Guid personId, Guid? selfId, CancellationToken ct)
+    {
+        if (await _db.Candidates.AnyAsync(c => c.PersonId == personId && c.Id != selfId, ct))
+            throw new InvalidOperationException("Ta osoba ma już kandydaturę w SKŚP – edytuj istniejącą.");
+    }
+
     public async Task<CandidateDto> CreateAsync(CreateCandidateRequest request, CancellationToken ct, CandidateActor? actor = null)
     {
         EnsureRequestIsValid(request);
+        await EnsureSingleCandidacyAsync(request.PersonId, null, ct);
         var now = _time.GetUtcNow().UtcDateTime;
         var candidate = new Candidate
         {
@@ -88,6 +96,11 @@ public class CandidateService : ICandidateService
         EnsureRequestIsValid(request);
         var candidate = await _db.Candidates.Include(c => c.Retreats).Include(c => c.Events).FirstOrDefaultAsync(c => c.Id == id, ct);
         if (candidate is null) return null;
+        // Sprawdzamy tylko zmianę osoby, żeby dało się poprawiać dawne duplikaty.
+        if (request.PersonId != candidate.PersonId) await EnsureSingleCandidacyAsync(request.PersonId, id, ct);
+        if (candidate.IsFormationCompleted && !request.IsFormationCompleted
+            && await _db.CanonicalMissions.AnyAsync(m => m.PersonId == candidate.PersonId, ct))
+            throw new InvalidOperationException("Tej osobie udzielono już posłania (ma misję) – nie można cofnąć ukończenia formacji.");
 
         candidate.PersonId = request.PersonId;
         var newYear = request.IsFormationCompleted ? FormationYears : request.Year;

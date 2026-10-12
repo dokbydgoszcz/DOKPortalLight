@@ -112,7 +112,7 @@ export class CandidatesListComponent implements OnInit {
         this.load();
         this.loadStats();
       },
-      error: err => this.toast.error(id ? serverMessage(err, 'Nie udało się zapisać zmian.') : 'Nie udało się dodać kandydata.')
+      error: err => this.toast.error(serverMessage(err, id ? 'Nie udało się zapisać zmian.' : 'Nie udało się dodać kandydata.'))
     });
   }
 

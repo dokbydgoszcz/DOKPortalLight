@@ -127,6 +127,11 @@ describe('MissionsListComponent', () => {
       ctx.http.expectOne(r => r.method === 'POST').flush('x', { status: 400, statusText: 'Bad Request' });
       expect(toastMessages()).toContain('Nie udało się dodać misji.');
 
+      saveButton(ctx.el).click();
+      ctx.http.expectOne(r => r.method === 'POST')
+        .flush({ title: 'Koniec misji nie może być wcześniej niż jej początek.' }, { status: 400, statusText: 'Bad Request' });
+      expect(toastMessages()).toContain('Koniec misji nie może być wcześniej niż jej początek.');
+
       clickByText(ctx.el, 'Anuluj', '.modal-foot button');
       ctx.fixture.detectChanges();
       expect(ctx.el.querySelector('.modal')).toBeNull();

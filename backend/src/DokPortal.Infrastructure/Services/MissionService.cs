@@ -108,8 +108,15 @@ public class MissionService : IMissionService
         return ToDto(mission, attachments.GetValueOrDefault(id));
     }
 
+    private static void EnsureDatesAreValid(CreateMissionRequest request)
+    {
+        if (request.MissionEndDate < request.MissionStartDate)
+            throw new InvalidOperationException("Koniec misji nie może być wcześniej niż jej początek.");
+    }
+
     public async Task<MissionDto> CreateAsync(CreateMissionRequest request, CancellationToken ct)
     {
+        EnsureDatesAreValid(request);
         var mission = new CanonicalMission
         {
             Id = Guid.NewGuid(),
@@ -133,6 +140,7 @@ public class MissionService : IMissionService
     {
         var mission = await _db.CanonicalMissions.FirstOrDefaultAsync(m => m.Id == id, ct);
         if (mission is null) return null;
+        EnsureDatesAreValid(request);
 
         var previousPersonId = mission.PersonId;
         // Ręcznie zmienione miejsce posługi to już nie parafia ze skierowania – zmiana jej nazwy nie może go nadpisać.
