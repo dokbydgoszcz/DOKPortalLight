@@ -186,20 +186,29 @@ public class ExportServiceTests
     public async Task ExportSupervisionsAsync_WritesInstitutionLabelAndCounts()
     {
         await using var db = CreateContext();
+        var present = NewPerson("Ewa", "Obecna");
+        var absent = NewPerson("Jan", "Nieobecny");
+        db.People.AddRange(present, absent);
+        var withList = Guid.NewGuid();
         db.Supervisions.AddRange(
             new Supervision
             {
-                Id = Guid.NewGuid(), Institution = Institution.SKSP, GroupLabel = "Grupa A", SupervisionDate = new DateOnly(2026, 9, 15),
-                AttendeesCount = 8, ExpectedCount = 10, Topic = "Modlitwa", Conclusion = "Wnioski"
+                Id = withList, Institution = Institution.SKSP, GroupLabel = "Grupa A", SupervisionDate = new DateOnly(2026, 9, 15),
+                AttendeesCount = 8, ExpectedCount = 10, Topic = "Modlitwa", Conclusion = "Wnioski",
+                Attendees =
+                {
+                    new SupervisionAttendee { SupervisionId = withList, PersonId = present.Id, IsPresent = true },
+                    new SupervisionAttendee { SupervisionId = withList, PersonId = absent.Id, IsPresent = false }
+                }
             },
             new Supervision { Id = Guid.NewGuid(), Institution = Institution.DOK, GroupLabel = "Grupa B", SupervisionDate = new DateOnly(2026, 9, 20) });
         await db.SaveChangesAsync();
 
         var sheet = OpenSheet(await new ExportService(db).ExportSupervisionsAsync(default));
 
-        Assert.Equal(new[] { "Instytucja", "Grupa", "Data", "Obecnych", "Oczekiwanych", "Temat", "Wnioski" }, Row(sheet, 1, 7));
-        Assert.Equal(new[] { "SKŚP", "Grupa A", "2026-09-15", "8", "10", "Modlitwa", "Wnioski" }, Row(sheet, 2, 7));
-        Assert.Equal(new[] { "DOK", "Grupa B", "2026-09-20", "", "", "", "" }, Row(sheet, 3, 7));
+        Assert.Equal(new[] { "Instytucja", "Grupa", "Data", "Obecnych", "Oczekiwanych", "Temat", "Wnioski", "Obecni", "Nieobecni" }, Row(sheet, 1, 9));
+        Assert.Equal(new[] { "SKŚP", "Grupa A", "2026-09-15", "8", "10", "Modlitwa", "Wnioski", "Ewa Obecna", "Jan Nieobecny" }, Row(sheet, 2, 9));
+        Assert.Equal(new[] { "DOK", "Grupa B", "2026-09-20", "", "", "", "", "", "" }, Row(sheet, 3, 9));
     }
 
     [Fact]

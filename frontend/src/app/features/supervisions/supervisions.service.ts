@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { CreateSupervisionValue, Institution, Supervision } from './supervision.model';
+import { CreateSupervisionValue, Institution, Supervision, SupervisionGroup } from './supervision.model';
 
 @Injectable({ providedIn: 'root' })
 export class SupervisionsService {
@@ -15,6 +15,10 @@ export class SupervisionsService {
       params['institution'] = institution;
     }
     return this.http.get<Supervision[]>(this.baseUrl, { params });
+  }
+
+  groups() {
+    return this.http.get<SupervisionGroup[]>(`${this.baseUrl}/groups`);
   }
 
   create(value: CreateSupervisionValue) {

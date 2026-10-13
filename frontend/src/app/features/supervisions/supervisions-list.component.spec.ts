@@ -75,7 +75,7 @@ describe('SupervisionsListComponent', () => {
       ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([supervision]);
     });
 
-    it('keeps saving disabled until a date is chosen, so an empty date is never sent', async () => {
+    it('keeps saving disabled until a group and a date are given', async () => {
       const ctx = await openForm();
       expect(saveButton(ctx.el).disabled).toBe(true);
       expect(textOf(ctx.el)).toContain('Uzupełnij pola oznaczone *');
@@ -86,6 +86,9 @@ describe('SupervisionsListComponent', () => {
 
       setInput(ctx.el, 'input[name="supervisionDate"]', '2026-10-10');
       ctx.fixture.detectChanges();
+      expect(saveButton(ctx.el).disabled).toBe(true);
+      setInput(ctx.el, 'input[name="groupLabel"]', 'Grupa B');
+      ctx.fixture.detectChanges();
       expect(saveButton(ctx.el).disabled).toBe(false);
       expect(textOf(ctx.el)).not.toContain('Uzupełnij pola oznaczone *');
     });
@@ -93,6 +96,7 @@ describe('SupervisionsListComponent', () => {
     it('shows a toast when adding fails and closes the form on cancel', async () => {
       const ctx = await openForm();
       setInput(ctx.el, 'input[name="supervisionDate"]', '2026-10-10');
+      setInput(ctx.el, 'input[name="groupLabel"]', 'Grupa B');
       ctx.fixture.detectChanges();
 
       saveButton(ctx.el).click();
@@ -338,6 +342,46 @@ describe('SupervisionsListComponent', () => {
       expect(modalText(ctx.el)).toContain('Pobierz');
       expect(ctx.el.querySelector('.modal input[type="file"]')).toBeNull();
       expect(modalText(ctx.el)).not.toContain('Usuń');
+    });
+  });
+  describe('attendance by name', () => {
+    const groupsUrl = `${url}/groups`;
+    const groups = [{ name: 'Grupa A', members: [{ personId: 'p1', fullName: 'Anna Maj' }, { personId: 'p2', fullName: 'Jan Nowak' }] }];
+
+    it('lists the catechists of a mission group and posts who was present', async () => {
+      const ctx = boot();
+      clickByText(ctx.el, 'Nowa superwizja');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      ctx.http.expectOne(groupsUrl).flush(groups);
+      setInput(ctx.el, 'input[name="groupLabel"]', 'grupa a');
+      setInput(ctx.el, 'input[name="supervisionDate"]', '2026-10-10');
+      ctx.fixture.detectChanges();
+
+      expect(textOf(ctx.el)).toContain('Obecność (0/2)');
+      const box = ctx.el.querySelector('input[name="present-p2"]') as HTMLInputElement;
+      box.checked = true;
+      box.dispatchEvent(new Event('change'));
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Obecność (1/2)');
+      saveButton(ctx.el).click();
+
+      const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
+      expect(req.request.body.attendance).toEqual([{ personId: 'p1', isPresent: false }, { personId: 'p2', isPresent: true }]);
+      expect(req.request.body.attendeesCount).toBeUndefined();
+    });
+
+    it('keeps the saved list when editing and shows who was present in the row', async () => {
+      const saved = { ...supervision, attendance: [{ personId: 'p1', fullName: 'Anna Maj', isPresent: true }] };
+      const ctx = boot([saved]);
+      expect(textOf(ctx.el)).toContain('Obecni: Anna Maj');
+
+      clickByText(ctx.el, 'Edytuj');
+      ctx.fixture.detectChanges();
+      ctx.http.expectOne(groupsUrl).flush(groups);
+      ctx.fixture.detectChanges();
+
+      expect(textOf(ctx.el)).toContain('Obecność (1/1)');
     });
   });
 });

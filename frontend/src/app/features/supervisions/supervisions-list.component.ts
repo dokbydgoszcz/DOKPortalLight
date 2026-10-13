@@ -4,7 +4,7 @@ import { Component, OnInit, computed, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupervisionsService } from './supervisions.service';
-import { CreateSupervisionValue, Institution, Supervision } from './supervision.model';
+import { CreateSupervisionValue, Institution, Supervision, SupervisionAttendee, SupervisionGroup } from './supervision.model';
 import { ToastService } from '../../core/notifications/toast.service';
 import { AttachmentsComponent } from '../../shared/attachments/attachments.component';
 import { environment } from '../../../environments/environment';
@@ -41,6 +41,11 @@ export class SupervisionsListComponent implements OnInit {
   readonly isFormOpen = signal(false);
   readonly editingId = signal<string | null>(null);
   newSupervision: CreateSupervisionValue = { institution: 'DOK', groupLabel: '', supervisionDate: '' };
+  /** Grupy superwizyjne z misji (podpowiedzi pola „Grupa” i lista katechistów). */
+  readonly groups = signal<SupervisionGroup[]>([]);
+  /** Lista obecności w formularzu; pusta = liczby wpisywane ręcznie. */
+  readonly attendance = signal<SupervisionAttendee[]>([]);
+  readonly presentCount = computed(() => this.attendance().filter(a => a.isPresent).length);
 
   constructor(
     private readonly supervisionsService: SupervisionsService,
@@ -80,10 +85,43 @@ export class SupervisionsListComponent implements OnInit {
     this.attachmentsSupervisionId.set(null);
   }
 
+  private loadGroups(): void {
+    this.supervisionsService.groups().subscribe({
+      next: groups => {
+        this.groups.set(groups);
+        if (this.attendance().length === 0) this.onGroupChange();
+      },
+      error: () => this.groups.set([])
+    });
+  }
+
+  /** Po wybraniu grupy z misji lista obecności to jej katechiści (zaznaczenia zostają dla osób już na liście). */
+  onGroupChange(): void {
+    const label = this.newSupervision.groupLabel.trim().toLowerCase();
+    const group = this.groups().find(g => g.name.toLowerCase() === label);
+    if (!group) return;
+    const current = new Map(this.attendance().map(a => [a.personId, a.isPresent]));
+    this.attendance.set(group.members.map(m => ({ personId: m.personId, fullName: m.fullName, isPresent: current.get(m.personId) ?? false })));
+  }
+
+  togglePresent(personId: string, present: boolean): void {
+    this.attendance.update(list => list.map(a => (a.personId === personId ? { ...a, isPresent: present } : a)));
+  }
+
+  setAllPresent(present: boolean): void {
+    this.attendance.update(list => list.map(a => ({ ...a, isPresent: present })));
+  }
+
+  presentNames(supervision: Supervision): string {
+    return (supervision.attendance ?? []).filter(a => a.isPresent).map(a => a.fullName).join(', ');
+  }
+
   openAddForm(): void {
     this.editingId.set(null);
     this.newSupervision = { institution: 'DOK', groupLabel: '', supervisionDate: '' };
+    this.attendance.set([]);
     this.isFormOpen.set(true);
+    this.loadGroups();
   }
 
   openEditForm(supervision: Supervision): void {
@@ -97,14 +135,29 @@ export class SupervisionsListComponent implements OnInit {
       topic: supervision.topic ?? undefined,
       conclusion: supervision.conclusion ?? undefined
     };
+    this.attendance.set(supervision.attendance ?? []);
     this.isFormOpen.set(true);
+    this.loadGroups();
+  }
+
+  get canSave(): boolean {
+    return !!this.newSupervision.supervisionDate && !!this.newSupervision.groupLabel.trim();
+  }
+
+  private formValue(): CreateSupervisionValue {
+    const list = this.attendance();
+    if (list.length === 0) return this.newSupervision;
+    const { attendeesCount: _a, expectedCount: _e, ...rest } = this.newSupervision;
+    return { ...rest, attendance: list.map(a => ({ personId: a.personId, isPresent: a.isPresent })) };
   }
 
   createSupervision(): void {
+    if (!this.canSave) return;
     const id = this.editingId();
+    const value = this.formValue();
     const request$ = id
-      ? this.supervisionsService.update(id, this.newSupervision)
-      : this.supervisionsService.create(this.newSupervision);
+      ? this.supervisionsService.update(id, value)
+      : this.supervisionsService.create(value);
     request$.subscribe({
       next: () => {
         this.isFormOpen.set(false);

@@ -33,6 +33,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<MeetingAttendee> MeetingAttendees => Set<MeetingAttendee>();
     public DbSet<Supervision> Supervisions => Set<Supervision>();
+    public DbSet<SupervisionAttendee> SupervisionAttendees => Set<SupervisionAttendee>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<GeneratedDocument> GeneratedDocuments => Set<GeneratedDocument>();
     public DbSet<MailingCampaign> MailingCampaigns => Set<MailingCampaign>();
@@ -194,6 +195,14 @@ public class AppDbContext : IdentityDbContext<AppUser>
         builder.Entity<Supervision>(entity =>
         {
             entity.Property(s => s.GroupLabel).IsRequired().HasMaxLength(200);
+            entity.HasMany(s => s.Attendees).WithOne(a => a.Supervision!).HasForeignKey(a => a.SupervisionId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<SupervisionAttendee>(entity =>
+        {
+            entity.HasKey(a => new { a.SupervisionId, a.PersonId });
+            entity.HasOne(a => a.Person).WithMany().HasForeignKey(a => a.PersonId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(a => a.Supervision!.DeletedAtUtc == null);
         });
 
         builder.Entity<Attachment>(entity =>

@@ -145,16 +145,20 @@ public class ExportService : IExportService
     public async Task<byte[]> ExportSupervisionsAsync(CancellationToken ct)
     {
         var supervisions = await _db.Supervisions.AsNoTracking()
+            .Include(s => s.Attendees).ThenInclude(a => a.Person)
             .OrderBy(s => s.SupervisionDate).ThenBy(s => s.GroupLabel)
             .ToListAsync(ct);
+        static string? Names(IEnumerable<DokPortal.Domain.Entities.SupervisionAttendee> list) =>
+            list.Any() ? string.Join(", ", list.Where(a => a.Person is not null).OrderBy(a => a.Person!.LastName).Select(a => a.Person!.FullName)) : null;
 
         return BuildWorkbook(
             "Superwizje",
-            new[] { "Instytucja", "Grupa", "Data", "Obecnych", "Oczekiwanych", "Temat", "Wnioski" },
+            new[] { "Instytucja", "Grupa", "Data", "Obecnych", "Oczekiwanych", "Temat", "Wnioski", "Obecni", "Nieobecni" },
             supervisions.Select(s => new object?[]
             {
                 InstitutionLabels[s.Institution], s.GroupLabel, FormatDate(s.SupervisionDate),
-                s.AttendeesCount, s.ExpectedCount, s.Topic, s.Conclusion
+                s.AttendeesCount, s.ExpectedCount, s.Topic, s.Conclusion,
+                Names(s.Attendees.Where(a => a.IsPresent)), Names(s.Attendees.Where(a => !a.IsPresent))
             }));
     }
 

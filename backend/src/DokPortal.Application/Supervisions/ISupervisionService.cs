@@ -8,5 +8,7 @@ public interface ISupervisionService
     Task<SupervisionDto?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<SupervisionDto> CreateAsync(CreateSupervisionRequest request, CancellationToken ct);
     Task<SupervisionDto?> UpdateAsync(Guid id, CreateSupervisionRequest request, CancellationToken ct);
+    /// <summary>Grupy superwizyjne z ważnych misji, z katechistami.</summary>
+    Task<IReadOnlyList<SupervisionGroupDto>> GetGroupsAsync(CancellationToken ct);
     Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct);
 }

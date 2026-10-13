@@ -31,6 +31,9 @@
         <div class="list-main">
           <div class="list-title">{{ supervision.groupLabel }} — {{ supervision.supervisionDate | date: 'dd.MM.yyyy' }}</div>
           <div class="list-sub">{{ supervision.institution }} @if (supervision.attendeesCount !== null) { • {{ supervision.attendeesCount }}/{{ supervision.expectedCount }} obecnych }</div>
+          @if (presentNames(supervision)) {
+            <div class="list-sub" style="white-space:normal">Obecni: {{ presentNames(supervision) }}</div>
+          }
         </div>
         <span class="link" (click)="openAttachments(supervision)">Załączniki@if (supervision.attachments.length > 0) { ({{ supervision.attachments.length }})}</span>
         <ng-container *appHasPermission="'Supervisions.Manage'">
@@ -62,18 +65,46 @@
               <option value="SKSP">SKŚP</option>
             </select>
           </div>
-          <div class="field"><label>Grupa</label><input [(ngModel)]="newSupervision.groupLabel" name="groupLabel" /></div>
+          <div class="field">
+            <label>Grupa <span class="required">*</span></label>
+            <input [(ngModel)]="newSupervision.groupLabel" (ngModelChange)="onGroupChange()" name="groupLabel" list="supervision-groups" maxlength="200" placeholder="wybierz grupę z misji lub wpisz" />
+            <datalist id="supervision-groups">
+              @for (group of groups(); track group.name) {
+                <option [value]="group.name">{{ group.members.length }} kat.</option>
+              }
+            </datalist>
+          </div>
           <div class="field"><label>Data <span class="required">*</span></label><input type="date" [(ngModel)]="newSupervision.supervisionDate" name="supervisionDate" /></div>
+          @if (attendance().length) {
+            <div class="field full">
+              <label>Obecność ({{ presentCount() }}/{{ attendance().length }})
+                <span class="link" style="margin-left:8px;font-weight:normal" (click)="setAllPresent(true)">zaznacz wszystkich</span>
+                <span class="link" style="margin-left:8px;font-weight:normal" (click)="setAllPresent(false)">odznacz</span>
+              </label>
+              <div class="attendance-list">
+                @for (person of attendance(); track person.personId) {
+                  <label class="attendance-item">
+                    <input type="checkbox" [name]="'present-' + person.personId" [checked]="person.isPresent" (change)="togglePresent(person.personId, $any($event.target).checked)" />
+                    {{ person.fullName }}
+                  </label>
+                }
+              </div>
+            </div>
+          } @else {
+            <div class="field"><label>Obecnych</label><input type="number" min="0" [(ngModel)]="newSupervision.attendeesCount" name="attendeesCount" /></div>
+            <div class="field"><label>Oczekiwanych</label><input type="number" min="0" [(ngModel)]="newSupervision.expectedCount" name="expectedCount" /></div>
+            <div class="field full form-hint" style="margin:0">Wybierz grupę z misji, a pojawi się imienna lista katechistów do zaznaczenia obecności.</div>
+          }
           <div class="field full"><label>Tematyka</label><textarea [(ngModel)]="newSupervision.topic" name="topic"></textarea></div>
           <div class="field full"><label>Wnioski</label><textarea [(ngModel)]="newSupervision.conclusion" name="conclusion"></textarea></div>
         </div>
       </div>
       <div class="modal-foot">
-        @if (!newSupervision.supervisionDate) {
+        @if (!canSave) {
           <span class="form-hint">Uzupełnij pola oznaczone *</span>
         }
         <button class="btn ghost" (click)="cancel()">Anuluj</button>
-        <button class="btn primary" [disabled]="!newSupervision.supervisionDate" (click)="createSupervision()">Zapisz</button>
+        <button class="btn primary" [disabled]="!canSave" (click)="createSupervision()">Zapisz</button>
       </div>
     </div>
   </div>

@@ -12,6 +12,20 @@ export interface Supervision {
   topic: string | null;
   conclusion: string | null;
   attachments: Attachment[];
+  /** Imienna lista obecności (katechiści z grupy). */
+  attendance?: SupervisionAttendee[];
+}
+
+export interface SupervisionAttendee {
+  personId: string;
+  fullName: string;
+  isPresent: boolean;
+}
+
+/** Grupa superwizyjna z misji i jej katechiści z ważną misją. */
+export interface SupervisionGroup {
+  name: string;
+  members: { personId: string; fullName: string }[];
 }
 
 export interface CreateSupervisionValue {
@@ -22,4 +36,5 @@ export interface CreateSupervisionValue {
   expectedCount?: number;
   topic?: string;
   conclusion?: string;
+  attendance?: { personId: string; isPresent: boolean }[];
 }

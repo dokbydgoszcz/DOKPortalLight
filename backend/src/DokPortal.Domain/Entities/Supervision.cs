@@ -15,4 +15,16 @@ public class Supervision : ISoftDeletable
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
     public string? DeletedBy { get; set; }
+    /// <summary>Imienna lista obecności (katechiści z grupy).</summary>
+    public List<SupervisionAttendee> Attendees { get; set; } = new();
+}
+
+/// <summary>Katechista na liście obecności superwizji.</summary>
+public class SupervisionAttendee
+{
+    public Guid SupervisionId { get; set; }
+    public Supervision? Supervision { get; set; }
+    public Guid PersonId { get; set; }
+    public Person? Person { get; set; }
+    public bool IsPresent { get; set; }
 }

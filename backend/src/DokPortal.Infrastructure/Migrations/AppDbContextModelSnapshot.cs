@@ -998,6 +998,24 @@ namespace DokPortal.Infrastructure.Migrations
                     b.ToTable("Supervisions");
                 });
 
+            modelBuilder.Entity("DokPortal.Domain.Entities.SupervisionAttendee", b =>
+                {
+                    b.Property<Guid>("SupervisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PersonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsPresent")
+                        .HasColumnType("bit");
+
+                    b.HasKey("SupervisionId", "PersonId");
+
+                    b.HasIndex("PersonId");
+
+                    b.ToTable("SupervisionAttendees");
+                });
+
             modelBuilder.Entity("DokPortal.Infrastructure.Identity.AppUser", b =>
                 {
                     b.Property<string>("Id")
@@ -1465,6 +1483,25 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Navigation("Person");
                 });
 
+            modelBuilder.Entity("DokPortal.Domain.Entities.SupervisionAttendee", b =>
+                {
+                    b.HasOne("DokPortal.Domain.Entities.Person", "Person")
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DokPortal.Domain.Entities.Supervision", "Supervision")
+                        .WithMany("Attendees")
+                        .HasForeignKey("SupervisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Person");
+
+                    b.Navigation("Supervision");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -1541,6 +1578,11 @@ namespace DokPortal.Infrastructure.Migrations
             modelBuilder.Entity("DokPortal.Domain.Entities.Person", b =>
                 {
                     b.Navigation("Functions");
+                });
+
+            modelBuilder.Entity("DokPortal.Domain.Entities.Supervision", b =>
+                {
+                    b.Navigation("Attendees");
                 });
 #pragma warning restore 612, 618
         }

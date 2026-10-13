@@ -37,6 +37,12 @@ public class SupervisionsController : ControllerBase
         return supervision is null ? NotFound() : Ok(supervision);
     }
 
+    /// <summary>Grupy superwizyjne z ważnych misji i ich katechiści (do listy obecności).</summary>
+    [HttpGet("groups")]
+    [HasPermission(Permissions.SupervisionsView)]
+    public async Task<ActionResult<IReadOnlyList<SupervisionGroupDto>>> Groups(CancellationToken ct)
+        => Ok(await _supervisionService.GetGroupsAsync(ct));
+
     [HttpPost]
     [Audit("CreateSupervision")]
     [HasPermission(Permissions.SupervisionsManage)]
