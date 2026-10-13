@@ -345,3 +345,18 @@
     padding:36px 24px 44px;
   }
 }
+
+.forgot-link{
+  display:block;
+  margin:-8px 0 16px auto;
+  padding:0;
+  border:0;
+  background:none;
+  color:var(--green);
+  font-size:13px;
+  cursor:pointer;
+  text-decoration:underline;
+}
+.forgot-form .forgot-link{
+  margin:14px auto 0;
+}

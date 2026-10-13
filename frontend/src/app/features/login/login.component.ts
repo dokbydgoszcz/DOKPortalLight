@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { AuthService } from '../../core/auth/auth.service';
+import { serverMessage } from '../../shared/http-error';
 
 @Component({
   selector: 'app-login',
@@ -19,6 +20,9 @@ export class LoginComponent {
   readonly isWakingUp = signal(false);
   readonly showPassword = signal(false);
   readonly sessionExpiredMessage = signal<string | null>(null);
+  /** „Nie pamiętam hasła”: formularz prośby o link zamiast logowania. */
+  readonly isForgotMode = signal(false);
+  readonly forgotMessage = signal<string | null>(null);
 
   private wakeUpTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -38,6 +42,25 @@ export class LoginComponent {
     }
   }
 
+  showForgot(show: boolean): void {
+    this.isForgotMode.set(show);
+    this.errorMessage.set(null);
+    this.forgotMessage.set(null);
+  }
+
+  async sendResetLink(): Promise<void> {
+    if (this.isSubmitting() || !this.email.trim()) return;
+    this.errorMessage.set(null);
+    this.isSubmitting.set(true);
+    try {
+      this.forgotMessage.set(await this.auth.forgotPassword(this.email.trim()));
+    } catch (err) {
+      this.errorMessage.set(serverMessage(err, 'Nie udało się wysłać linku. Spróbuj za chwilę.'));
+    } finally {
+      this.isSubmitting.set(false);
+    }
+  }
+
   togglePasswordVisibility(): void {
     this.showPassword.update(value => !value);
   }
@@ -53,8 +76,8 @@ export class LoginComponent {
     try {
       await this.auth.login(this.email, this.password);
       await this.router.navigateByUrl('/dashboard');
-    } catch {
-      this.errorMessage.set('Nieprawidłowy e-mail lub hasło.');
+    } catch (err) {
+      this.errorMessage.set(serverMessage(err, 'Nieprawidłowy e-mail lub hasło.'));
     } finally {
       if (this.wakeUpTimer) {
         clearTimeout(this.wakeUpTimer);

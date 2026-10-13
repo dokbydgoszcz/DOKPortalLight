@@ -7,10 +7,10 @@ import { click, setInput } from '../../testing/test-helpers';
 
 describe('LoginComponent', () => {
   let fixture: ComponentFixture<LoginComponent>;
-  let authServiceMock: { login: ReturnType<typeof vi.fn> };
+  let authServiceMock: { login: ReturnType<typeof vi.fn>; forgotPassword: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    authServiceMock = { login: vi.fn() };
+    authServiceMock = { login: vi.fn(), forgotPassword: vi.fn() };
 
     TestBed.configureTestingModule({
       imports: [LoginComponent],
@@ -145,6 +145,30 @@ describe('LoginComponent', () => {
       const el = render();
 
       expect(el.textContent).not.toContain('Sesja wygasła');
+    });
+    it('shows the server reason when the account is deactivated', async () => {
+      authServiceMock.login.mockRejectedValue({ error: { message: 'Konto jest nieaktywne. Skontaktuj się z administratorem.' } });
+
+      await fixture.componentInstance.submit();
+
+      expect(fixture.componentInstance.errorMessage()).toContain('nieaktywne');
+    });
+
+    it('sends a reset link from the "Nie pamiętam hasła" form', async () => {
+      authServiceMock.forgotPassword.mockResolvedValue('Sprawdź skrzynkę.');
+      const el = render();
+      click(el, '.forgot-link');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      setInput(el, '#forgot-email', 'kat@example.org');
+      fixture.detectChanges();
+
+      await fixture.componentInstance.sendResetLink();
+      fixture.detectChanges();
+
+      expect(authServiceMock.forgotPassword).toHaveBeenCalledWith('kat@example.org');
+      expect(el.textContent).toContain('Sprawdź skrzynkę.');
+      expect(el.querySelector('#login-password')).toBeNull();
     });
   });
 });

@@ -43,6 +43,37 @@ describe('AuthService', () => {
     expect(service.hasRole('Administrator')).toBe(true);
   });
 
+  it('remembers that the password must be changed, and forgets it after the change', async () => {
+    const fakeToken = createFakeJwt({ sub: 'u', email: 'a@b.pl', exp: 9999999999 });
+    const login = service.login('a@b.pl', 'Tymczasowe1!');
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/auth/login`)
+      .flush({ token: fakeToken, expiresAtUtc: '', roles: [], personId: null, mustChangePassword: true });
+    await login;
+    expect(service.mustChangePassword()).toBe(true);
+    expect(service.email()).toBe('a@b.pl');
+
+    const change = service.changePassword('Tymczasowe1!', 'MojeWlasne1!');
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/auth/change-password`);
+    expect(req.request.body).toEqual({ currentPassword: 'Tymczasowe1!', newPassword: 'MojeWlasne1!' });
+    req.flush({ token: createFakeJwt({ sub: 'u', exp: 9999999999 }), expiresAtUtc: '', roles: [], personId: null, mustChangePassword: false });
+    await change;
+
+    expect(service.mustChangePassword()).toBe(false);
+    expect(localStorage.getItem('dokportal.mustChangePassword')).toBeNull();
+  });
+
+  it('asks for a reset link and sets a new password with the code from the e-mail', async () => {
+    const forgot = service.forgotPassword('a@b.pl');
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/auth/forgot-password`).flush({ message: 'Sprawdź skrzynkę.' });
+    expect(await forgot).toBe('Sprawdź skrzynkę.');
+
+    const reset = service.resetPassword('u1', 'kod', 'Nowe12345!');
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/auth/reset-password`);
+    expect(req.request.body).toEqual({ userId: 'u1', token: 'kod', newPassword: 'Nowe12345!' });
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    await reset;
+  });
+
   it('clears the token on logout', () => {
     localStorage.setItem('dokportal.token', createFakeJwt({ role: 'Administrator', exp: 9999999999 }));
     service = TestBed.inject(AuthService);

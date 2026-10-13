@@ -89,7 +89,7 @@ public class UserService : IUserService
         }
         var email = await ResolveLoginAsync(request, ct);
 
-        var user = new AppUser { UserName = email, Email = email, PersonId = request.PersonId };
+        var user = new AppUser { UserName = email, Email = email, PersonId = request.PersonId, MustChangePassword = true };
 
         var createResult = await _userManager.CreateAsync(user, request.Password);
         if (!createResult.Succeeded)
@@ -221,6 +221,8 @@ public class UserService : IUserService
             throw new InvalidOperationException($"Nie udało się zresetować hasła: {errors}");
         }
 
+        user.MustChangePassword = true;
+        await _userManager.UpdateAsync(user);
         // Nowe hasło zmienia znacznik bezpieczeństwa (Identity) – stare sesje wygasają.
         _sessions?.Invalidate(user.Id);
         return true;

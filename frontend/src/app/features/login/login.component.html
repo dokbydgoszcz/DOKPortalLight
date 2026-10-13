@@ -41,6 +41,25 @@
           <div class="session-note" role="status">{{ sessionExpiredMessage() }}</div>
         }
 
+        @if (isForgotMode()) {
+          <form class="forgot-form" (ngSubmit)="sendResetLink()" novalidate>
+            <p class="form-sub">Podaj adres e-mail konta – wyślemy link do ustawienia nowego hasła.</p>
+            <div class="form-field">
+              <label for="forgot-email">Adres e-mail</label>
+              <input id="forgot-email" name="forgotEmail" type="email" autocomplete="username" [(ngModel)]="email" [disabled]="isSubmitting()" required />
+            </div>
+            @if (forgotMessage()) {
+              <div class="session-note" role="status">{{ forgotMessage() }}</div>
+            }
+            @if (errorMessage()) {
+              <div class="form-error" role="alert">{{ errorMessage() }}</div>
+            }
+            <button class="submit-btn" type="submit" [disabled]="isSubmitting() || !email.trim()">
+              <span>{{ isSubmitting() ? 'Wysyłanie…' : 'Wyślij link' }}</span>
+            </button>
+            <button type="button" class="forgot-link" (click)="showForgot(false)">← Wróć do logowania</button>
+          </form>
+        } @else {
         <form (ngSubmit)="submit()" novalidate>
           <div class="form-field">
             <label for="login-email">Adres e-mail</label>
@@ -90,6 +109,7 @@
               </button>
             </div>
           </div>
+          <button type="button" class="forgot-link" (click)="showForgot(true)">Nie pamiętam hasła</button>
 
           @if (errorMessage()) {
             <div class="form-error" role="alert">{{ errorMessage() }}</div>
@@ -114,6 +134,7 @@
             }
           </p>
         </form>
+        }
 
         <footer class="login-footer">
           <p>Diecezjalny Ośrodek Katechumenalny<br />Diecezji Bydgoskiej</p>

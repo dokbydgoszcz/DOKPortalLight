@@ -37,6 +37,7 @@ using DokPortal.Infrastructure.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -108,7 +109,17 @@ builder.Services
         options.Lockout.AllowedForNewUsers = true;
     })
     .AddRoles<IdentityRole>()
-    .AddEntityFrameworkStores<AppDbContext>();
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddErrorDescriber<PolishIdentityErrorDescriber>()
+    .AddDefaultTokenProviders();
+// Link „Nie pamiętam hasła” jest ważny 2 godziny (i jednorazowy – zmiana hasła zmienia znacznik bezpieczeństwa).
+builder.Services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(2));
+builder.Services.AddDataProtection();
+builder.Services.AddSingleton(new PortalUrl(
+    builder.Configuration["App:PublicUrl"]
+    ?? builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()?.FirstOrDefault()
+    ?? ""));
+builder.Services.AddScoped<IAccountService, AccountService>();
 
 var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
     ?? throw new InvalidOperationException("Missing Jwt configuration section.");

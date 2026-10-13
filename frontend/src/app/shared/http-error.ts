@@ -1,4 +1,13 @@
-/** Komunikat z odpowiedzi serwera (ProblemDetails.title), a gdy go brak – podany tekst zastępczy. */
+interface ServerError {
+  error?: { title?: string; message?: string; errors?: Record<string, string[]> };
+}
+
+/**
+ * Komunikat z odpowiedzi serwera, a gdy go brak – podany tekst zastępczy.
+ * Kolejność: pierwszy błąd walidacji (pola formularza), „message” (np. logowanie), „title” (ProblemDetails).
+ */
 export function serverMessage(err: unknown, fallback: string): string {
-  return (err as { error?: { title?: string } })?.error?.title ?? fallback;
+  const body = (err as ServerError)?.error;
+  const firstValidation = body?.errors ? Object.values(body.errors).flat()[0] : undefined;
+  return firstValidation ?? body?.message ?? body?.title ?? fallback;
 }

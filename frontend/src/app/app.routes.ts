@@ -7,12 +7,21 @@ import { ShellComponent } from './layout/shell/shell.component';
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./features/login/login.component').then(m => m.LoginComponent) },
   {
+    path: 'reset-hasla',
+    loadComponent: () => import('./features/account/reset-password.component').then(m => m.ResetPasswordComponent)
+  },
+  {
     path: '',
     title: 'DOK Portal',
     component: ShellComponent,
     canActivate: [authGuard],
+    canActivateChild: [authGuard],
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      {
+        path: 'konto/haslo',
+        loadComponent: () => import('./features/account/change-password.component').then(m => m.ChangePasswordComponent)
+      },
       {
         path: 'dashboard',
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)

@@ -35,6 +35,12 @@ describe('routes', () => {
     expect(children.find(r => r.path === '')?.redirectTo).toBe('dashboard');
   });
 
+  it('re-checks the session on every child route (so a forced password change cannot be skipped) and has the public reset page', () => {
+    expect(routes.find(r => r.path === '')!.canActivateChild?.length).toBe(1);
+    expect(children.find(r => r.path === 'konto/haslo')).toBeDefined();
+    expect(routes.find(r => r.path === 'reset-hasla')?.canActivate).toBeUndefined();
+  });
+
   it('does not guard routes that are open to every authenticated user', () => {
     for (const item of NAV_ITEMS.filter(i => !i.permission)) {
       const route = children.find(r => r.path === item.path.replace(/^\//, ''))!;

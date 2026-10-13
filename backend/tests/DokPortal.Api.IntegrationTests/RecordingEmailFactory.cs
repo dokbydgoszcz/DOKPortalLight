@@ -24,11 +24,11 @@ public class RecordingEmailFactory : CustomWebApplicationFactory
 
     public class RecordingEmailSender : IEmailSender
     {
-        public List<(string To, string Subject)> Sent { get; } = new();
+        public List<(string To, string Subject, string Body)> Sent { get; } = new();
 
         public Task SendAsync(string toEmail, string subject, string body, CancellationToken ct)
         {
-            lock (Sent) Sent.Add((toEmail, subject));
+            lock (Sent) Sent.Add((toEmail, subject, body));
             return Task.CompletedTask;
         }
     }
