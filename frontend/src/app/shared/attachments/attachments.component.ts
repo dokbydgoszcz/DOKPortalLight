@@ -18,13 +18,16 @@ import { ACCEPT_ATTRIBUTE, RULES_HINT, formatFileSize, saveBlob } from './attach
           <span class="attachment-name">📎 {{ attachment.fileName }}</span>
           <span class="attachment-meta">{{ formatSize(attachment.sizeBytes) }} · {{ attachment.uploadedAtUtc | date: 'dd.MM.yyyy HH:mm' }}</span>
           <span class="link" (click)="download(attachment)">Pobierz</span>
-          <span *appHasPermission="managePermission()" class="link danger" (click)="remove(attachment)">Usuń</span>
+          @if (!readOnly()) {
+            <span *appHasPermission="managePermission()" class="link danger" (click)="remove(attachment)">Usuń</span>
+          }
         </div>
       } @empty {
         @if (showEmpty()) {
           <div class="attachment-meta">Brak załączników.</div>
         }
       }
+      @if (!readOnly()) {
       <div *appHasPermission="managePermission()" class="attachment-add">
         <label class="btn ghost small">
           ＋ Dodaj plik
@@ -34,6 +37,7 @@ import { ACCEPT_ATTRIBUTE, RULES_HINT, formatFileSize, saveBlob } from './attach
           <span class="attachment-meta">{{ hint }}</span>
         }
       </div>
+      }
     </div>
   `,
   styles: `
@@ -53,6 +57,8 @@ export class AttachmentsComponent {
   readonly managePermission = input.required<string>();
   readonly showEmpty = input(false);
   readonly showHint = input(true);
+  /** Tylko pobieranie (np. pliki wysłanej kampanii). */
+  readonly readOnly = input(false);
   /** Wywoływane po dodaniu lub usunięciu plików – właściciel odświeża swoją listę. */
   readonly changed = output<void>();
 

@@ -66,4 +66,45 @@ describe('PersonCardComponent', () => {
     const { el } = boot(null, 404);
     expect(textOf(el)).toContain('Nie znaleziono osoby.');
   });
+  it('shows assignments, formator role, notes, an interrupted case and a disabled account', () => {
+    const { el } = boot({
+      person: { ...person, notes: 'Uwaga testowa', functions: [], email: null },
+      dokCases: [
+        { id: 'c1', personFullName: 'Ewa Maj', path: 'Bierzmowanie', stage: 'Ewangelizacja', catechistFullName: 'Anna', role: 'podopieczny', interruptedOn: '2026-10-01', completedAtUtc: null },
+        { id: 'c2', personFullName: 'Ewa Maj', path: 'Eucharystia', stage: 'Absolwent', catechistFullName: 'Anna', role: 'podopieczny', interruptedOn: null, completedAtUtc: '2026-06-01T00:00:00Z' }
+      ],
+      casesLed: [{ id: 'c3', personFullName: 'Jan', path: 'Bierzmowanie', stage: 'Ewangelizacja', catechistFullName: 'X', role: 'mentor', interruptedOn: '2026-10-01', completedAtUtc: null }],
+      candidate: null, candidateVisible: true,
+      missions: [], parishAssignments: [{ parishName: 'Fara', needDescription: 'Katecheza dorosłych', assignedAtUtc: '2026-09-01T00:00:00Z' }],
+      formatorFunctions: ['Wykładowca'], documents: [],
+      supervisions: { present: 0, listed: 2, lastPresentOn: null },
+      account: { email: 'ewa@example.org', roles: [], isActive: false }, accountVisible: true
+    });
+
+    const text = textOf(el);
+    expect(text).toContain('Uwaga testowa');
+    expect(text).toContain('Wykładowca');
+    expect(text).toContain('Katecheza dorosłych');
+    expect(text).toContain('przerwana 01.10.2026');
+    expect(text).toContain('ukończona 01.06.2026');
+    expect(text).toContain('mentor');
+    expect(text).toContain('wyłączone');
+    expect(text).toContain('Nie jest kandydatem.');
+    expect(text).toContain('Brak misji.');
+    expect(text).toContain('Brak pism.');
+  });
+
+  it('shows a generic error when the card cannot be loaded', () => {
+    const { el } = boot(null, 500);
+    expect(textOf(el)).toContain('Nie udało się wczytać karty osoby.');
+  });
+
+  it('says when there is no account', () => {
+    const { el } = boot({
+      person, dokCases: [], casesLed: [], candidate: null, candidateVisible: false, missions: null, parishAssignments: null,
+      formatorFunctions: null, documents: null, supervisions: null, account: null, accountVisible: true
+    });
+    expect(textOf(el)).toContain('Brak konta.');
+    expect(textOf(el)).toContain('Brak spraw.');
+  });
 });

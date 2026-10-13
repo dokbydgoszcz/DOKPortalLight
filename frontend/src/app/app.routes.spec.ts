@@ -21,7 +21,7 @@ describe('routes', () => {
   });
 
   it('lazy-loads a component class for every feature route and the login page', async () => {
-    const lazy = [routes.find(r => r.path === 'login')!, ...children].filter(r => r.loadComponent);
+    const lazy = [routes.find(r => r.path === 'login')!, routes.find(r => r.path === 'reset-hasla')!, ...children].filter(r => r.loadComponent);
 
     expect(lazy.length).toBeGreaterThan(15);
     for (const route of lazy) {

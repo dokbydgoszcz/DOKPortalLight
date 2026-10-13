@@ -186,11 +186,6 @@ export class MailingComponent implements OnInit {
     return `${this.mailingService.baseUrl}/${campaign.id}/attachments`;
   }
 
-  /** Pliki wysłanej kampanii są już tylko do pobrania. */
-  attachmentsPermission(campaign: MailingCampaign): string {
-    return campaign.status === 'Draft' ? this.manage : 'Mailing.SentIsReadOnly';
-  }
-
   sendCampaign(campaign: MailingCampaign): void {
     if (this.sendingId()) return;
     this.sendingId.set(campaign.id);

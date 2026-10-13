@@ -384,4 +384,63 @@ describe('SupervisionsListComponent', () => {
       expect(textOf(ctx.el)).toContain('Obecność (1/1)');
     });
   });
+  describe('attendance helpers', () => {
+    it('marks everyone present or absent, ignores unknown groups and survives a failed group list', async () => {
+      const ctx = boot();
+      const component = ctx.fixture.componentInstance;
+      component.openAddForm();
+      ctx.http.expectOne(`${url}/groups`).flush('x', { status: 500, statusText: 'Error' });
+      expect(component.groups()).toEqual([]);
+
+      component.groups.set([{ name: 'Grupa A', members: [{ personId: 'p1', fullName: 'Anna Maj' }, { personId: 'p2', fullName: 'Jan Nowak' }] }]);
+      component.newSupervision.groupLabel = 'Inna grupa';
+      component.onGroupChange();
+      expect(component.attendance()).toEqual([]);
+      component.newSupervision.groupLabel = 'Grupa A';
+      component.onGroupChange();
+      component.setAllPresent(true);
+      expect(component.presentCount()).toBe(2);
+      component.togglePresent('p1', false);
+      expect(component.presentCount()).toBe(1);
+      component.setAllPresent(false);
+      expect(component.presentCount()).toBe(0);
+      expect(component.presentNames({ ...supervision })).toBe('');
+    });
+
+    it('does not send while the group is empty', () => {
+      const ctx = boot();
+      const component = ctx.fixture.componentInstance;
+      component.openAddForm();
+      component.newSupervision.supervisionDate = '2026-10-10';
+      component.createSupervision();
+      ctx.http.expectNone(r => r.method === 'POST');
+    });
+  });
+  it('uses the links and inputs of the form and closes the windows with ×', async () => {
+    const ctx = boot();
+    const component = ctx.fixture.componentInstance;
+    component.openAddForm();
+    ctx.http.expectOne(`${url}/groups`).flush([]);
+    ctx.fixture.detectChanges();
+    await ctx.fixture.whenStable();
+    setInput(ctx.el, 'input[name="attendeesCount"]', '5');
+    setInput(ctx.el, 'input[name="expectedCount"]', '7');
+    expect(component.newSupervision.attendeesCount).toBe(5);
+    expect(component.newSupervision.expectedCount).toBe(7);
+
+    component.attendance.set([{ personId: 'p1', fullName: 'Anna Maj', isPresent: false }]);
+    ctx.fixture.detectChanges();
+    clickByText(ctx.el, 'zaznacz wszystkich');
+    expect(component.presentCount()).toBe(1);
+    clickByText(ctx.el, 'odznacz');
+    expect(component.presentCount()).toBe(0);
+
+    (ctx.el.querySelector('.modal .close') as HTMLButtonElement).click();
+    ctx.fixture.detectChanges();
+    expect(component.isFormOpen()).toBe(false);
+    component.openAttachments(supervision);
+    ctx.fixture.detectChanges();
+    (ctx.el.querySelector('.modal .close') as HTMLButtonElement).click();
+    expect(component.attachmentsSupervisionId()).toBeNull();
+  });
 });

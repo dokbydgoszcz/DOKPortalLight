@@ -4,6 +4,7 @@ import { signal } from '@angular/core';
 import { describe, expect, it, vi } from 'vitest';
 import { ChangePasswordComponent } from './change-password.component';
 import { AuthService } from '../../core/auth/auth.service';
+import { setInput } from '../../testing/test-helpers';
 
 function setup(changePassword = vi.fn().mockResolvedValue(undefined)) {
   TestBed.configureTestingModule({
@@ -57,5 +58,33 @@ describe('ChangePasswordComponent', () => {
     await component.submit();
 
     expect(component.error()).toBe('Obecne hasło jest nieprawidłowe.');
+  });
+  it('submits the typed passwords from the form', async () => {
+    const { fixture, changePassword } = setup();
+    vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    const el = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    setInput(el, '#current-password', 'Stare1234!');
+    setInput(el, '#new-password', 'Nowe12345!');
+    setInput(el, '#repeat-password', 'Nowe12345!');
+    fixture.detectChanges();
+
+    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(changePassword).toHaveBeenCalledWith('Stare1234!', 'Nowe12345!');
+  });
+
+  it('shows the inline problem in the form and ignores a submit while invalid', async () => {
+    const { fixture, component, changePassword } = setup();
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    setInput(el, '#current-password', 'a');
+    setInput(el, '#new-password', 'krótkie');
+    fixture.detectChanges();
+    expect(el.querySelector('.form-error')?.textContent).toContain('co najmniej 8 znaków');
+
+    await component.submit();
+    expect(changePassword).not.toHaveBeenCalled();
   });
 });

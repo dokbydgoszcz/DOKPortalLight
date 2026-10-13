@@ -961,4 +961,49 @@ describe('DokCasesListComponent', () => {
       expect(toastMessages()).toContain('Wznowiono formację: Jan Kowalski.');
     });
   });
+  describe('interrupting and resuming – errors', () => {
+    it('closes the interrupt window without sending and reports refused interrupts and resumes', async () => {
+      const ctx = boot([dokCase]);
+      const component = ctx.fixture.componentInstance;
+      component.openInterrupt(dokCase as never);
+      expect(component.interruptDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(component.canInterrupt).toBe(false);
+      component.confirmInterrupt();
+      ctx.http.expectNone(r => r.url.endsWith('/interrupt'));
+      component.closeInterrupt();
+      expect(component.interruptCase()).toBeNull();
+
+      component.openInterrupt(dokCase as never);
+      component.interruptReason = 'Rezygnacja';
+      component.confirmInterrupt();
+      ctx.http.expectOne(r => r.url === `${casesUrl}/1/interrupt`).flush({ title: 'Sprawa jest już przerwana.' }, { status: 400, statusText: 'Bad Request' });
+      expect(toastMessages()).toContain('Sprawa jest już przerwana.');
+
+      vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+      component.resumeCase(dokCase as never);
+      ctx.http.expectNone(r => r.url.endsWith('/resume'));
+      component.resumeCase(dokCase as never);
+      ctx.http.expectOne(r => r.url === `${casesUrl}/1/resume`).flush({ title: 'Podopieczny ma już inną sprawę w toku.' }, { status: 400, statusText: 'Bad Request' });
+      expect(toastMessages()).toContain('Podopieczny ma już inną sprawę w toku.');
+    });
+
+    it('can show all cases again', () => {
+      const ctx = boot([dokCase]);
+      setSelect(ctx.el, 'select[name="statusFilter"]', '');
+      const req = ctx.http.expectOne(r => r.url === casesUrl && !r.params.has('status'));
+      req.flush(paged([dokCase]));
+    });
+  });
+  it('closes the interrupt window with × and with Anuluj', () => {
+    const ctx = boot([dokCase]);
+    const component = ctx.fixture.componentInstance;
+    component.openInterrupt(dokCase as never);
+    ctx.fixture.detectChanges();
+    (ctx.el.querySelector('.modal .close') as HTMLButtonElement).click();
+    expect(component.interruptCase()).toBeNull();
+    component.openInterrupt(dokCase as never);
+    ctx.fixture.detectChanges();
+    clickByText(ctx.el, 'Anuluj', '.modal-foot button');
+    expect(component.interruptCase()).toBeNull();
+  });
 });

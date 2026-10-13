@@ -163,7 +163,8 @@
         <app-attachments
           [attachments]="campaign.attachments ?? []"
           [baseUrl]="attachmentsUrl(campaign)"
-          [managePermission]="attachmentsPermission(campaign)"
+          [managePermission]="manage"
+          [readOnly]="campaign.status !== 'Draft'"
           [showEmpty]="true"
           (changed)="load()" />
       </div>

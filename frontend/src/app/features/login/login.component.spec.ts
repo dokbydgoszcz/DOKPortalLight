@@ -3,7 +3,7 @@ import { provideRouter, Router } from '@angular/router';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { LoginComponent } from './login.component';
 import { AuthService } from '../../core/auth/auth.service';
-import { click, setInput } from '../../testing/test-helpers';
+import { click, clickByText, setInput } from '../../testing/test-helpers';
 
 describe('LoginComponent', () => {
   let fixture: ComponentFixture<LoginComponent>;
@@ -169,6 +169,39 @@ describe('LoginComponent', () => {
       expect(authServiceMock.forgotPassword).toHaveBeenCalledWith('kat@example.org');
       expect(el.textContent).toContain('Sprawdź skrzynkę.');
       expect(el.querySelector('#login-password')).toBeNull();
+    });
+    it('reports a failed reset request and goes back to logging in', async () => {
+      authServiceMock.forgotPassword.mockRejectedValue({ error: { message: 'Zbyt wiele prób.' } });
+      const el = render();
+      fixture.componentInstance.showForgot(true);
+      fixture.componentInstance.email = 'kat@example.org';
+      await fixture.componentInstance.sendResetLink();
+      expect(fixture.componentInstance.errorMessage()).toBe('Zbyt wiele prób.');
+
+      fixture.componentInstance.email = '  ';
+      await fixture.componentInstance.sendResetLink();
+      expect(authServiceMock.forgotPassword).toHaveBeenCalledTimes(1);
+
+      fixture.componentInstance.showForgot(false);
+      fixture.detectChanges();
+      expect(el.querySelector('#login-password')).not.toBeNull();
+      expect(fixture.componentInstance.errorMessage()).toBeNull();
+    });
+    it('sends the reset form with Enter and returns with the back link', async () => {
+      authServiceMock.forgotPassword.mockResolvedValue('OK');
+      const el = render();
+      clickByText(el, 'Nie pamiętam hasła');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      setInput(el, '#forgot-email', 'kat@example.org');
+      fixture.detectChanges();
+      (el.querySelector('form.forgot-form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+      await fixture.whenStable();
+      expect(authServiceMock.forgotPassword).toHaveBeenCalledWith('kat@example.org');
+
+      clickByText(el, '← Wróć do logowania');
+      fixture.detectChanges();
+      expect(el.querySelector('#login-password')).not.toBeNull();
     });
   });
 });

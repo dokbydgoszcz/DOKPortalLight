@@ -387,4 +387,142 @@ describe('MailingComponent', () => {
       expect(textOf(ctx.el)).toContain('łącznie do 15 MB');
     });
   });
+  describe('recipients and attachments – details', () => {
+    it('previews the recipients of a saved campaign and closes the preview', () => {
+      const ctx = boot();
+      clickByText(ctx.el, '12');
+      ctx.http.expectOne(`${url}/c1/recipients`).flush([{ personId: 'p1', fullName: 'Jan Kowalski', email: 'jan@example.org' }]);
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Odbiorcy — Zaproszenie');
+
+      clickByText(ctx.el, 'Zamknij', '.modal-foot button');
+      ctx.fixture.detectChanges();
+      expect(ctx.el.querySelector('.modal')).toBeNull();
+    });
+
+    it('shows the server message when the recipients cannot be loaded', async () => {
+      const ctx = boot();
+      clickByText(ctx.el, '12');
+      ctx.http.expectOne(`${url}/c1/recipients`).flush({ title: 'Brak dostępu.' }, { status: 403, statusText: 'Forbidden' });
+      clickByText(ctx.el, 'Nowa kampania');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      clickByText(ctx.el, 'Pokaż odbiorców');
+      ctx.http.expectOne(r => r.url === api('/api/mailing/recipients')).flush('x', { status: 500, statusText: 'Error' });
+
+      expect(toastMessages()).toContain('Brak dostępu.');
+      expect(toastMessages()).toContain('Nie udało się wczytać odbiorców.');
+    });
+
+    it('edits a custom list: loads its people, lets one be removed and previews the rest locally', async () => {
+      const custom: MailingCampaign = { ...draft, group: 'Custom', personIds: ['p1', 'p2'] };
+      const ctx = boot([custom]);
+      clickByText(ctx.el, 'Edytuj');
+      ctx.http.expectOne(`${url}/c1/recipients`).flush([
+        { personId: 'p1', fullName: 'Jan Kowalski', email: 'jan@example.org' },
+        { personId: 'p2', fullName: 'Ewa Kot', email: null }
+      ]);
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      expect(textOf(ctx.el)).toContain('Osoby na liście (2)');
+
+      ctx.fixture.componentInstance.unpick('p2');
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Osoby na liście (1)');
+      ctx.fixture.componentInstance.previewForm();
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Osób: 1, z adresem e-mail: 1');
+      ctx.http.expectNone(r => r.url === api('/api/mailing/recipients'));
+
+      clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+      const req = ctx.http.expectOne(r => r.method === 'PUT');
+      expect(req.request.body.personIds).toEqual(['p1']);
+      req.flush({ title: 'Wysłanej kampanii nie można zmienić.' }, { status: 400, statusText: 'Bad Request' });
+      expect(toastMessages()).toContain('Wysłanej kampanii nie można zmienić.');
+    });
+
+    it('warns when the custom list cannot be loaded and keeps saving disabled without people', async () => {
+      const custom: MailingCampaign = { ...draft, group: 'Custom', personIds: ['p1'] };
+      const ctx = boot([custom]);
+      clickByText(ctx.el, 'Edytuj');
+      ctx.http.expectOne(`${url}/c1/recipients`).flush('x', { status: 500, statusText: 'Error' });
+      ctx.fixture.detectChanges();
+
+      expect(toastMessages()).toContain('Nie udało się wczytać listy odbiorców.');
+      expect(ctx.fixture.componentInstance.canSave).toBe(false);
+      expect(textOf(ctx.el)).toContain('i dodaj osoby');
+    });
+
+    it('searches only from two letters, marks people already on the list and reports search errors', async () => {
+      const ctx = boot();
+      const component = ctx.fixture.componentInstance;
+      component.openAddForm();
+      component.newCampaign.group = 'Custom';
+      component.personQuery = 'K';
+      component.searchPeople();
+      ctx.http.expectNone(r => r.url === api('/api/people'));
+      expect(component.searchResults()).toEqual([]);
+
+      component.pick({ personId: 'p1', fullName: 'Jan Kowalski', email: null });
+      component.pick({ personId: 'p1', fullName: 'Jan Kowalski', email: null });
+      expect(component.picked().length).toBe(1);
+      component.personQuery = 'Kow';
+      component.searchPeople();
+      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged([{ id: 'p1', fullName: 'Jan Kowalski', email: null }]));
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('na liście');
+
+      component.searchPeople();
+      ctx.http.expectOne(r => r.url === api('/api/people')).flush('x', { status: 500, statusText: 'Error' });
+      expect(toastMessages()).toContain('Nie udało się wyszukać osób.');
+    });
+
+    it('shows the files of a sent campaign as download-only and refreshes the open window after changes', () => {
+      const sentWithFile: MailingCampaign = { ...sent, attachments: [{ id: 'a1', fileName: 'plan.pdf', contentType: 'application/pdf', sizeBytes: 10, uploadedAtUtc: '2026-10-01T10:00:00Z' }] };
+      const ctx = boot([sentWithFile]);
+      const component = ctx.fixture.componentInstance;
+      component.openAttachments(sentWithFile);
+      ctx.fixture.detectChanges();
+
+      expect(textOf(ctx.el)).toContain('tylko do pobrania');
+      expect(textOf(ctx.el)).not.toContain('Dodaj plik');
+      expect(ctx.el.querySelector('.attachments .link.danger')).toBeNull();
+      component.load();
+      ctx.http.expectOne(url).flush([{ ...sentWithFile, subject: 'Nowy' }]);
+      expect(component.attachmentsCampaign()?.subject).toBe('Nowy');
+
+      clickByText(ctx.el, 'Zamknij', '.modal-foot button');
+      expect(component.attachmentsCampaign()).toBeNull();
+    });
+  });
+  it('closes the form, the preview and the attachments windows with ×', async () => {
+    const ctx = boot([{ ...draft, group: 'Custom', personIds: [] }]);
+    const component = ctx.fixture.componentInstance;
+    const close = () => {
+      (ctx.el.querySelector('.modal .close') as HTMLButtonElement).click();
+      ctx.fixture.detectChanges();
+    };
+    component.openAddForm();
+    ctx.fixture.detectChanges();
+    close();
+    expect(component.isFormOpen()).toBe(false);
+
+    component.preview.set({ title: 'X', recipients: [] });
+    ctx.fixture.detectChanges();
+    close();
+    expect(component.preview()).toBeNull();
+
+    component.openAttachments(draft);
+    ctx.fixture.detectChanges();
+    close();
+    expect(component.attachmentsCampaign()).toBeNull();
+
+    component.openAddForm();
+    component.newCampaign.group = 'Custom';
+    component.pick({ personId: 'p1', fullName: 'Jan Kowalski', email: null });
+    ctx.fixture.detectChanges();
+    await ctx.fixture.whenStable();
+    clickByText(ctx.el, '×', '.picked .link');
+    expect(component.picked()).toEqual([]);
+  });
 });
