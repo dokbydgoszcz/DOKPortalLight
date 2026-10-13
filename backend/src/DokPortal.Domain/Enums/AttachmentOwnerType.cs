@@ -7,5 +7,9 @@ public enum AttachmentOwnerType
     Supervision,
     Mission,
     /// <summary>Plik z globalnej biblioteki zasobów dla katechistów.</summary>
-    Resource
+    Resource,
+    /// <summary>Faktura, paragon itp. przy operacji budżetowej.</summary>
+    BudgetEntry,
+    /// <summary>Plik wysyłany razem z kampanią mailingową.</summary>
+    MailingCampaign
 }

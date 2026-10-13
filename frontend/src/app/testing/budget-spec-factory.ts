@@ -1,5 +1,7 @@
 import { Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { BudgetLedgerComponent } from '../features/budget/budget-ledger.component';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastService } from '../core/notifications/toast.service';
 import { api, clickByText, setInput, setSelect, setup, textOf } from './test-helpers';
@@ -50,7 +52,8 @@ export function describeBudgetScreen({ name, component, fund, withExpenseStructu
     if (withExpenseStructure) {
       it('groups expenses by category', () => {
         const { fixture } = boot();
-        const grouped = (fixture.componentInstance as unknown as { expenseByCategory: () => { category: string; amount: number }[] }).expenseByCategory();
+        const ledger = fixture.debugElement.query(By.directive(BudgetLedgerComponent)).componentInstance as BudgetLedgerComponent;
+        const grouped = ledger.expenseByCategory();
 
         expect(grouped).toEqual([{ category: 'Materiały', amount: 1000 }]);
       });
@@ -95,7 +98,7 @@ export function describeBudgetScreen({ name, component, fund, withExpenseStructu
         ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([income]);
       });
 
-      it('keeps saving disabled until a date is chosen, so an empty date is never sent', async () => {
+      it('keeps saving disabled until date, description, category and a positive amount are filled', async () => {
         const ctx = await openForm();
         const save = () =>
           Array.from(ctx.el.querySelectorAll<HTMLButtonElement>('.modal-foot button')).find(b => b.textContent!.includes('Zapisz'))!;
@@ -107,6 +110,11 @@ export function describeBudgetScreen({ name, component, fund, withExpenseStructu
         ctx.http.expectNone(r => r.method === 'POST');
 
         setInput(ctx.el, 'input[name="entryDate"]', '2026-10-01');
+        setInput(ctx.el, 'input[name="description"]', 'Zeszyty');
+        setInput(ctx.el, 'input[name="category"]', 'Materiały');
+        ctx.fixture.detectChanges();
+        expect(save().disabled).toBe(true);
+        setInput(ctx.el, 'input[name="amount"]', '12.5');
         ctx.fixture.detectChanges();
         expect(save().disabled).toBe(false);
         expect(textOf(ctx.el)).not.toContain('Uzupełnij pola oznaczone *');
@@ -115,6 +123,9 @@ export function describeBudgetScreen({ name, component, fund, withExpenseStructu
       it('shows a toast when adding fails and closes the form on cancel', async () => {
         const ctx = await openForm();
         setInput(ctx.el, 'input[name="entryDate"]', '2026-10-01');
+        setInput(ctx.el, 'input[name="description"]', 'Zeszyty');
+        setInput(ctx.el, 'input[name="category"]', 'Materiały');
+        setInput(ctx.el, 'input[name="amount"]', '10');
         ctx.fixture.detectChanges();
 
         clickByText(ctx.el, 'Zapisz', '.modal-foot button');
@@ -157,6 +168,62 @@ export function describeBudgetScreen({ name, component, fund, withExpenseStructu
         ctx.http.expectOne(r => r.method === 'DELETE').flush('x', { status: 500, statusText: 'Server Error' });
 
         expect(toastMessages()).toContain('Nie udało się usunąć operacji.');
+      });
+    });
+    describe('correcting, periods, export and attachments', () => {
+      it('edits an entry in place', async () => {
+        const ctx = boot();
+        clickByText(ctx.el, 'Edytuj');
+        ctx.fixture.detectChanges();
+        await ctx.fixture.whenStable();
+        expect((ctx.el.querySelector('input[name="description"]') as HTMLInputElement).value).toBe('Dotacja');
+
+        setInput(ctx.el, 'input[name="amount"]', '5200');
+        ctx.fixture.detectChanges();
+        clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+
+        const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${url}/1`);
+        expect(req.request.body).toEqual({ entryDate: '2026-09-12', description: 'Dotacja', category: 'Dotacja', type: 'Income', amount: 5200 });
+        req.flush({ ...income, amount: 5200 });
+        expect(toastMessages()).toContain('Zapisano zmiany operacji.');
+        ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([]);
+      });
+
+      it('loads a month with its opening balance from the server', async () => {
+        const ctx = boot();
+        setSelect(ctx.el, 'select[name="periodMode"]', 'month');
+        ctx.fixture.detectChanges();
+        await ctx.fixture.whenStable();
+
+        const list = ctx.http.expectOne(r => r.method === 'GET' && r.url === url);
+        const summary = ctx.http.expectOne(r => r.url === `${url}/summary`);
+        expect(list.request.params.get('from')).toMatch(/^\d{4}-\d{2}-01$/);
+        expect(summary.request.params.get('fund')).toBe(fund);
+        list.flush([expenseA]);
+        summary.flush({ openingBalance: 1000, income: 0, expense: 780, closingBalance: 220 });
+        ctx.fixture.detectChanges();
+
+        const text = textOf(ctx.el);
+        expect(text).toContain('Saldo otwarcia');
+        expect(text).toContain('Saldo na koniec');
+        expect(text).toContain('220 zł');
+      });
+
+      it('downloads the Excel export for the chosen period', () => {
+        const ctx = boot();
+        clickByText(ctx.el, 'Eksportuj do Excela', 'button');
+
+        const req = ctx.http.expectOne(r => r.url === `${url}/export`);
+        expect(req.request.params.get('fund')).toBe(fund);
+        expect(req.request.params.has('from')).toBe(false);
+      });
+
+      it('opens the attachments of an entry', () => {
+        const ctx = boot([{ ...income, attachments: [{ id: 'a1', fileName: 'faktura.pdf', contentType: 'application/pdf', sizeBytes: 10, uploadedAtUtc: '2026-10-01T10:00:00Z' }] }]);
+        clickByText(ctx.el, '📎 1');
+        ctx.fixture.detectChanges();
+
+        expect(textOf(ctx.el)).toContain('faktura.pdf');
       });
     });
   });

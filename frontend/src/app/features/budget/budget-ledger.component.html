@@ -1,0 +1,146 @@
+<div class="page-heading">
+  <div><h2>{{ heading() }}</h2><p>{{ subtitle() }}</p></div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <button class="btn ghost" [disabled]="exporting()" (click)="exportExcel()">{{ exporting() ? 'Pobieranie…' : 'Eksportuj do Excela' }}</button>
+    <button *appHasPermission="managePermission()" class="btn primary" (click)="openAddForm()">＋ Dodaj operację</button>
+  </div>
+</div>
+
+<div class="card period-bar" style="margin-bottom:16px">
+  <div class="card-body" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    <label for="period-mode">Okres:</label>
+    <select id="period-mode" name="periodMode" [(ngModel)]="periodMode" (ngModelChange)="onPeriodChange()">
+      <option value="all">Cały okres</option>
+      <option value="year">Rok</option>
+      <option value="month">Miesiąc</option>
+    </select>
+    @if (periodMode === 'month') {
+      <select name="periodMonth" aria-label="Miesiąc" [(ngModel)]="month" (ngModelChange)="onPeriodChange()">
+        @for (name of months; track $index) {
+          <option [ngValue]="$index + 1">{{ name }}</option>
+        }
+      </select>
+    }
+    @if (periodMode !== 'all') {
+      <select name="periodYear" aria-label="Rok" [(ngModel)]="year" (ngModelChange)="onPeriodChange()">
+        @for (y of years; track y) {
+          <option [ngValue]="y">{{ y }}</option>
+        }
+      </select>
+    }
+  </div>
+</div>
+
+<div class="finance-grid" [class.with-opening]="summary()">
+  @if (summary()) {
+    <div class="card stat"><div class="stat-label">Saldo otwarcia</div><div class="amount">{{ openingBalance() }} zł</div></div>
+  }
+  <div class="card stat"><div class="stat-label">Przychody</div><div class="amount">{{ totalIncome() }} zł</div></div>
+  <div class="card stat"><div class="stat-label">Wydatki</div><div class="amount">{{ totalExpense() }} zł</div></div>
+  <div class="card stat">
+    <div class="stat-label">{{ summary() ? 'Saldo na koniec' : 'Saldo' }}</div>
+    <div class="amount" [style.color]="balance() >= 0 ? 'var(--success)' : 'var(--danger)'">{{ balance() }} zł</div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="card-head"><h3>Struktura wydatków — {{ periodLabel }}</h3></div>
+  <div class="card-body">
+    @for (item of expenseByCategory(); track item.category) {
+      <div class="bar-row">
+        <div class="bar-head"><span>{{ item.category }}</span><b>{{ item.amount }} zł</b></div>
+        <div class="bar"><span [style.width.%]="totalExpense() ? (item.amount / totalExpense() * 100) : 0"></span></div>
+      </div>
+    } @empty {
+      <div class="empty">Brak wydatków w tym okresie.</div>
+    }
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Data</th><th>Opis</th><th>Kategoria</th><th>Kwota</th><th>Załączniki</th><th></th></tr></thead>
+      <tbody>
+        @for (entry of entries(); track entry.id) {
+          <tr>
+            <td>{{ entry.entryDate }}</td>
+            <td>{{ entry.description }}</td>
+            <td>{{ entry.category }}</td>
+            <td [style.color]="entry.type === 'Income' ? 'var(--success)' : 'inherit'">
+              {{ entry.type === 'Income' ? '+' : '-' }} {{ entry.amount }} zł
+            </td>
+            <td><span class="link" (click)="openAttachments(entry)">📎 {{ entry.attachments?.length ?? 0 }}</span></td>
+            <td>
+              <span *appHasPermission="managePermission()" style="display:inline-flex;gap:14px">
+                <span class="link" (click)="openEditForm(entry)">Edytuj</span>
+                <span class="link" style="color:var(--danger)" (click)="deleteEntry(entry)">Usuń</span>
+              </span>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="6" class="empty">Brak operacji.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (isFormOpen()) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>{{ editing() ? 'Edytuj operację' : 'Nowa operacja' }}</h3>
+        <button class="close" (click)="cancel()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Data <span class="required">*</span></label><input type="date" [(ngModel)]="form.entryDate" name="entryDate" /></div>
+          <div class="field">
+            <label>Typ</label>
+            <select [(ngModel)]="form.type" name="type">
+              <option value="Income">Przychód</option>
+              <option value="Expense">Wydatek</option>
+            </select>
+          </div>
+          <div class="field"><label>Opis <span class="required">*</span></label><input [(ngModel)]="form.description" name="description" maxlength="500" /></div>
+          <div class="field"><label>Kategoria <span class="required">*</span></label><input [(ngModel)]="form.category" name="category" maxlength="200" /></div>
+          <div class="field"><label>Kwota (zł) <span class="required">*</span></label><input type="number" min="0.01" step="0.01" [(ngModel)]="form.amount" name="amount" /></div>
+        </div>
+        @if (!editing()) {
+          <p class="form-hint" style="margin:8px 0 0">Fakturę lub paragon dołączysz po zapisaniu (kolumna „Załączniki”).</p>
+        }
+      </div>
+      <div class="modal-foot">
+        @if (!canSave) {
+          <span class="form-hint">Uzupełnij pola oznaczone * (kwota większa od zera)</span>
+        }
+        <button class="btn ghost" (click)="cancel()">Anuluj</button>
+        <button class="btn primary" [disabled]="!canSave" (click)="save()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (attachmentsEntry(); as entry) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Załączniki — {{ entry.description }}</h3>
+        <button class="close" (click)="closeAttachments()">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="small-muted" style="margin:0 0 8px">{{ entry.entryDate }} · {{ entry.type === 'Income' ? 'Przychód' : 'Wydatek' }} {{ entry.amount }} zł</p>
+        <app-attachments
+          [attachments]="entry.attachments ?? []"
+          [baseUrl]="attachmentsUrl(entry)"
+          [managePermission]="managePermission()"
+          [showEmpty]="true"
+          (changed)="onAttachmentsChanged()" />
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="closeAttachments()">Zamknij</button>
+      </div>
+    </div>
+  </div>
+}

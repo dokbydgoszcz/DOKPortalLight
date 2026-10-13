@@ -12,6 +12,7 @@ public class BudgetEntry : ISoftDeletable
     public BudgetEntryType Type { get; set; }
     public decimal Amount { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+    public DateTime? UpdatedAtUtc { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
     public string? DeletedBy { get; set; }
 }
