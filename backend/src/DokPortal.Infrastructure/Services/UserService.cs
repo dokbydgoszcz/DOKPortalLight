@@ -87,8 +87,9 @@ public class UserService : IUserService
         {
             await EnsurePersonCanBeLinkedAsync(personId, null, ct);
         }
+        var email = await ResolveLoginAsync(request, ct);
 
-        var user = new AppUser { UserName = request.Email, Email = request.Email, PersonId = request.PersonId };
+        var user = new AppUser { UserName = email, Email = email, PersonId = request.PersonId };
 
         var createResult = await _userManager.CreateAsync(user, request.Password);
         if (!createResult.Succeeded)
@@ -124,6 +125,34 @@ public class UserService : IUserService
         }
 
         return ToDto(user, await _userManager.GetRolesAsync(user), await PersonNameAsync(personId, ct));
+    }
+
+    /// <summary>
+    /// Login to e-mail osoby (nie podaje się go drugi raz). Osoba bez e-maila dostaje wpisany e-mail także jako swój adres.
+    /// Konto bez osoby używa wpisanego e-maila.
+    /// </summary>
+    private async Task<string> ResolveLoginAsync(CreateUserRequest request, CancellationToken ct)
+    {
+        var typed = request.Email?.Trim();
+        if (request.PersonId is not { } personId)
+        {
+            return string.IsNullOrEmpty(typed) ? throw new InvalidOperationException("Podaj e-mail (login).") : typed;
+        }
+
+        var person = await _db.People.FirstAsync(p => p.Id == personId, ct);
+        if (!string.IsNullOrWhiteSpace(person.Email)) return person.Email.Trim();
+        if (string.IsNullOrEmpty(typed))
+            throw new InvalidOperationException("Ta osoba nie ma e-maila – podaj go (będzie loginem i zapiszemy go też przy osobie).");
+
+        var normalized = typed.ToLowerInvariant();
+        var holder = await _db.People.AsNoTracking()
+            .Where(p => p.Id != personId && p.Email != null && p.Email.ToLower() == normalized)
+            .Select(p => p.FirstName + " " + p.LastName).FirstOrDefaultAsync(ct);
+        if (holder is not null) throw new InvalidOperationException($"Ten adres e-mail ma już: {holder}.");
+        person.Email = typed;
+        person.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+        return typed;
     }
 
     /// <summary>Osoba musi istnieć i nie może mieć już innego konta (e-mail osoby bywa loginem – jedna osoba, jedno konto).</summary>

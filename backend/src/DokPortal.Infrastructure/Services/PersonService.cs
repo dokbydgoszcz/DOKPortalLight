@@ -114,6 +114,7 @@ public class PersonService : IPersonService
             await EnsureCatechistFunctionKeptAsync(id, request.Functions, ct);
         }
 
+        await SyncLoginAsync(id, person.Email, request.Email, ct);
         person.FirstName = request.FirstName;
         person.LastName = request.LastName;
         person.Email = request.Email;
@@ -132,6 +133,31 @@ public class PersonService : IPersonService
 
         await _db.SaveChangesAsync(ct);
         return await GetByIdAsync(id, ct);
+    }
+
+    /// <summary>
+    /// Login konta to e-mail osoby: zmiana e-maila osoby zmienia login powiązanego konta. Adresu, który jest loginem innego konta,
+    /// nie można przypisać. Wyczyszczenie e-maila osoby zostawia dotychczasowy login.
+    /// </summary>
+    private async Task SyncLoginAsync(Guid personId, string? currentEmail, string? newEmail, CancellationToken ct)
+    {
+        var normalized = PersonContactNormalizer.NormalizeEmail(newEmail);
+        if (normalized is null || normalized == PersonContactNormalizer.NormalizeEmail(currentEmail)) return;
+
+        var otherAccount = await _db.Users.AnyAsync(u => u.PersonId != personId && u.Email != null && u.Email.ToLower() == normalized, ct);
+        if (otherAccount)
+        {
+            throw new DuplicatePersonException("EmailTaken",
+                "Ten adres e-mail jest loginem innego konta. Adres e-mail musi być unikalny.", Array.Empty<DuplicateMatch>());
+        }
+
+        var account = await _db.Users.FirstOrDefaultAsync(u => u.PersonId == personId, ct);
+        if (account is null) return;
+        var login = newEmail!.Trim();
+        account.Email = login;
+        account.UserName = login;
+        account.NormalizedEmail = login.ToUpperInvariant();
+        account.NormalizedUserName = login.ToUpperInvariant();
     }
 
     private static PersonFunction NewFunction(Guid personId, PersonFunctionInput input) => new()

@@ -58,7 +58,17 @@
     </div>
 
     <div class="form-grid">
-      <div class="field full"><label>E-mail</label><input [(ngModel)]="newUser.email" name="email" /></div>
+      <div class="field full">
+        <label>E-mail (login)</label>
+        <input [(ngModel)]="newUser.email" name="email" [disabled]="loginFromPerson()" />
+        @if (loginFromPerson()) {
+          <div class="small-muted">Login = e-mail osoby. Aby go zmienić, zmień e-mail w ekranie Osoby.</div>
+        } @else if (selectedPerson()) {
+          <div class="small-muted">Ta osoba nie ma e-maila — wpisany adres będzie loginem i zapiszemy też przy osobie.</div>
+        } @else if (addingNewPerson()) {
+          <div class="small-muted">Adres będzie loginem i e-mailem nowej osoby.</div>
+        }
+      </div>
       <div class="field full"><label>Hasło</label><input type="password" [(ngModel)]="newUser.password" name="password" /></div>
       <div class="field full"><label>Powtórz hasło</label><input type="password" [(ngModel)]="confirmPassword" name="confirmPassword" /></div>
       @if (createError()) {

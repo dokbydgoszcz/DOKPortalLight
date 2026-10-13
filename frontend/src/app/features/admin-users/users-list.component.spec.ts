@@ -119,6 +119,49 @@ describe('UsersListComponent', () => {
       expect(el.querySelector('input[name="personQuery"]')).not.toBeNull();
     });
 
+    function pickPerson(found: object) {
+      vi.useFakeTimers();
+      const ctx = boot();
+      setInput(ctx.el, 'input[name="personQuery"]', 'Jan');
+      vi.advanceTimersByTime(300);
+      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged([found]));
+      ctx.fixture.detectChanges();
+      clickByText(ctx.el, 'Jan Kowalski', 'button.list-row');
+      ctx.fixture.detectChanges();
+      return ctx;
+    }
+
+    it('uses the person’s e-mail as the login, without typing it again', async () => {
+      const { fixture, http, el } = pickPerson(person);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const email = el.querySelector<HTMLInputElement>('input[name="email"]')!;
+      expect(email.disabled).toBe(true);
+      expect(email.value).toBe('jan@example.org');
+      expect(textOf(el)).toContain('Login = e-mail osoby');
+      setInput(el, 'input[name="password"]', 'Sekret123!');
+      setInput(el, 'input[name="confirmPassword"]', 'Sekret123!');
+      clickByText(el, 'Utwórz konto');
+
+      expect(http.expectOne(r => r.method === 'POST' && r.url === api('/api/users')).request.body)
+        .toEqual({ email: 'jan@example.org', password: 'Sekret123!', roles: [], personId: 'p1' });
+    });
+
+    it('asks for an e-mail when the person has none, and says it will be saved with the person', () => {
+      const { fixture, http, el } = pickPerson({ ...person, email: null });
+
+      expect(el.querySelector<HTMLInputElement>('input[name="email"]')!.disabled).toBe(false);
+      expect(textOf(el)).toContain('zapiszemy też przy osobie');
+      setInput(el, 'input[name="password"]', 'Sekret123!');
+      setInput(el, 'input[name="confirmPassword"]', 'Sekret123!');
+      clickByText(el, 'Utwórz konto');
+      fixture.detectChanges();
+
+      expect(textOf(el)).toContain('Podaj e-mail');
+      http.expectNone(r => r.method === 'POST');
+    });
+
     it('debounces the search: only the last query is sent and a blank query sends nothing', () => {
       vi.useFakeTimers();
       const { http, el } = boot();

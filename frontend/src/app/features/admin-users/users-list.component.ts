@@ -97,12 +97,20 @@ export class UsersListComponent implements OnInit {
 
   selectPerson(person: Person): void {
     this.selectedPerson.set(person);
+    // Login konta to e-mail osoby – nie wpisuje się go drugi raz.
+    if (person.email) this.newUser.email = person.email;
     this.personQuery = '';
     this.personResults.set([]);
     this.addingNewPerson.set(false);
   }
 
+  /** Login wynika z e-maila wybranej osoby (pole jest wtedy zablokowane). */
+  loginFromPerson(): boolean {
+    return !!this.selectedPerson()?.email;
+  }
+
   clearSelectedPerson(): void {
+    if (this.loginFromPerson()) this.newUser.email = '';
     this.selectedPerson.set(null);
   }
 
@@ -120,6 +128,13 @@ export class UsersListComponent implements OnInit {
 
   createUser(): void {
     this.createError.set(null);
+
+    const personEmail = this.selectedPerson()?.email;
+    if (personEmail) this.newUser.email = personEmail;
+    if (!this.newUser.email.trim()) {
+      this.createError.set('Podaj e-mail – będzie loginem konta.');
+      return;
+    }
 
     if (this.newUser.password !== this.confirmPassword) {
       this.createError.set('Podane hasła różnią się od siebie.');
