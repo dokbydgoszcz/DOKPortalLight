@@ -86,3 +86,15 @@ Nadal otwarte (z przeglądu, nie zrobione): asynchroniczna wysyłka kampanii (C4
 - Sprawdzone: `Jwt__Key` 48 znaków, `Reminders__ApiKey` 20, `SeedAdmin__Password` nie testowe, PITR bazy 7 dni, TLS 1.2 na App Service i SQL, SQL wpuszcza tylko usługi Azure.
 - Konta: w produkcji są tylko dwa konta administratorów (`admin@dokportal.local`, `szymon.luczak@gmial.com` – literówka w domenie); katechistów zakłada się w ekranie Użytkownicy od razu z osobą.
 - Do zrobienia: test poczty (Mailing → „Wyślij wiadomość testową”), wzory pism, pozostałości przeglądu (sekcja 8).
+
+## 10. Domknięcie procesów (2026-10-13)
+
+Po przeglądzie kompletności procesów wdrożono (każde z testami i wpisem „Co nowego”):
+- **Hasła**: `POST /api/auth/change-password` (zalogowany), `forgot-password` i `reset-password` (anonimowe, limit jak logowanie). Hasło nadane przez administratora (nowe konto, „Resetuj hasło”) ustawia `AppUser.MustChangePassword` – frontend (guard na `canActivateChild`) prowadzi wtedy do `/konto/haslo`. Link w e-mailu: `{App:PublicUrl}/reset-hasla?uid=…&token=…`; bez `App__PublicUrl` bierze pierwszy `Cors__AllowedOrigins__0` (produkcja: adres SWA). Token Identity (DataProtection) ważny 2 h, jednorazowy. Komunikaty Identity po polsku (`PolishIdentityErrorDescriber`).
+- **Sprawa DOK – przerwanie**: `POST /api/dok-cases/{id}/interrupt` (data, powód) i `/resume`; `DokCase.InterruptedOn/InterruptionReason`. Przerwane nie liczą się na pulpicie, w przypomnieniach i w mailingu „Podopieczni DOK”; filtr `status=Active|Interrupted`.
+- **Budżet**: `PUT /api/budget/{id}`, `from`/`to` w liście, `GET /api/budget/summary` (saldo otwarcia), `GET /api/budget/export` (xlsx), załączniki `/api/budget/{id}/attachments` (`AttachmentOwnerType.BudgetEntry`). Walidacja: opis, kategoria, kwota > 0. Frontend: wspólny `BudgetLedgerComponent` dla SKŚP i DOK.
+- **Mailing**: `PUT /campaigns/{id}` (tylko szkic), grupy `Pastors`, `Formators`, `Custom` (tabela `MailingCampaignRecipients`), podgląd `GET /api/mailing/recipients?group=` i `/campaigns/{id}/recipients`, załączniki kampanii (łącznie ≤ 15 MB, wysyłane z każdą wiadomością; `IEmailSender` ma przeciążenie z `EmailAttachment`). Wysyłka nadal synchroniczna.
+- **Superwizje**: `GET /api/supervisions/groups` (grupy superwizyjne z ważnych misji + katechiści), imienna lista obecności (`SupervisionAttendees`); gdy lista jest podana, liczby obecnych/oczekiwanych liczą się z niej.
+- **Karta osoby**: `GET /api/people/{id}/overview` (People.View), sekcje tylko z uprawnieniem do danego ekranu; frontend `/people/:id` (klik w nazwisko na liście Osoby).
+
+Pozostałe z listy przeglądu (nieruszone): wymagane dokumenty per ścieżka, warunki ukończenia SKŚP, frekwencja SKŚP z zajęć, zajęcia grupowe bez właściciela, powiadomienia (nowa sprawa, proboszcz po skierowaniu, wygasające misje), RODO, wysyłka mailingu w tle, wyszukiwanie w listach wyboru osób (limit 200).
