@@ -126,6 +126,7 @@ var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
 builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddScoped<IPersonService, PersonService>();
+builder.Services.AddScoped<IPersonOverviewService, PersonOverviewService>();
 builder.Services.AddScoped<IParishService, ParishService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();

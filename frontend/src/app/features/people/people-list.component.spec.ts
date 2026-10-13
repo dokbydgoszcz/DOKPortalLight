@@ -218,7 +218,7 @@ describe('PeopleListComponent', () => {
       ctx.http.expectOne(r => r.method === 'DELETE')
         .flush({ title: 'Nie można usunąć osoby, bo: ma misje kanoniczne (1).' }, { status: 400, statusText: 'Bad Request' });
 
-      expect(toastMessages()).toContain('Nie można usunąć osoby, bo: ma misje kanoniczne (1).');
+      expect(toastMessages()).toContain('Nie można usunąć osoby, bo: ma misje kanoniczne (1). Powiązania zobaczysz na karcie osoby (kliknij nazwisko).');
     });
   });
 

@@ -16,8 +16,29 @@ namespace DokPortal.Api.Controllers;
 public class PeopleController : ControllerBase
 {
     private readonly IPersonService _personService;
+    private readonly IPersonOverviewService _overview;
+    private readonly IAuthorizationService _authorization;
 
-    public PeopleController(IPersonService personService) => _personService = personService;
+    public PeopleController(IPersonService personService, IPersonOverviewService overview, IAuthorizationService authorization)
+    {
+        _personService = personService;
+        _overview = overview;
+        _authorization = authorization;
+    }
+
+    /// <summary>Karta osoby: sprawy, misje, kandydatura, pisma, superwizje, konto – każda sekcja tylko z dostępem do jej ekranu.</summary>
+    [HttpGet("{id:guid}/overview")]
+    [HasPermission(Permissions.PeopleView)]
+    public async Task<ActionResult<PersonOverviewDto>> Overview(Guid id, CancellationToken ct)
+    {
+        async Task<bool> Can(string permission) => (await _authorization.AuthorizeAsync(User, null, permission)).Succeeded;
+        var access = new PersonOverviewAccess(
+            await Can(Permissions.DokCasesView), await Can(Permissions.CandidatesView), await Can(Permissions.MissionsView),
+            await Can(Permissions.ParishNeedsView), await Can(Permissions.FormatorsView), await Can(Permissions.DocumentsView),
+            await Can(Permissions.SupervisionsView), await Can(Permissions.UsersManage));
+        var overview = await _overview.GetAsync(id, access, ct);
+        return overview is null ? NotFound() : Ok(overview);
+    }
 
     /// <summary>
     /// Dane osób (kontakt, data urodzenia, uwagi) widzi rola z „Osoby — przeglądanie/zarządzanie” albo rola, która wybiera osoby

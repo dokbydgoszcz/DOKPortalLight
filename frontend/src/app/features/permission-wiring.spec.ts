@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import { Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
@@ -46,6 +47,7 @@ function render(component: Type<unknown>, granted: string[]) {
     providers: [
       provideHttpClient(),
       provideHttpClientTesting(),
+      provideRouter([]),
       { provide: AuthService, useValue: { hasPermission: (p: string) => granted.includes(p), roles: () => [] } }
     ]
   });

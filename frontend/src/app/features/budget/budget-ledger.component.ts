@@ -1,5 +1,4 @@
 import { Component, OnInit, computed, input, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { AttachmentsComponent } from '../../shared/attachments/attachments.component';
@@ -25,7 +24,7 @@ export const MONTHS = ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwi
 @Component({
   selector: 'app-budget-ledger',
   standalone: true,
-  imports: [HasPermissionDirective, FormsModule, AttachmentsComponent, DecimalPipe],
+  imports: [HasPermissionDirective, FormsModule, AttachmentsComponent],
   templateUrl: './budget-ledger.component.html'
 })
 export class BudgetLedgerComponent implements OnInit {

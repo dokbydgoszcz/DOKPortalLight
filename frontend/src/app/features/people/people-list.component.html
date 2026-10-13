@@ -24,7 +24,7 @@
       <tbody>
         @for (person of people(); track person.id) {
           <tr>
-            <td><b>{{ person.fullName }}</b></td>
+            <td><a class="person-link" [routerLink]="['/people', person.id]" title="Karta osoby – wszystkie powiązania"><b>{{ person.fullName }}</b></a></td>
             <td>{{ person.email }}<br /><span class="small-muted">{{ person.phone }}</span></td>
             <td>
               @for (fn of person.functions; track fn.id; let last = $last) {{{ functionText(fn) }}@if (!last) {, }}

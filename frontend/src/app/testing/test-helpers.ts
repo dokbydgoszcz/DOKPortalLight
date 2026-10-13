@@ -1,6 +1,7 @@
 import { Provider, Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { vi } from 'vitest';
 import { AuthService } from '../core/auth/auth.service';
@@ -30,7 +31,7 @@ export function setup<T>(
 ): { fixture: ComponentFixture<T>; http: HttpTestingController; el: HTMLElement } {
   TestBed.configureTestingModule({
     imports: [component],
-    providers: [provideHttpClient(), provideHttpClientTesting(), provideFakeAuth(options.granted), ...(options.providers ?? [])]
+    providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideFakeAuth(options.granted), ...(options.providers ?? [])]
   });
   const fixture = TestBed.createComponent(component);
   const http = TestBed.inject(HttpTestingController);

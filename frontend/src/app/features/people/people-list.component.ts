@@ -1,3 +1,4 @@
+import { RouterLink } from '@angular/router';
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, signal } from '@angular/core';
@@ -16,7 +17,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-people-list',
   standalone: true,
-  imports: [HasPermissionDirective, ExportButtonComponent, PersonFormComponent, PaginationComponent],
+  imports: [HasPermissionDirective, ExportButtonComponent, PersonFormComponent, PaginationComponent, RouterLink],
   templateUrl: './people-list.component.html',
   styleUrl: './people-list.component.scss'
 })
@@ -142,7 +143,8 @@ export class PeopleListComponent implements OnInit {
         this.toast.success('Osoba usunięta.');
         this.load();
       },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć osoby.'))
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć osoby.')
+        + (err?.status === 400 ? ' Powiązania zobaczysz na karcie osoby (kliknij nazwisko).' : ''))
     });
   }
 }

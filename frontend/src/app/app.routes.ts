@@ -32,6 +32,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/people/people-list.component').then(m => m.PeopleListComponent)
       },
       {
+        path: 'people/:id',
+        canActivate: [permissionGuard(Permissions.PeopleView)],
+        loadComponent: () => import('./features/people/person-card.component').then(m => m.PersonCardComponent)
+      },
+      {
         path: 'name-days',
         canActivate: [permissionGuard(Permissions.PeopleView)],
         loadComponent: () => import('./features/name-days/name-days-list.component').then(m => m.NameDaysListComponent)

@@ -7,15 +7,8 @@ import { PeopleService } from '../people/people.service';
 import { Person } from '../people/person.model';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
+import { ROLE_LABELS } from '../../shared/role-labels';
 
-const ROLE_LABELS: Record<string, string> = {
-  Administrator: 'Administrator',
-  Biskup: 'Biskup',
-  DyrektorSKSP: 'Dyrektor SKŚP',
-  DyrektorDOK: 'Dyrektor DOK',
-  Superwizor: 'Superwizor',
-  KatechistaProwadzacy: 'Katechista prowadzący'
-};
 
 @Component({
   selector: 'app-users-list',
