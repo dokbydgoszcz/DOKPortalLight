@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MailingComponent } from './mailing.component';
 import { MailingCampaign } from './mailing-campaign.model';
 import { ToastService } from '../../core/notifications/toast.service';
-import { api, clickByText, setInput, setSelect, setup, textOf } from '../../testing/test-helpers';
+import { api, clickByText, paged, setInput, setSelect, setup, textOf } from '../../testing/test-helpers';
 
 const draft: MailingCampaign = {
   id: 'c1', subject: 'Zaproszenie', body: 'Treść', group: 'DokCases', recipientCount: 12,
@@ -61,7 +61,7 @@ describe('MailingComponent', () => {
 
     it('offers every recipient group and posts the typed campaign', async () => {
       const ctx = await openForm();
-      expect(ctx.el.querySelectorAll('select[name="group"] option').length).toBe(4);
+      expect(ctx.el.querySelectorAll('select[name="group"] option').length).toBe(7);
 
       setInput(ctx.el, 'input[name="subject"]', 'Rekolekcje');
       setSelect(ctx.el, 'select[name="group"]', 'Missionaries');
@@ -312,6 +312,79 @@ describe('MailingComponent', () => {
       ctx.fixture.detectChanges();
 
       expect(textOf(ctx.el)).not.toContain('Wyślij wiadomość testową');
+    });
+  });
+  describe('drafts, recipients and attachments', () => {
+    it('edits a draft in place', async () => {
+      const ctx = boot();
+      clickByText(ctx.el, 'Edytuj');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      setInput(ctx.el, 'input[name="subject"]', 'Poprawiony temat');
+      ctx.fixture.detectChanges();
+      clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+
+      const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${url}/c1`);
+      expect(req.request.body.subject).toBe('Poprawiony temat');
+      expect(req.request.body.personIds).toBeUndefined();
+      req.flush({ ...draft, subject: 'Poprawiony temat' });
+      expect(toastMessages()).toContain('Zapisano zmiany w szkicu.');
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([draft]);
+    });
+
+    it('builds a custom list from a people search and sends the picked ids', async () => {
+      const ctx = boot();
+      clickByText(ctx.el, 'Nowa kampania');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      setSelect(ctx.el, 'select[name="group"]', 'Custom');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      setInput(ctx.el, 'input[name="personSearch"]', 'Ko');
+      ctx.http.expectOne(r => r.url === api('/api/people') && r.params.get('query') === 'Ko').flush(paged([
+        { id: 'p1', firstName: 'Jan', lastName: 'Kowalski', fullName: 'Jan Kowalski', email: 'jan@example.org' },
+        { id: 'p2', firstName: 'Ewa', lastName: 'Kot', fullName: 'Ewa Kot', email: null }
+      ]));
+      ctx.fixture.detectChanges();
+      clickByText(ctx.el, 'Dodaj');
+      ctx.fixture.detectChanges();
+      setInput(ctx.el, 'input[name="subject"]', 'Spotkanie');
+      setInput(ctx.el, 'textarea[name="body"]', 'Zapraszamy.');
+      ctx.fixture.detectChanges();
+
+      clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+
+      const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
+      expect(req.request.body).toEqual({ subject: 'Spotkanie', body: 'Zapraszamy.', group: 'Custom', personIds: ['p1'] });
+    });
+
+    it('previews the recipients of a group, flagging those without e-mail', async () => {
+      const ctx = boot();
+      clickByText(ctx.el, 'Nowa kampania');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      setSelect(ctx.el, 'select[name="group"]', 'Pastors');
+      ctx.fixture.detectChanges();
+
+      clickByText(ctx.el, 'Pokaż odbiorców');
+      ctx.http.expectOne(r => r.url === api('/api/mailing/recipients') && r.params.get('group') === 'Pastors').flush([
+        { personId: 'p1', fullName: 'ks. Jan Nowak', email: 'jan@example.org' },
+        { personId: 'p2', fullName: 'ks. Adam Bez', email: null }
+      ]);
+      ctx.fixture.detectChanges();
+
+      const text = textOf(ctx.el);
+      expect(text).toContain('Osób: 2, z adresem e-mail: 1');
+      expect(text).toContain('brak e-maila');
+    });
+
+    it('opens the attachments of a campaign', () => {
+      const ctx = boot([{ ...draft, attachments: [{ id: 'a1', fileName: 'plan.pdf', contentType: 'application/pdf', sizeBytes: 10, uploadedAtUtc: '2026-10-01T10:00:00Z' }] }]);
+      clickByText(ctx.el, 'Załączniki');
+      ctx.fixture.detectChanges();
+
+      expect(textOf(ctx.el)).toContain('plan.pdf');
+      expect(textOf(ctx.el)).toContain('łącznie do 15 MB');
     });
   });
 });

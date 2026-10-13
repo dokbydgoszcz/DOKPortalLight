@@ -1,0 +1,38 @@
+.campaign-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.picked {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.search-results {
+  margin-top: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+}
+
+.search-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.search-row + .search-row {
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+/* Podgląd odbiorców otwiera się nad formularzem kampanii. */
+.preview-overlay {
+  z-index: 1100;
+}

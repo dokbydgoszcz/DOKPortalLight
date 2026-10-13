@@ -25,7 +25,10 @@ public class SmtpEmailSender : IEmailSender
         _enableSsl = enableSsl;
     }
 
-    public async Task SendAsync(string toEmail, string subject, string body, CancellationToken ct)
+    public Task SendAsync(string toEmail, string subject, string body, CancellationToken ct) =>
+        SendAsync(toEmail, subject, body, Array.Empty<EmailAttachment>(), ct);
+
+    public async Task SendAsync(string toEmail, string subject, string body, IReadOnlyList<EmailAttachment> attachments, CancellationToken ct)
     {
         using var client = new SmtpClient(_host, _port)
         {
@@ -41,6 +44,10 @@ public class SmtpEmailSender : IEmailSender
             BodyEncoding = System.Text.Encoding.UTF8
         };
         message.To.Add(toEmail);
+        foreach (var file in attachments)
+        {
+            message.Attachments.Add(new System.Net.Mail.Attachment(new MemoryStream(file.Content), file.FileName, file.ContentType.Split(';')[0]));
+        }
         await client.SendMailAsync(message, ct);
     }
 }

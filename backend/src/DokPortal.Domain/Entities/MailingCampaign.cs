@@ -15,4 +15,16 @@ public class MailingCampaign
     public CampaignStatus Status { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? SentAtUtc { get; set; }
+    public DateTime? UpdatedAtUtc { get; set; }
+    /// <summary>Adresaci własnej listy (grupa <see cref="MailingGroup.Custom"/>).</summary>
+    public List<MailingCampaignRecipient> Recipients { get; set; } = new();
+}
+
+/// <summary>Osoba z własnej listy kampanii.</summary>
+public class MailingCampaignRecipient
+{
+    public Guid CampaignId { get; set; }
+    public MailingCampaign? Campaign { get; set; }
+    public Guid PersonId { get; set; }
+    public Person? Person { get; set; }
 }

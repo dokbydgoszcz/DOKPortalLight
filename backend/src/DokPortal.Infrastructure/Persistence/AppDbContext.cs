@@ -36,6 +36,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<GeneratedDocument> GeneratedDocuments => Set<GeneratedDocument>();
     public DbSet<MailingCampaign> MailingCampaigns => Set<MailingCampaign>();
+    public DbSet<MailingCampaignRecipient> MailingCampaignRecipients => Set<MailingCampaignRecipient>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
@@ -213,6 +214,13 @@ public class AppDbContext : IdentityDbContext<AppUser>
         {
             entity.Property(m => m.Subject).IsRequired().HasMaxLength(200);
             entity.Property(m => m.Body).IsRequired();
+            entity.HasMany(m => m.Recipients).WithOne(r => r.Campaign!).HasForeignKey(r => r.CampaignId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<MailingCampaignRecipient>(entity =>
+        {
+            entity.HasKey(r => new { r.CampaignId, r.PersonId });
+            entity.HasOne(r => r.Person).WithMany().HasForeignKey(r => r.PersonId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<AuditLogEntry>(entity =>

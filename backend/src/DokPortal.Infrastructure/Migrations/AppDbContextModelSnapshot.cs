@@ -598,9 +598,27 @@ namespace DokPortal.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.HasKey("Id");
 
                     b.ToTable("MailingCampaigns");
+                });
+
+            modelBuilder.Entity("DokPortal.Domain.Entities.MailingCampaignRecipient", b =>
+                {
+                    b.Property<Guid>("CampaignId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PersonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("CampaignId", "PersonId");
+
+                    b.HasIndex("PersonId");
+
+                    b.ToTable("MailingCampaignRecipients");
                 });
 
             modelBuilder.Entity("DokPortal.Domain.Entities.Meeting", b =>
@@ -1306,6 +1324,25 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Navigation("Person");
                 });
 
+            modelBuilder.Entity("DokPortal.Domain.Entities.MailingCampaignRecipient", b =>
+                {
+                    b.HasOne("DokPortal.Domain.Entities.MailingCampaign", "Campaign")
+                        .WithMany("Recipients")
+                        .HasForeignKey("CampaignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DokPortal.Domain.Entities.Person", "Person")
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Campaign");
+
+                    b.Navigation("Person");
+                });
+
             modelBuilder.Entity("DokPortal.Domain.Entities.Meeting", b =>
                 {
                     b.HasOne("DokPortal.Domain.Entities.Person", null)
@@ -1484,6 +1521,11 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Navigation("Events");
 
                     b.Navigation("Retreats");
+                });
+
+            modelBuilder.Entity("DokPortal.Domain.Entities.MailingCampaign", b =>
+                {
+                    b.Navigation("Recipients");
                 });
 
             modelBuilder.Entity("DokPortal.Domain.Entities.Meeting", b =>
