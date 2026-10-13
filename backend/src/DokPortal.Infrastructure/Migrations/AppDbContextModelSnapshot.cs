@@ -380,6 +380,12 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateOnly?>("InterruptedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("InterruptionReason")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateOnly?>("LastMeetingDate")
                         .HasColumnType("date");
 

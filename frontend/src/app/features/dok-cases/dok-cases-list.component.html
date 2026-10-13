@@ -14,7 +14,12 @@
 </div>
 
 <div class="card">
-  <div class="card-head">
+  <div class="card-head filters">
+    <select name="statusFilter" aria-label="Status sprawy" (change)="onStatusFilter($any($event.target).value)">
+      <option value="Active" [selected]="statusFilter() === 'Active'">W toku</option>
+      <option value="Interrupted" [selected]="statusFilter() === 'Interrupted'">Przerwane</option>
+      <option value="" [selected]="statusFilter() === ''">Wszystkie</option>
+    </select>
     <select name="stageFilter" [value]="stageFilter()" (change)="onStageFilter($any($event.target).value)">
       <option value="">Wszystkie etapy</option>
       @for (stage of stages; track stage) {
@@ -27,10 +32,18 @@
       <thead><tr><th>Podopieczny</th><th>Ścieżka</th><th>Etap</th><th>Katechista</th><th>Frekwencja</th><th>Parafia</th><th></th></tr></thead>
       <tbody>
         @for (dokCase of cases(); track dokCase.id) {
-          <tr>
+          <tr [class.interrupted]="dokCase.interruptedOn">
             <td><b>{{ dokCase.personFullName }}</b></td>
             <td>{{ pathLabel(dokCase.path) }}</td>
-            <td><span class="pill blue">{{ stageLabel(dokCase.stage) }}</span></td>
+            <td>
+              <span class="pill blue">{{ stageLabel(dokCase.stage) }}</span>
+              @if (dokCase.interruptedOn) {
+                <div class="interruption" [title]="dokCase.interruptionReason ?? ''">
+                  <span class="pill">Przerwana {{ dokCase.interruptedOn | date:'dd.MM.yyyy' }}</span>
+                  <span class="list-sub">{{ dokCase.interruptionReason }}</span>
+                </div>
+              }
+            </td>
             <td>{{ dokCase.catechistFullName }}</td>
             <td class="attendance">{{ attendanceLabel(dokCase) }}</td>
             <td>{{ dokCase.parishName }}</td>
@@ -38,7 +51,14 @@
               <span class="row-actions">
                 <span *appHasPermission="'PastoralNotes.View'" class="link" (click)="openNotes(dokCase)">Notatki</span>
                 <span *appHasPermission="'CaseDocuments.View'" class="link" (click)="openDocuments(dokCase)">Dokumenty</span>
-                <span *appHasPermission="'DokCases.Manage'" class="link" (click)="openEditForm(dokCase)">Edytuj</span>
+                @if (dokCase.interruptedOn) {
+                  <span *appHasPermission="'DokCases.Manage'" class="link" (click)="resumeCase(dokCase)">Wznów</span>
+                } @else {
+                  <span *appHasPermission="'DokCases.Manage'" class="link" (click)="openEditForm(dokCase)">Edytuj</span>
+                  @if (dokCase.stage !== 'Graduate') {
+                    <span *appHasPermission="'DokCases.Manage'" class="link" (click)="openInterrupt(dokCase)">Przerwij</span>
+                  }
+                }
                 <span class="link" (click)="openHistory(dokCase)">Historia</span>
                 <span *appHasPermission="'DokCases.Manage'" class="link" style="color:var(--danger)" (click)="deleteCase(dokCase)">Usuń</span>
               </span>
@@ -196,6 +216,34 @@
   </div>
 }
 
+@if (interruptCase(); as dokCase) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Przerwij formację — {{ dokCase.personFullName }}</h3>
+        <button class="close" (click)="closeInterrupt()">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="form-hint" style="margin:0 0 12px">
+          Sprawa zostaje w systemie razem z historią, notatkami, dokumentami i frekwencją, ale znika z listy „W toku”, z pulpitu,
+          przypomnień e-mail i mailingu. Można ją w każdej chwili wznowić na tym samym etapie.
+        </p>
+        <div class="form-grid">
+          <div class="field"><label for="interrupt-date">Data przerwania <span class="required">*</span></label>
+            <input id="interrupt-date" type="date" name="interruptDate" [(ngModel)]="interruptDate" /></div>
+          <div class="field full"><label for="interrupt-reason">Powód <span class="required">*</span></label>
+            <textarea id="interrupt-reason" name="interruptReason" maxlength="500" [(ngModel)]="interruptReason" placeholder="np. rezygnacja, przeprowadzka, choroba"></textarea></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        @if (!canInterrupt) { <span class="form-hint">Uzupełnij pola oznaczone *</span> }
+        <button class="btn ghost" (click)="closeInterrupt()">Anuluj</button>
+        <button class="btn primary" [disabled]="!canInterrupt" (click)="confirmInterrupt()">Przerwij formację</button>
+      </div>
+    </div>
+  </div>
+}
+
 @if (historyCase(); as dokCase) {
   <div class="overlay show">
     <div class="modal">
@@ -213,7 +261,7 @@
               </div>
             </div>
           } @empty {
-            <div class="empty">Brak zmian etapu, ścieżki, katechisty ani mentora.</div>
+            <div class="empty">Brak zmian etapu, ścieżki, katechisty, mentora ani przerwań.</div>
           }
         </div>
       </div>

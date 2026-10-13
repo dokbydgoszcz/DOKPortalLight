@@ -42,7 +42,7 @@ public class ReminderService : IReminderService
             join person in _db.People on dokCase.PersonId equals person.Id
             join catechist in _db.People on dokCase.CatechistPersonId equals catechist.Id
             where !doc.IsProvided && (doc.LastReminderSentAtUtc == null || doc.LastReminderSentAtUtc <= cutoff)
-            where dokCase.Stage != DokStage.Graduate
+            where dokCase.Stage != DokStage.Graduate && dokCase.InterruptedOn == null
             select new MissingDocumentRow(doc.Id, doc.Name, dokCase.Id, person.FirstName, person.LastName, catechist.Email)
         ).ToListAsync(ct);
 
@@ -148,7 +148,7 @@ public class ReminderService : IReminderService
             from meeting in _db.Meetings
             where meeting.DokCaseId != null && meeting.MeetingDate >= today && meeting.MeetingDate <= tomorrow && meeting.ReminderSentAtUtc == null
             join dokCase in _db.DokCases on meeting.DokCaseId equals dokCase.Id
-            where dokCase.Stage != DokStage.Graduate
+            where dokCase.Stage != DokStage.Graduate && dokCase.InterruptedOn == null
             join person in _db.People on dokCase.PersonId equals person.Id
             join catechist in _db.People on dokCase.CatechistPersonId equals catechist.Id
             select new UpcomingMeetingRow(meeting.Id, meeting.MeetingDate, person.FirstName, person.LastName, catechist.Email)

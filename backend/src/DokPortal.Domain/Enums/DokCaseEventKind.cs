@@ -6,5 +6,7 @@ public enum DokCaseEventKind
     StageChanged = 1,
     CatechistChanged = 2,
     MentorChanged = 3,
-    PathChanged = 4
+    PathChanged = 4,
+    Interrupted = 5,
+    Resumed = 6
 }

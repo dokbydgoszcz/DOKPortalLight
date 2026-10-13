@@ -16,6 +16,9 @@ public class DokCaseDto
     public string? MentorFullName { get; init; }
     public DateOnly? LastMeetingDate { get; init; }
     public DateTime? CompletedAtUtc { get; init; }
+    /// <summary>Data przerwania formacji (rezygnacja itp.); null = sprawa nie jest przerwana.</summary>
+    public DateOnly? InterruptedOn { get; init; }
+    public string? InterruptionReason { get; init; }
     /// <summary>Spotkania sprawy z zapisaną obecnością (obecny lub nieobecny).</summary>
     public int MeetingsRecorded { get; init; }
     /// <summary>Spośród zapisanych spotkań – te, na których podopieczny był obecny.</summary>

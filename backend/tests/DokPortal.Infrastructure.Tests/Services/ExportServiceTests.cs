@@ -61,7 +61,8 @@ public class ExportServiceTests
         var withMeeting = new DokCase
         {
             Id = Guid.NewGuid(), PersonId = person.Id, CatechistPersonId = catechist.Id,
-            Path = DokPath.Confirmation, Stage = DokStage.Evangelization
+            Path = DokPath.Confirmation, Stage = DokStage.Evangelization,
+            InterruptedOn = new DateOnly(2026, 10, 1), InterruptionReason = "Rezygnacja"
         };
         db.Meetings.Add(new Meeting { Id = Guid.NewGuid(), DokCaseId = withMeeting.Id, MeetingDate = new DateOnly(2026, 9, 30), CreatedAtUtc = DateTime.UtcNow });
         db.DokCases.AddRange(
@@ -81,14 +82,14 @@ public class ExportServiceTests
         var sheet = OpenSheet(await new ExportService(db).ExportDokCasesAsync(default));
 
         Assert.Equal(
-            new[] { "Osoba", "Ścieżka", "Etap", "Katechista", "Opiekun (mentor)", "Data ostatniego spotkania", "Data zakończenia" },
-            Row(sheet, 1, 7));
+            new[] { "Osoba", "Ścieżka", "Etap", "Katechista", "Opiekun (mentor)", "Data ostatniego spotkania", "Data zakończenia", "Przerwana" },
+            Row(sheet, 1, 8));
         Assert.Equal(
-            new[] { "Jan Kowalski", "Bierzmowanie", "Ewangelizacja", "Anna Nowak", "", "2026-09-30", "" },
-            Row(sheet, 2, 7));
+            new[] { "Jan Kowalski", "Bierzmowanie", "Ewangelizacja", "Anna Nowak", "", "2026-09-30", "", "2026-10-01: Rezygnacja" },
+            Row(sheet, 2, 8));
         Assert.Equal(
-            new[] { "Piotr Wiśniewski", "Powrót do Jedności", "Absolwent", "Anna Nowak", "Jan Kowalski", "", "2026-08-01" },
-            Row(sheet, 3, 7));
+            new[] { "Piotr Wiśniewski", "Powrót do Jedności", "Absolwent", "Anna Nowak", "Jan Kowalski", "", "2026-08-01", "" },
+            Row(sheet, 3, 8));
         Assert.Equal(3, sheet.LastRowUsed()!.RowNumber());
     }
 

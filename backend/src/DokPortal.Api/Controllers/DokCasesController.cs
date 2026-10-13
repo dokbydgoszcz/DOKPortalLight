@@ -23,10 +23,10 @@ public class DokCasesController : ControllerBase
     [HasPermission(Permissions.DokCasesView)]
     public async Task<ActionResult<PagedResult<DokCaseDto>>> Search(
         [FromQuery] DokPath? path, [FromQuery] int page = 1, [FromQuery] int pageSize = 100,
-        [FromQuery] DokStage? stage = null, CancellationToken ct = default)
+        [FromQuery] DokStage? stage = null, [FromQuery] DokCaseStatusFilter? status = null, CancellationToken ct = default)
     {
         (page, pageSize) = Paging.Normalize(page, pageSize);
-        return Ok(await _dokCaseService.SearchAsync(path, page, pageSize, ct, stage));
+        return Ok(await _dokCaseService.SearchAsync(path, page, pageSize, ct, stage, status));
     }
 
     [HttpGet("{id:guid}")]
@@ -57,6 +57,29 @@ public class DokCasesController : ControllerBase
         var updated = await _dokCaseService.UpdateAsync(id, request, ct, actor);
         return updated is null ? NotFound() : Ok(updated);
     }
+
+    /// <summary>Podopieczny zrezygnował lub przerwał formację.</summary>
+    [HttpPost("{id:guid}/interrupt")]
+    [Audit("InterruptDokCase")]
+    [HasPermission(Permissions.DokCasesManage)]
+    public async Task<ActionResult<DokCaseDto>> Interrupt(Guid id, InterruptDokCaseRequest request, CancellationToken ct)
+    {
+        var updated = await _dokCaseService.InterruptAsync(id, request.Date, request.Reason, ct, Actor());
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
+    [HttpPost("{id:guid}/resume")]
+    [Audit("ResumeDokCase")]
+    [HasPermission(Permissions.DokCasesManage)]
+    public async Task<ActionResult<DokCaseDto>> Resume(Guid id, CancellationToken ct)
+    {
+        var updated = await _dokCaseService.ResumeAsync(id, ct, Actor());
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
+    private DokCaseActor Actor() => new(
+        User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value,
+        User.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Email)?.Value ?? "");
 
     [HttpGet("{id:guid}/history")]
     [HasPermission(Permissions.DokCasesView)]

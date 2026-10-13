@@ -909,4 +909,56 @@ describe('DokCasesListComponent', () => {
       expect((ctx.el.querySelector('select[name="stage"]') as HTMLSelectElement).value).toBe('Prekatechumenate');
     });
   });
+  describe('interrupting and resuming', () => {
+    it('lists only cases in progress by default, and can switch to interrupted ones', () => {
+      const ctx = setup(DokCasesListComponent);
+      ctx.fixture.detectChanges();
+      const [list, stats] = ctx.http.match(r => r.url === casesUrl);
+      expect(list.request.params.get('status')).toBe('Active');
+      expect(stats.request.params.get('status')).toBe('Active');
+      list.flush(paged([dokCase]));
+      stats.flush(paged([dokCase]));
+      ctx.http.match(r => r.url === api('/api/people')).forEach(r => r.flush(paged(people)));
+      ctx.fixture.detectChanges();
+
+      setSelect(ctx.el, 'select[name="statusFilter"]', 'Interrupted');
+
+      ctx.http.expectOne(r => r.url === casesUrl && r.params.get('status') === 'Interrupted')
+        .flush(paged([{ ...dokCase, interruptedOn: '2026-10-11', interruptionReason: 'Rezygnacja' }]));
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Przerwana 11.10.2026');
+      expect(textOf(ctx.el)).toContain('Rezygnacja');
+      expect(textOf(ctx.el)).toContain('Wznów');
+      expect(textOf(ctx.el)).not.toContain('Edytuj');
+    });
+
+    it('interrupts a case with a date and a reason', async () => {
+      const ctx = boot([dokCase]);
+      clickByText(ctx.el, 'Przerwij');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      setInput(ctx.el, '#interrupt-reason', 'Przeprowadzka');
+      setInput(ctx.el, '#interrupt-date', '2026-10-10');
+      ctx.fixture.detectChanges();
+
+      clickByText(ctx.el, 'Przerwij formację', 'button');
+
+      const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === `${casesUrl}/1/interrupt`);
+      expect(req.request.body).toEqual({ date: '2026-10-10', reason: 'Przeprowadzka' });
+      req.flush({ ...dokCase, interruptedOn: '2026-10-10', interruptionReason: 'Przeprowadzka' });
+      flushReload(ctx, []);
+      expect(toastMessages().some(m => m.includes('Przerwano formację'))).toBe(true);
+    });
+
+    it('resumes an interrupted case after confirmation', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const ctx = boot([{ ...dokCase, interruptedOn: '2026-10-11', interruptionReason: 'Rezygnacja' } as typeof dokCase]);
+
+      clickByText(ctx.el, 'Wznów');
+
+      ctx.http.expectOne(r => r.method === 'POST' && r.url === `${casesUrl}/1/resume`).flush(dokCase);
+      flushReload(ctx);
+      expect(toastMessages()).toContain('Wznowiono formację: Jan Kowalski.');
+    });
+  });
 });

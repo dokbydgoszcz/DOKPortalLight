@@ -49,11 +49,12 @@ public class ExportService : IExportService
 
         return BuildWorkbook(
             "Podopieczni DOK",
-            new[] { "Osoba", "Ścieżka", "Etap", "Katechista", "Opiekun (mentor)", "Data ostatniego spotkania", "Data zakończenia" },
+            new[] { "Osoba", "Ścieżka", "Etap", "Katechista", "Opiekun (mentor)", "Data ostatniego spotkania", "Data zakończenia", "Przerwana" },
             cases.Select(c => new object?[]
             {
                 c.Person?.FullName, DokStages.Label(c.Path), DokStages.Label(c.Stage), c.CatechistPerson?.FullName,
-                c.MentorPerson?.FullName, FormatDate(lastMeetings.TryGetValue(c.Id, out var last) ? last : null), c.CompletedAtUtc?.ToString("yyyy-MM-dd")
+                c.MentorPerson?.FullName, FormatDate(lastMeetings.TryGetValue(c.Id, out var last) ? last : null), c.CompletedAtUtc?.ToString("yyyy-MM-dd"),
+                c.InterruptedOn is { } stopped ? $"{FormatDate(stopped)}: {c.InterruptionReason}" : null
             }));
     }
 

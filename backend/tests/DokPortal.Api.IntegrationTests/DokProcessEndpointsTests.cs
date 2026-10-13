@@ -88,4 +88,29 @@ public class DokProcessEndpointsTests : IntegrationTestBase
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
         Assert.Empty((await admin.GetFromJsonAsync<List<CaseDocumentDto>>($"/api/dok-cases/{caseId}/documents"))!);
     }
+    [Fact]
+    public async Task ACase_CanBeInterruptedWithAReason_FilteredAndResumed()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        var (caseId, _, _) = await SeedDokCaseAsync(admin);
+        var bishop = await CreateAuthenticatedClientAsync($"bp-{Guid.NewGuid():N}@example.org", "Sekret123!", "Biskup");
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var forbidden = await bishop.PostAsJsonAsync($"/api/dok-cases/{caseId}/interrupt", new { Date = today, Reason = "x" });
+        var noReason = await admin.PostAsJsonAsync($"/api/dok-cases/{caseId}/interrupt", new { Date = today, Reason = "" });
+        var interrupt = await admin.PostAsJsonAsync($"/api/dok-cases/{caseId}/interrupt", new { Date = today, Reason = "Rezygnacja" });
+        var interrupted = await interrupt.Content.ReadFromJsonAsync<DokCaseDto>(EnumJsonOptions);
+        var stopped = await admin.GetFromJsonAsync<DokPortal.Application.Common.PagedResult<DokCaseDto>>("/api/dok-cases?status=Interrupted&pageSize=200", EnumJsonOptions);
+        var resume = await admin.PostAsync($"/api/dok-cases/{caseId}/resume", null);
+        var again = await admin.PostAsync($"/api/dok-cases/{caseId}/resume", null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, noReason.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, interrupt.StatusCode);
+        Assert.Equal("Rezygnacja", interrupted!.InterruptionReason);
+        Assert.Contains(stopped!.Items, c => c.Id == caseId);
+        Assert.Equal(HttpStatusCode.OK, resume.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.PostAsync($"/api/dok-cases/{Guid.NewGuid()}/resume", null)).StatusCode);
+    }
 }

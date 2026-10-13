@@ -31,7 +31,8 @@ public class DashboardService : IDashboardService
         var windowEnd = today.AddDays(UpcomingMeetingsWindowDays);
 
         var scope = await _scope.GetAsync(ct);
-        var cases = _db.DokCases.ForScope(scope);
+        // Sprawy przerwane (rezygnacja) nie są bieżącą pracą – nie liczą się na pulpicie.
+        var cases = _db.DokCases.ForScope(scope).Where(c => c.InterruptedOn == null);
 
         var stageCounts = await cases
             .GroupBy(c => c.Stage)

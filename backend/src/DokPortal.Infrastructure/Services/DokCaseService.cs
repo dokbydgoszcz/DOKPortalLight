@@ -28,7 +28,7 @@ public class DokCaseService : IDokCaseService
         _logger = logger;
     }
 
-    public async Task<PagedResult<DokCaseDto>> SearchAsync(DokPath? path, int page, int pageSize, CancellationToken ct, DokStage? stage = null)
+    public async Task<PagedResult<DokCaseDto>> SearchAsync(DokPath? path, int page, int pageSize, CancellationToken ct, DokStage? stage = null, DokCaseStatusFilter? status = null)
     {
         var scope = await _scope.GetAsync(ct);
         var q = _db.DokCases.ForScope(scope)
@@ -46,6 +46,9 @@ public class DokCaseService : IDokCaseService
         {
             q = q.Where(c => c.Stage == stage.Value);
         }
+
+        if (status == DokCaseStatusFilter.Active) q = q.Where(c => c.InterruptedOn == null);
+        if (status == DokCaseStatusFilter.Interrupted) q = q.Where(c => c.InterruptedOn != null);
 
         var total = await q.CountAsync(ct);
         var entities = await q
@@ -160,10 +163,14 @@ public class DokCaseService : IDokCaseService
             throw new InvalidOperationException("Nie znaleziono katechisty prowadzącego.");
         if (request.MentorPersonId is { } mentorId && !await _db.People.AnyAsync(p => p.Id == mentorId, ct))
             throw new InvalidOperationException("Nie znaleziono mentora.");
-        if (request.Stage != DokStage.Graduate && await _db.DokCases.AnyAsync(
-                c => c.PersonId == request.PersonId && c.Path == request.Path && c.Id != selfId && c.Stage != DokStage.Graduate, ct))
+        if (request.Stage != DokStage.Graduate && await HasOtherCaseInProgressAsync(request.PersonId, request.Path, selfId, ct))
             throw new InvalidOperationException("Ta osoba ma już sprawę DOK w toku na tej ścieżce – zmień ją zamiast zakładać nową.");
     }
+
+    /// <summary>Inna trwająca sprawa osoby na tej ścieżce (nie absolwencka i nie przerwana).</summary>
+    private Task<bool> HasOtherCaseInProgressAsync(Guid personId, DokPath path, Guid? selfId, CancellationToken ct) =>
+        _db.DokCases.AnyAsync(c => c.PersonId == personId && c.Path == path && c.Id != selfId
+                                   && c.Stage != DokStage.Graduate && c.InterruptedOn == null, ct);
 
     public async Task<DokCaseDto> CreateAsync(CreateDokCaseRequest request, CancellationToken ct)
     {
@@ -195,6 +202,8 @@ public class DokCaseService : IDokCaseService
         if (dokCase is null) return null;
         if (request.PersonId != dokCase.PersonId)
             throw new InvalidOperationException("Nie można zmienić podopiecznego w istniejącej sprawie – załóż nową sprawę.");
+        if (dokCase.InterruptedOn is not null)
+            throw new InvalidOperationException("Sprawa jest przerwana – najpierw ją wznów, potem zmieniaj etap lub katechistę.");
         await ValidatePeopleAsync(request, id, ct);
 
         var now = _time.GetUtcNow().UtcDateTime;
@@ -241,6 +250,59 @@ public class DokCaseService : IDokCaseService
             await NotifyNewCatechistAsync(result!, previousCatechistId, ct);
         }
         return result;
+    }
+
+    private async Task AddEventAsync(Guid caseId, DokCaseEventKind kind, string? from, string? to, DateTime at, DokCaseActor? actor, CancellationToken ct)
+    {
+        var sequence = await _db.DokCaseEvents.Where(e => e.DokCaseId == caseId).Select(e => (int?)e.Sequence).MaxAsync(ct) ?? 0;
+        _db.DokCaseEvents.Add(new DokCaseEvent
+        {
+            Id = Guid.NewGuid(), DokCaseId = caseId, Kind = kind, FromValue = from, ToValue = to, AtUtc = at, Sequence = sequence + 1,
+            PerformedByUserId = actor?.UserId, PerformedByEmail = actor?.Email
+        });
+    }
+
+    public async Task<DokCaseDto?> InterruptAsync(Guid id, DateOnly date, string reason, CancellationToken ct, DokCaseActor? actor = null)
+    {
+        var scope = await _scope.GetAsync(ct);
+        var dokCase = await _db.DokCases.ForScope(scope).FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (dokCase is null) return null;
+        if (dokCase.Stage == DokStage.Graduate)
+            throw new InvalidOperationException("Sprawa absolwenta jest zakończona – nie można jej przerwać.");
+        if (dokCase.InterruptedOn is not null)
+            throw new InvalidOperationException("Sprawa jest już przerwana.");
+        if (date > _time.Today())
+            throw new InvalidOperationException("Data przerwania nie może być w przyszłości.");
+
+        var now = _time.GetUtcNow().UtcDateTime;
+        dokCase.InterruptedOn = date;
+        dokCase.InterruptionReason = reason.Trim();
+        dokCase.UpdatedAtUtc = now;
+        await AddEventAsync(id, DokCaseEventKind.Interrupted, null, $"{date:dd.MM.yyyy}|{dokCase.InterruptionReason}", now, actor, ct);
+        await _db.SaveChangesAsync(ct);
+        return await LoadAsync(_db.DokCases, id, ct);
+    }
+
+    public async Task<DokCaseDto?> ResumeAsync(Guid id, CancellationToken ct, DokCaseActor? actor = null)
+    {
+        var scope = await _scope.GetAsync(ct);
+        var dokCase = await _db.DokCases.ForScope(scope).FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (dokCase is null) return null;
+        if (dokCase.InterruptedOn is not { } interruptedOn)
+            throw new InvalidOperationException("Sprawa nie jest przerwana.");
+        if (await HasOtherCaseInProgressAsync(dokCase.PersonId, dokCase.Path, id, ct))
+            throw new InvalidOperationException("Podopieczny ma już inną sprawę w toku na tej ścieżce – nie można wznowić tej.");
+
+        // Przerwa nie liczy się do czasu na etapie (karta „Wymaga uwagi”).
+        var pausedDays = Math.Max(0, _time.Today().DayNumber - interruptedOn.DayNumber);
+        var now = _time.GetUtcNow().UtcDateTime;
+        dokCase.StageSinceUtc = dokCase.StageSinceUtc.AddDays(pausedDays);
+        dokCase.InterruptedOn = null;
+        dokCase.InterruptionReason = null;
+        dokCase.UpdatedAtUtc = now;
+        await AddEventAsync(id, DokCaseEventKind.Resumed, null, null, now, actor, ct);
+        await _db.SaveChangesAsync(ct);
+        return await LoadAsync(_db.DokCases, id, ct);
     }
 
     private async Task<string?> NameOfAsync(Guid? personId, CancellationToken ct) =>
@@ -307,10 +369,21 @@ public class DokCaseService : IDokCaseService
         return events.Select(e => new DokCaseEventDto
         {
             Kind = e.Kind.ToString(),
-            Description = $"{EventLabel(e.Kind)}: {e.FromValue ?? "—"} → {e.ToValue ?? "—"}",
+            Description = Describe(e),
             AtUtc = e.AtUtc,
             PerformedByEmail = e.PerformedByEmail
         }).ToList();
+    }
+
+    private static string Describe(DokCaseEvent e)
+    {
+        if (e.Kind == DokCaseEventKind.Resumed) return "Wznowiono";
+        if (e.Kind == DokCaseEventKind.Interrupted)
+        {
+            var parts = (e.ToValue ?? "").Split('|', 2);
+            return parts.Length == 2 ? $"Przerwano ({parts[0]}): {parts[1]}" : $"Przerwano: {e.ToValue}";
+        }
+        return $"{EventLabel(e.Kind)}: {e.FromValue ?? "—"} → {e.ToValue ?? "—"}";
     }
 
     private static string EventLabel(DokCaseEventKind kind) => kind switch
@@ -339,6 +412,7 @@ public class DokCaseService : IDokCaseService
         Id = d.Id, PersonId = d.PersonId, PersonFullName = d.PersonFullName, ParishName = d.ParishName, Path = d.Path, Stage = d.Stage,
         CatechistPersonId = d.CatechistPersonId, CatechistFullName = d.CatechistFullName, MentorPersonId = d.MentorPersonId,
         MentorFullName = d.MentorFullName, LastMeetingDate = last, CompletedAtUtc = d.CompletedAtUtc,
+        InterruptedOn = d.InterruptedOn, InterruptionReason = d.InterruptionReason,
         MeetingsRecorded = d.MeetingsRecorded, MeetingsAttended = d.MeetingsAttended
     };
 
@@ -356,6 +430,8 @@ public class DokCaseService : IDokCaseService
         MentorFullName = c.MentorPerson?.FullName,
         LastMeetingDate = c.LastMeetingDate,
         CompletedAtUtc = c.CompletedAtUtc,
+        InterruptedOn = c.InterruptedOn,
+        InterruptionReason = c.InterruptionReason,
         MeetingsRecorded = meetingsRecorded,
         MeetingsAttended = meetingsAttended
     };

@@ -16,7 +16,13 @@ export interface DokCase {
   completedAtUtc: string | null;
   meetingsRecorded: number;
   meetingsAttended: number;
+  /** Data przerwania formacji (rezygnacja itp.); brak = sprawa nie jest przerwana. */
+  interruptedOn?: string | null;
+  interruptionReason?: string | null;
 }
+
+/** Filtr listy: w toku, przerwane, wszystkie (''). */
+export type DokCaseStatusFilter = 'Active' | 'Interrupted' | '';
 
 export interface DokCaseEvent {
   kind: string;

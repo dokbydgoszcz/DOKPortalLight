@@ -34,7 +34,7 @@ public class MailingService : IMailingService
         MailingGroup.CandidatesSksp => await _db.Candidates.InFormation().CountAsync(ct),
         MailingGroup.Missionaries => await CatechistPersonIds().CountAsync(ct),
         MailingGroup.DokGraduates => await _db.DokCases.CountAsync(c => c.Stage == DokStage.Graduate, ct),
-        MailingGroup.DokCases => await _db.DokCases.CountAsync(ct),
+        MailingGroup.DokCases => await _db.DokCases.CountAsync(c => c.InterruptedOn == null, ct),
         _ => throw new ArgumentOutOfRangeException(nameof(group))
     };
 
@@ -153,7 +153,7 @@ public class MailingService : IMailingService
             MailingGroup.CandidatesSksp => _db.Candidates.InFormation().Select(c => c.PersonId),
             MailingGroup.Missionaries => CatechistPersonIds(),
             MailingGroup.DokGraduates => _db.DokCases.Where(c => c.Stage == DokStage.Graduate).Select(c => c.PersonId),
-            MailingGroup.DokCases => _db.DokCases.Select(c => c.PersonId),
+            MailingGroup.DokCases => _db.DokCases.Where(c => c.InterruptedOn == null).Select(c => c.PersonId),
             _ => throw new ArgumentOutOfRangeException(nameof(group))
         };
 

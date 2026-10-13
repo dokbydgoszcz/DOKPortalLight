@@ -5,7 +5,7 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { DokCasesService } from './dok-cases.service';
-import { DokCase, DokCaseEvent, DokCaseFormValue, DokStage } from './dok-case.model';
+import { DokCase, DokCaseEvent, DokCaseFormValue, DokCaseStatusFilter, DokStage } from './dok-case.model';
 import { AuthService } from '../../core/auth/auth.service';
 import { ALL_STAGES, DOK_PATH_LABELS, DOK_STAGE_LABELS, firstStageOf } from './dok-stages';
 import { DokCaseFormComponent } from './dok-case-form.component';
@@ -76,6 +76,12 @@ export class DokCasesListComponent implements OnInit {
 
   readonly stages = ALL_STAGES;
   readonly stageFilter = signal<DokStage | ''>('');
+  /** Domyślnie tylko sprawy w toku – przerwane są pod filtrem „Przerwane”. */
+  readonly statusFilter = signal<DokCaseStatusFilter>('Active');
+  /** Sprawa, dla której otwarto okno „Przerwij”. */
+  readonly interruptCase = signal<DokCase | null>(null);
+  interruptDate = '';
+  interruptReason = '';
   /** Adres z filtrem etapu (kafelek na pulpicie); bez routera (np. w testach komponentu) lista po prostu nie jest filtrowana. */
   private readonly route = inject(ActivatedRoute, { optional: true });
 
@@ -97,7 +103,7 @@ export class DokCasesListComponent implements OnInit {
   }
 
   load(): void {
-    this.dokCasesService.search(undefined, this.page(), this.pageSize, this.stageFilter() || undefined).subscribe({
+    this.dokCasesService.search(undefined, this.page(), this.pageSize, this.stageFilter() || undefined, this.statusFilter() || undefined).subscribe({
       next: result => {
         this.cases.set(result.items);
         this.totalCount.set(result.totalCount);
@@ -107,7 +113,7 @@ export class DokCasesListComponent implements OnInit {
   }
 
   private loadStats(): void {
-    this.dokCasesService.search(undefined, 1, 1000).subscribe(result => {
+    this.dokCasesService.search(undefined, 1, 1000, undefined, 'Active').subscribe(result => {
       const all = result.items;
       this.baptismCount.set(all.filter(c => c.path === 'BaptismCandidate').length);
       this.confirmationCount.set(all.filter(c => c.path === 'Confirmation').length);
@@ -120,6 +126,53 @@ export class DokCasesListComponent implements OnInit {
     this.stageFilter.set(value);
     this.page.set(1);
     this.load();
+  }
+
+  onStatusFilter(value: DokCaseStatusFilter): void {
+    this.statusFilter.set(value);
+    this.page.set(1);
+    this.load();
+  }
+
+  openInterrupt(dokCase: DokCase): void {
+    const now = new Date();
+    this.interruptDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    this.interruptReason = '';
+    this.interruptCase.set(dokCase);
+  }
+
+  closeInterrupt(): void {
+    this.interruptCase.set(null);
+  }
+
+  get canInterrupt(): boolean {
+    return !!this.interruptDate && !!this.interruptReason.trim();
+  }
+
+  confirmInterrupt(): void {
+    const dokCase = this.interruptCase();
+    if (!dokCase || !this.canInterrupt) return;
+    this.dokCasesService.interrupt(dokCase.id, this.interruptDate, this.interruptReason.trim()).subscribe({
+      next: () => {
+        this.interruptCase.set(null);
+        this.toast.success(`Przerwano formację: ${dokCase.personFullName}. Sprawę znajdziesz pod filtrem „Przerwane”.`);
+        this.load();
+        this.loadStats();
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się przerwać sprawy.'))
+    });
+  }
+
+  resumeCase(dokCase: DokCase): void {
+    if (!confirm(`Wznowić formację: ${dokCase.personFullName} (etap: ${this.stageLabel(dokCase.stage)})?`)) return;
+    this.dokCasesService.resume(dokCase.id).subscribe({
+      next: () => {
+        this.toast.success(`Wznowiono formację: ${dokCase.personFullName}.`);
+        this.load();
+        this.loadStats();
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się wznowić sprawy.'))
+    });
   }
 
   onPageChange(page: number): void {
@@ -187,7 +240,7 @@ export class DokCasesListComponent implements OnInit {
   }
 
   deleteCase(dokCase: DokCase): void {
-    if (!confirm(`Usunąć podopiecznego „${dokCase.personFullName}”?`)) return;
+    if (!confirm(`Usunąć sprawę „${dokCase.personFullName}” razem z historią, notatkami i frekwencją? Jeśli podopieczny zrezygnował, użyj raczej „Przerwij”.`)) return;
     this.dokCasesService.delete(dokCase.id).subscribe({
       next: () => {
         this.toast.success('Podopieczny usunięty.');

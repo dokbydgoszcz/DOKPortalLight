@@ -17,6 +17,9 @@ public class DokCase : ISoftDeletable
     public Person? MentorPerson { get; set; }
     public DateOnly? LastMeetingDate { get; set; }
     public DateTime? CompletedAtUtc { get; set; }
+    /// <summary>Podopieczny zrezygnował lub przerwał formację (data przerwania); null = sprawa w toku albo zakończona.</summary>
+    public DateOnly? InterruptedOn { get; set; }
+    public string? InterruptionReason { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
