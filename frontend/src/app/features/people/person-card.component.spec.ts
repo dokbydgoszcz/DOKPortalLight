@@ -175,4 +175,69 @@ describe('PersonCardComponent', () => {
     const { el } = boot(null, 404, { z: 'nieznane' });
     expect(el.querySelector('a.back')!.getAttribute('href')).toBe('/people');
   });
+
+  describe('personal data (RODO)', () => {
+    const empty = {
+      dokCases: null, casesLed: null, candidate: null, candidateVisible: false, missions: null, parishAssignments: null,
+      formatorFunctions: null, documents: null, supervisions: null, account: null, accountVisible: false
+    };
+    const toasts = () => TestBed.inject(ToastService).toasts().map(t => t.message);
+
+    it('downloads a copy of the data, and reports a failure', () => {
+      const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:dane');
+      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+      const ctx = boot({ person, ...empty });
+
+      clickByText(ctx.el, 'Pobierz kopię danych');
+      ctx.http.expectOne(api('/api/people/p1/rodo/export')).flush(new Blob(['{}']));
+      expect(create).toHaveBeenCalled();
+
+      clickByText(ctx.el, 'Pobierz kopię danych');
+      ctx.http.expectOne(api('/api/people/p1/rodo/export')).flush(new Blob(['x']), { status: 500, statusText: 'Error' });
+      expect(toasts()).toContain('Nie udało się przygotować kopii danych.');
+      vi.restoreAllMocks();
+    });
+
+    it('removes the data only after the surname is typed, then shows the anonymized card', () => {
+      const ctx = boot({ person, ...empty });
+      const ask = vi.spyOn(window, 'prompt');
+
+      ask.mockReturnValueOnce(null);
+      clickByText(ctx.el, 'Usuń dane osoby');
+      ask.mockReturnValueOnce('Kowalska');
+      clickByText(ctx.el, 'Usuń dane osoby');
+      expect(toasts()).toContain('Nazwisko się nie zgadza – dane nie zostały usunięte.');
+      ctx.http.expectNone(api('/api/people/p1/rodo/anonymize'));
+
+      ask.mockReturnValueOnce(' maj ');
+      clickByText(ctx.el, 'Usuń dane osoby');
+      ctx.http.expectOne(r => r.method === 'POST' && r.url === api('/api/people/p1/rodo/anonymize')).flush({ title: 'Ta osoba prowadzi 2 otwartych spraw DOK.' }, { status: 400, statusText: 'Bad Request' });
+      expect(toasts()).toContain('Ta osoba prowadzi 2 otwartych spraw DOK.');
+
+      ask.mockReturnValueOnce('Maj');
+      clickByText(ctx.el, 'Usuń dane osoby');
+      ctx.http.expectOne(r => r.method === 'POST' && r.url === api('/api/people/p1/rodo/anonymize')).flush(null);
+      expect(toasts()).toContain('Dane osoby zostały usunięte (zanonimizowane).');
+      ctx.http.expectOne(api('/api/people/p1/overview')).flush({
+        person: { ...person, firstName: 'Osoba', lastName: 'zanonimizowana 123456', fullName: 'Osoba zanonimizowana 123456', email: null, anonymizedAtUtc: '2026-10-14T10:00:00Z' },
+        ...empty
+      });
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Dane tej osoby usunięto (anonimizacja) 14.10.2026');
+      expect(ctx.el.textContent).not.toContain('Pobierz kopię danych');
+      vi.restoreAllMocks();
+    });
+
+    it('is not offered without the right to manage accounts', () => {
+      const ctx = setup(PersonCardComponent, {
+        granted: ['People.View'],
+        providers: [{ provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: 'p1' }), queryParamMap: convertToParamMap({}) } } }]
+      });
+      ctx.fixture.detectChanges();
+      ctx.http.expectOne(api('/api/people/p1/overview')).flush({ person, ...empty });
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).not.toContain('RODO');
+    });
+  });
 });

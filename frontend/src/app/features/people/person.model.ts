@@ -48,6 +48,8 @@ export interface Person {
   photoUpdatedAtUtc?: string | null;
   /** Osoba wypisała się z mailingu (link w stopce albo na prośbę). */
   mailingOptOutAtUtc?: string | null;
+  /** Dane osoby usunięto na jej żądanie (RODO). */
+  anonymizedAtUtc?: string | null;
 }
 
 export interface PagedResult<T> {

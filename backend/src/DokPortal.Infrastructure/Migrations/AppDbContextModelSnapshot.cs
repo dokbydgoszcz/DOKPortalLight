@@ -914,6 +914,9 @@ namespace DokPortal.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("AnonymizedAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateOnly?>("BirthDate")
                         .HasColumnType("date");
 

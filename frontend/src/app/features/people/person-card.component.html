@@ -169,6 +169,22 @@
       </section>
     }
 
+    @if (canGdpr) {
+      <section class="entry gdpr">
+        <h3>Dane osobowe (RODO)</h3>
+        @if (o.person.anonymizedAtUtc) {
+          <p class="none">Dane tej osoby usunięto (anonimizacja) {{ o.person.anonymizedAtUtc | date:'dd.MM.yyyy' }}.</p>
+        } @else {
+          <p class="gdpr-text">Na żądanie osoby możesz przekazać jej kopię danych zapisanych w portalu albo usunąć jej dane.
+            Usunięcie jest nieodwracalne: znikną imię i nazwisko, kontakt, uwagi, notatki, pliki, pisma i konto; zostaną tylko anonimowe liczby do statystyk.</p>
+          <div class="gdpr-actions">
+            <button class="btn ghost small" type="button" [disabled]="gdprBusy()" (click)="exportData()">Pobierz kopię danych</button>
+            <button class="btn danger small" type="button" [disabled]="gdprBusy()" (click)="anonymize()">Usuń dane osoby…</button>
+          </div>
+        }
+      </section>
+    }
+
     <footer class="record-foot">
       {{ links(o) ? 'Powiązań w systemie: ' + links(o) + '. Osobę można usunąć dopiero, gdy ich nie ma.' : 'Brak powiązań – osobę można usunąć w „Osoby”.' }}
     </footer>

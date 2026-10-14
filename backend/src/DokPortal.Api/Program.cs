@@ -128,6 +128,7 @@ builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddScoped<IPersonService, PersonService>();
 builder.Services.AddScoped<IPersonOverviewService, PersonOverviewService>();
 builder.Services.AddScoped<IPersonPhotoService, PersonPhotoService>();
+builder.Services.AddScoped<IGdprService, GdprService>();
 builder.Services.AddScoped<ICalendarFeedService, CalendarFeedService>();
 builder.Services.AddScoped<IParishService, ParishService>();
 builder.Services.AddScoped<IUserService, UserService>();

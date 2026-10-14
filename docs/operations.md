@@ -169,3 +169,12 @@ Raz na kwartał warto sprawdzić, że odtworzenie działa: `earliestRestoreDate`
 - **Sesje**: przy każdym żądaniu API sprawdza (z pamięcią 60 s), czy konto istnieje, nie jest wyłączone i czy token pasuje do jego znacznika bezpieczeństwa. Wyłączenie konta, zmiana ról albo hasła kończy otwarte sesje tego konta.
 - **Odejście katechisty**: Użytkownicy i role → „Wyłącz konto”. Jego sprawy DOK przekaż innemu katechiście (Podopieczni DOK → Edytuj → Katechista prowadzący); nowy katechista dostanie e-mail.
 - **Dziennik zmian**: zapisuje m.in. tworzenie, zmiany i usuwanie osób, spraw, kandydatów, misji, parafii, zapotrzebowań, spotkań, formatorów, superwizji, zasobów; wgrywanie i pobieranie plików; generowanie i pobieranie pism; wysyłkę kampanii; zmiany kont. Opis wpisu to nazwa obiektu i jego identyfikatory, np. `Metryka [caseId=…, id=…]`.
+
+## RODO – żądania osób
+
+Karta osoby (Osoby → nazwisko) ma dla administratora (uprawnienie „Użytkownicy”) sekcję **Dane osobowe (RODO)**:
+
+- **Pobierz kopię danych** (art. 15 i 20) – plik JSON ze wszystkim, co portal wie o osobie: dane i funkcje, konto, sprawy DOK z historią i dokumentami, spotkania, SKŚP, misje, skierowania, superwizje, pisma, otrzymany mailing. Treści notatek duszpasterskich nie ma w pliku (jest tylko ich liczba) – o ich udostępnieniu decyduje administrator. Pobranie zapisuje się w dzienniku zmian (`GdprExport`).
+- **Usuń dane osoby…** (art. 17) – anonimizacja po wpisaniu nazwiska: imię i nazwisko → „Osoba zanonimizowana …”, czyszczone są kontakt, data urodzenia, parafia, uwagi, zdjęcie, notatki funkcji, powody przerwania/zatrzymania, notatki duszpasterskie (z załącznikami), pliki dokumentów sprawy, notatki ze spotkań, pisma, skany misji i adresy w historii mailingu; konto zostaje wyłączone, a login zamieniony. Zostają liczby do statystyk (etapy spraw, obecności). Osoba prowadząca otwarte sprawy DOK musi je najpierw przekazać. Wpisy dziennika zmian zostają (rozliczalność). Operacja jest nieodwracalna.
+
+Przepływy danych poza portal, które warto opisać w klauzuli informacyjnej: mailing i powiadomienia idą przez Gmail (`dokbydgoszcz@gmail.com`), a kalendarz w telefonie (prywatny adres iCal) przekazuje imiona i nazwiska podopiecznych do Kalendarza Google/Outlooka katechisty. Hosting: Microsoft Azure (Polska Centralna).

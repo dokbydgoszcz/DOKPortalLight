@@ -10,6 +10,7 @@ import { serverMessage } from '../../shared/http-error';
 import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
 import { ToastService } from '../../core/notifications/toast.service';
+import { saveBlob } from '../../shared/attachments/attachment-rules';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
@@ -42,10 +43,17 @@ export class PersonCardComponent implements OnInit, OnDestroy {
   readonly functionText = functionText;
   readonly roleLabel = roleLabel;
   readonly canManage = this.auth.hasPermission(Permissions.PeopleManage);
+  /** Kopia danych i anonimizacja (RODO) – tylko administrator kont. */
+  readonly canGdpr = this.auth.hasPermission(Permissions.UsersManage);
+  readonly gdprBusy = signal(false);
   /** Powrót tam, skąd przyszliśmy (parametr „z” w adresie); domyślnie lista osób. */
   readonly back = BACK_TARGETS[this.route.snapshot.queryParamMap?.get('z') ?? ''] ?? BACK_TARGETS['osoby'];
 
   ngOnInit(): void {
+    this.load();
+  }
+
+  private load(): void {
     const id = this.route.snapshot.paramMap.get('id') ?? '';
     this.peopleService.overview(id).subscribe({
       next: overview => {
@@ -112,6 +120,49 @@ export class PersonCardComponent implements OnInit, OnDestroy {
         this.toast.success('Usunięto zdjęcie.');
       },
       error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć zdjęcia.'))
+    });
+  }
+
+  exportData(): void {
+    const o = this.overview();
+    if (!o) return;
+    this.gdprBusy.set(true);
+    this.peopleService.gdprExport(o.person.id).subscribe({
+      next: blob => {
+        this.gdprBusy.set(false);
+        saveBlob(blob, `dane-osobowe-${o.person.lastName}.json`);
+      },
+      error: err => {
+        this.gdprBusy.set(false);
+        this.toast.error(serverMessage(err, 'Nie udało się przygotować kopii danych.'));
+      }
+    });
+  }
+
+  anonymize(): void {
+    const o = this.overview();
+    if (!o) return;
+    const typed = prompt(
+      `Usunięcie danych (RODO) jest nieodwracalne: imię i nazwisko, kontakt, uwagi, notatki duszpasterskie, pliki, pisma i konto ` +
+      `zostaną trwale usunięte, zostaną tylko anonimowe liczby do statystyk. Najpierw pobierz kopię danych, jeśli osoba o nią prosi.\n\n` +
+      `Aby potwierdzić, wpisz nazwisko: ${o.person.lastName}`);
+    if (typed === null) return;
+    if (typed.trim().toLowerCase() !== o.person.lastName.trim().toLowerCase()) {
+      this.toast.error('Nazwisko się nie zgadza – dane nie zostały usunięte.');
+      return;
+    }
+    this.gdprBusy.set(true);
+    this.peopleService.anonymize(o.person.id).subscribe({
+      next: () => {
+        this.gdprBusy.set(false);
+        this.setPhoto(null);
+        this.toast.success('Dane osoby zostały usunięte (zanonimizowane).');
+        this.load();
+      },
+      error: err => {
+        this.gdprBusy.set(false);
+        this.toast.error(serverMessage(err, 'Nie udało się usunąć danych osoby.'));
+      }
     });
   }
 

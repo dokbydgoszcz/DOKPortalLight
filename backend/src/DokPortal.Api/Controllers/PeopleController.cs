@@ -19,9 +19,12 @@ public class PeopleController : ControllerBase
     private readonly IPersonOverviewService _overview;
     private readonly IAuthorizationService _authorization;
     private readonly IPersonPhotoService _photos;
+    private readonly IGdprService? _gdpr;
 
-    public PeopleController(IPersonService personService, IPersonOverviewService overview, IAuthorizationService authorization, IPersonPhotoService photos)
+    public PeopleController(IPersonService personService, IPersonOverviewService overview, IAuthorizationService authorization, IPersonPhotoService photos,
+        IGdprService? gdpr = null)
     {
+        _gdpr = gdpr;
         _photos = photos;
         _personService = personService;
         _overview = overview;
@@ -122,4 +125,27 @@ public class PeopleController : ControllerBase
         var deleted = await _personService.DeleteAsync(id, currentUserId, ct);
         return deleted ? NoContent() : NotFound();
     }
+
+    /// <summary>RODO: kopia wszystkich danych osoby (plik JSON do przekazania jej na żądanie).</summary>
+    [HttpGet("{id:guid}/rodo/export")]
+    [Audit("GdprExport")]
+    [HasPermission(Permissions.UsersManage)]
+    public async Task<IActionResult> GdprExport(Guid id, CancellationToken ct)
+    {
+        var data = await _gdpr!.ExportAsync(id, ct);
+        if (data is null) return NotFound();
+        var json = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(data, new System.Text.Json.JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        });
+        return File(json, "application/json", $"dane-osobowe-{id.ToString()[..8]}.json");
+    }
+
+    /// <summary>RODO: usunięcie danych osoby przez anonimizację (nieodwracalne).</summary>
+    [HttpPost("{id:guid}/rodo/anonymize")]
+    [Audit("AnonymizePerson")]
+    [HasPermission(Permissions.UsersManage)]
+    public async Task<IActionResult> Anonymize(Guid id, CancellationToken ct) =>
+        await _gdpr!.AnonymizeAsync(id, ct) ? NoContent() : NotFound();
 }

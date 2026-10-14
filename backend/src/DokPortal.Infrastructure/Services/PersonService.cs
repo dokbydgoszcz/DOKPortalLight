@@ -376,6 +376,7 @@ public class PersonService : IPersonService
         Notes = p.Notes,
         PhotoUpdatedAtUtc = p.PhotoBlobPath == null ? null : p.PhotoUpdatedAtUtc,
         MailingOptOutAtUtc = p.MailingOptOutAtUtc,
+        AnonymizedAtUtc = p.AnonymizedAtUtc,
         NameDayMonth = p.NameDayMonth,
         NameDayDay = p.NameDayDay,
         Functions = p.Functions

@@ -19,4 +19,6 @@ public class PersonDto
     public DateTime? PhotoUpdatedAtUtc { get; init; }
     /// <summary>Osoba wypisała się z mailingu (null = dostaje kampanie).</summary>
     public DateTime? MailingOptOutAtUtc { get; init; }
+    /// <summary>Dane osoby zanonimizowano (RODO).</summary>
+    public DateTime? AnonymizedAtUtc { get; init; }
 }

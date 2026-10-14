@@ -26,6 +26,16 @@ export class PeopleService {
   }
 
   /** Zdjęcie profilowe (z nagłówkiem autoryzacji, dlatego jako plik, nie adres obrazka). */
+  /** RODO: kopia wszystkich danych osoby (plik JSON). */
+  gdprExport(id: string) {
+    return this.http.get(`${this.baseUrl}/${id}/rodo/export`, { responseType: 'blob' });
+  }
+
+  /** RODO: nieodwracalne usunięcie danych osoby (anonimizacja). */
+  anonymize(id: string) {
+    return this.http.post<void>(`${this.baseUrl}/${id}/rodo/anonymize`, {});
+  }
+
   photo(id: string) {
     return this.http.get(`${this.baseUrl}/${id}/photo`, { responseType: 'blob' });
   }

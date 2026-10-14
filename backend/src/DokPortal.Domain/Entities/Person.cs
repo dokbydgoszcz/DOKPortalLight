@@ -28,4 +28,6 @@ public class Person : ISoftDeletable
     public DateTime? MailingOptOutAtUtc { get; set; }
     /// <summary>Tajny klucz linku „wypisz się” w stopce kampanii (tworzony przy pierwszej wysyłce).</summary>
     public string? MailingUnsubscribeToken { get; set; }
+    /// <summary>Dane osoby usunięto na jej żądanie (RODO) – zostały tylko powiązania statystyczne.</summary>
+    public DateTime? AnonymizedAtUtc { get; set; }
 }
