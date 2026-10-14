@@ -93,4 +93,40 @@ describe('MfaSettingsComponent', () => {
     expect(toasts()).toContain('Skopiowano kody zapasowe.');
     expect(toasts()).toContain('Nie udało się skopiować – przepisz kody ręcznie.');
   });
+
+  it('can be driven entirely with the buttons and fields', async () => {
+    const { fixture, auth, el } = setup();
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockResolvedValue(undefined) }, configurable: true });
+    const settle = async () => { for (let i = 0; i < 5; i++) { await new Promise(r => setTimeout(r, 10)); fixture.detectChanges(); } };
+    const button = (text: string) => Array.from(el.querySelectorAll('button')).find(b => b.textContent!.includes(text)) as HTMLButtonElement;
+    const type = (selector: string, value: string) => {
+      const input = el.querySelector(selector) as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    };
+    await settle();
+
+    button('Włącz weryfikację dwuetapową').click();
+    await settle();
+    button('Anuluj').click();
+    await settle();
+    button('Włącz weryfikację dwuetapową').click();
+    await settle();
+    type('#mfa-setup-code', '123456');
+    await settle();
+    auth.mfaStatus.mockResolvedValue({ enabled: true, recoveryCodesLeft: 2 });
+    button('Włącz weryfikację').click();
+    await settle();
+    expect(auth.enableMfa).toHaveBeenCalledWith('123456');
+    button('Kopiuj kody').click();
+    button('Zapisałem kody').click();
+    await settle();
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    type('#mfa-disable-code', '654321');
+    await settle();
+    button('Wyłącz weryfikację dwuetapową').click();
+    await settle();
+    expect(auth.disableMfa).toHaveBeenCalledWith('654321');
+  });
 });

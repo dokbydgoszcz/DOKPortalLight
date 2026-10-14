@@ -166,9 +166,13 @@ describe('ShellComponent', () => {
     const nudge = el().querySelector('.mfa-nudge')!;
     expect(nudge.textContent).toContain('Zabezpiecz swoje konto');
     expect(nudge.querySelector('a')!.getAttribute('href')).toBe('/konto/haslo#mfa');
+    (nudge.querySelector('a') as HTMLAnchorElement).click();
+    expect(dismissMfaSuggestion).toHaveBeenCalledTimes(1);
+    suggestMfa.set(true);
+    fixture.detectChanges();
     (Array.from(nudge.querySelectorAll('button')).find(b => b.textContent!.includes('Później')) as HTMLButtonElement).click();
     fixture.detectChanges();
-    expect(dismissMfaSuggestion).toHaveBeenCalled();
+    expect(dismissMfaSuggestion).toHaveBeenCalledTimes(2);
     expect(el().querySelector('.mfa-nudge')).toBeNull();
   });
 

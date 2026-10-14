@@ -76,4 +76,25 @@ describe('CalendarFeedComponent', () => {
     expect(write).toHaveBeenCalledWith(address);
     expect(toasts()).toEqual(expect.arrayContaining(['Skopiowano adres kalendarza.', 'Nie udało się skopiować – zaznacz adres i skopiuj ręcznie.']));
   });
+
+  it('works from the buttons', async () => {
+    const ctx = await boot(address);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockResolvedValue(undefined) }, configurable: true });
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const button = (text: string) => Array.from(ctx.el.querySelectorAll('button')).find(b => b.textContent!.includes(text)) as HTMLButtonElement;
+    (ctx.el.querySelector('input') as HTMLInputElement).dispatchEvent(new Event('focus'));
+    button('Kopiuj').click();
+    button('Utwórz nowy adres').click();
+    button('Wyłącz').click();
+    await ctx.fixture.whenStable();
+    ctx.http.match(() => true).forEach(r => r.flush({ url: null }));
+    await ctx.fixture.whenStable();
+    ctx.fixture.detectChanges();
+    const create = button('Utwórz adres kalendarza');
+    if (create) {
+      create.click();
+      ctx.http.match(() => true).forEach(r => r.flush({ url: address }));
+    }
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(address);
+  });
 });
