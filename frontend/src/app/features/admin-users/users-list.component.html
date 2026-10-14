@@ -10,10 +10,10 @@
       <tbody>
         @for (user of users(); track user.id) {
           <tr>
-            <td class="login-cell">{{ user.email }}</td>
+            <td class="login-cell"><button class="login-link" type="button" title="Edytuj konto" (click)="openEdit(user)">{{ user.email }}</button></td>
             <td>
               @if (user.personId) {
-                <a class="person-link" [routerLink]="['/people', user.personId]" title="Karta osoby">{{ user.personFullName }}</a>
+                <a class="person-link" [routerLink]="['/people', user.personId]" [queryParams]="{ z: 'uzytkownicy' }" title="Karta osoby">{{ user.personFullName }}</a>
               } @else {
                 <span class="small-muted">—</span>
                 @if (user.roles.includes('KatechistaProwadzacy')) {

@@ -63,7 +63,7 @@ describe('UsersListComponent', () => {
       expect(text).toContain('MFA');
       expect(text).toContain('wyłączone');
       expect(text).toContain('Katechista bez osoby nie zobaczy podopiecznych.');
-      expect(el.querySelector('a.person-link')?.getAttribute('href')).toBe('/people/p9');
+      expect(el.querySelector('a.person-link')?.getAttribute('href')).toBe('/people/p9?z=uzytkownicy');
       expect(el.querySelectorAll('tbody input').length).toBe(0);
     });
 
@@ -482,5 +482,12 @@ describe('UsersListComponent', () => {
       expect(toasts().map(t => t.message)).toContain('Konto włączone.');
       expect(confirmSpy).toHaveBeenCalledTimes(2);
     });
+  });
+  it('opens the edit window when the login is clicked', () => {
+    const ctx = boot([linkedUser]);
+    clickByText(ctx.el, 'anna@example.org', 'button.login-link');
+    ctx.fixture.detectChanges();
+    expect(ctx.fixture.componentInstance.editing()?.id).toBe('u2');
+    expect(textOf(ctx.el)).toContain('Edytuj konto');
   });
 });

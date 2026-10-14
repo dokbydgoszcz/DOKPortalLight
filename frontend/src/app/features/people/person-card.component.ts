@@ -14,6 +14,12 @@ import { ToastService } from '../../core/notifications/toast.service';
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 /** Kartoteka osoby: zdjęcie i dane, a pod nimi wszystkie powiązania (sprawy, misje, kandydatura, pisma, superwizje, konto). */
+/** Strony, z których można wejść na kartę osoby (parametr „z”), i powrót do nich. */
+export const BACK_TARGETS: Record<string, { url: string; label: string }> = {
+  osoby: { url: '/people', label: 'Wróć do listy osób' },
+  uzytkownicy: { url: '/admin/users', label: 'Wróć do użytkowników i ról' }
+};
+
 @Component({
   selector: 'app-person-card',
   standalone: true,
@@ -35,6 +41,8 @@ export class PersonCardComponent implements OnInit, OnDestroy {
   readonly functionText = functionText;
   readonly roleLabel = roleLabel;
   readonly canManage = this.auth.hasPermission(Permissions.PeopleManage);
+  /** Powrót tam, skąd przyszliśmy (parametr „z” w adresie); domyślnie lista osób. */
+  readonly back = BACK_TARGETS[this.route.snapshot.queryParamMap?.get('z') ?? ''] ?? BACK_TARGETS['osoby'];
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') ?? '';

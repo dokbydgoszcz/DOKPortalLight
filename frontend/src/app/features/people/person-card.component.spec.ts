@@ -11,9 +11,9 @@ const person = {
   functions: [{ id: 'f1', type: 'Catechist', parishId: null, parishName: null, institutedOn: null, notes: null }]
 };
 
-function boot(body: object | null, status = 200) {
+function boot(body: object | null, status = 200, query: Record<string, string> = {}) {
   const ctx = setup(PersonCardComponent, {
-    providers: [{ provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: 'p1' }) } } }]
+    providers: [{ provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: 'p1' }), queryParamMap: convertToParamMap(query) } } }]
   });
   ctx.fixture.detectChanges();
   const req = ctx.http.expectOne(api('/api/people/p1/overview'));
@@ -163,5 +163,16 @@ describe('PersonCardComponent', () => {
     ctx.http.expectOne(r => r.method === 'DELETE').flush('x', { status: 500, statusText: 'Error' });
     expect(TestBed.inject(ToastService).toasts().map(t => t.message)).toContain('Nie udało się usunąć zdjęcia.');
     ctx.fixture.destroy();
+  });
+  it('goes back to the page it was opened from', () => {
+    const fromUsers = boot(null, 404, { z: 'uzytkownicy' });
+    const back = fromUsers.el.querySelector('a.back')!;
+    expect(back.textContent).toContain('Wróć do użytkowników i ról');
+    expect(back.getAttribute('href')).toBe('/admin/users');
+  });
+
+  it('goes back to the list of people by default', () => {
+    const { el } = boot(null, 404, { z: 'nieznane' });
+    expect(el.querySelector('a.back')!.getAttribute('href')).toBe('/people');
   });
 });

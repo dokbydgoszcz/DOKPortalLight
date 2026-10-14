@@ -1,4 +1,4 @@
-<a class="back" routerLink="/people">← Wróć do listy osób</a>
+<a class="back" [routerLink]="back.url">← {{ back.label }}</a>
 
 @if (error()) {
   <div class="sheet"><p class="none">{{ error() }}</p></div>
