@@ -9,12 +9,7 @@
         <div class="form-grid">
           <div class="field">
             <label>Osoba <span class="required">*</span></label>
-            <select [(ngModel)]="value.personId" name="personId">
-              <option value="">— wybierz —</option>
-              @for (person of people; track person.id) {
-                <option [value]="person.id">{{ person.fullName }}</option>
-              }
-            </select>
+            <app-person-picker [(ngModel)]="value.personId" name="personId" />
           </div>
           <div class="field">
             <label>Rok formacji</label>

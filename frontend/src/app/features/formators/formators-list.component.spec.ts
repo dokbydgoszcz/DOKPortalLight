@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FormatorsListComponent } from './formators-list.component';
 import { Formator } from './formator.model';
 import { ToastService } from '../../core/notifications/toast.service';
-import { api, clickByText, paged, setInput, setSelect, setup, textOf } from '../../testing/test-helpers';
+import { api, clickByText, paged, setInput, setSelect, setup, textOf , choosePerson, pickedPerson } from '../../testing/test-helpers';
 
 const formator: Formator = {
   id: '1', personId: 'p1', personFullName: 'Joanna Lis', personEmail: 'j.lis@example.org', personPhone: null, function: 'Wykładowca'
@@ -18,7 +18,6 @@ function boot(items: Formator[] = [formator]) {
   const ctx = setup(FormatorsListComponent);
   ctx.fixture.detectChanges();
   ctx.http.expectOne(url).flush(items);
-  ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
   ctx.fixture.detectChanges();
   return ctx;
 }
@@ -37,15 +36,13 @@ describe('FormatorsListComponent', () => {
     expect(textOf(el)).toContain('Wykładowca');
   });
 
-  it('shows toasts when the formators or the people cannot be loaded', () => {
+  it('shows a toast when the formators cannot be loaded', () => {
     const { fixture, http } = setup(FormatorsListComponent);
     fixture.detectChanges();
 
     http.expectOne(url).flush('x', { status: 500, statusText: 'Server Error' });
-    http.expectOne(r => r.url === api('/api/people')).flush('x', { status: 500, statusText: 'Server Error' });
 
     expect(toastMessages()).toContain('Nie udało się wczytać listy formatorów.');
-    expect(toastMessages()).toContain('Nie udało się wczytać listy osób.');
   });
 
   describe('adding a formator', () => {
@@ -62,7 +59,7 @@ describe('FormatorsListComponent', () => {
       expect(textOf(ctx.el)).toContain('Dodaj formatora');
       expect(saveButton(ctx.el).disabled).toBe(true);
 
-      setSelect(ctx.el, 'select[name="personId"]', 'p2');
+      choosePerson(ctx.fixture, 'personId', 'p2');
       setInput(ctx.el, 'input[name="function"]', 'Moderator');
       ctx.fixture.detectChanges();
       expect(saveButton(ctx.el).disabled).toBe(false);
@@ -80,7 +77,7 @@ describe('FormatorsListComponent', () => {
 
     it('shows a toast when adding fails and closes the form on cancel', async () => {
       const ctx = await openForm();
-      setSelect(ctx.el, 'select[name="personId"]', 'p2');
+      choosePerson(ctx.fixture, 'personId', 'p2');
       ctx.fixture.detectChanges();
 
       saveButton(ctx.el).click();
@@ -106,7 +103,7 @@ describe('FormatorsListComponent', () => {
       const ctx = await openEdit();
       expect(textOf(ctx.el)).toContain('Edytuj formatora');
       expect((ctx.el.querySelector('input[name="function"]') as HTMLInputElement).value).toBe('Wykładowca');
-      expect((ctx.el.querySelector('select[name="personId"]') as HTMLSelectElement).value).toBe('p1');
+      expect(pickedPerson(ctx.fixture, 'personId')).toBe('p1');
 
       setInput(ctx.el, 'input[name="function"]', 'Referent');
       saveButton(ctx.el).click();

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CandidateFormComponent } from './candidate-form.component';
 import { CandidateFormValue } from './candidate.model';
-import { api, clickByText, paged, setInput, setSelect, setSelectByLabel, setup } from '../../testing/test-helpers';
+import { api, clickByText, paged, setInput, setSelect, setSelectByLabel, setup , choosePerson, pickedPerson } from '../../testing/test-helpers';
 
 const people = [
   { id: 'p1', firstName: 'Jan', lastName: 'Kowalski', fullName: 'Jan Kowalski', email: null, phone: null, birthDate: null, parishId: null, parishName: null, notes: null }
@@ -17,7 +17,6 @@ function render(open: boolean) {
   ctx.fixture.componentInstance.save.subscribe(v => saved.push(v));
   ctx.fixture.componentInstance.cancel.subscribe(() => cancelled++);
   ctx.fixture.detectChanges();
-  ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
   ctx.fixture.componentRef.setInput('open', open);
   ctx.fixture.detectChanges();
   return { ...ctx, saved, cancelled: () => cancelled };
@@ -38,7 +37,7 @@ describe('CandidateFormComponent', () => {
     await fixture.whenStable();
     expect(saveButton(el).disabled).toBe(true);
 
-    setSelect(el, 'select[name="personId"]', 'p1');
+    choosePerson(fixture, 'personId', 'p1');
     setSelectByLabel(el, 'select[name="year"]', 'III ROK');
     setInput(el, 'input[name="attendancePercentage"]', '90');
     setInput(el, 'input[name="opinionsCollected"]', '2');
@@ -76,7 +75,7 @@ describe('CandidateFormComponent', () => {
     it('emits only the years that were given a status', async () => {
       const { fixture, el, saved } = render(true);
       await fixture.whenStable();
-      setSelect(el, 'select[name="personId"]', 'p1');
+      choosePerson(fixture, 'personId', 'p1');
 
       setSelectByLabel(el, 'select[name="retreat1"]', 'zaliczone');
       setSelectByLabel(el, 'select[name="retreat3"]', 'oczekuje');
@@ -96,7 +95,6 @@ describe('CandidateFormComponent', () => {
       const saved: CandidateFormValue[] = [];
       ctx.fixture.componentInstance.save.subscribe(v => saved.push(v));
       ctx.fixture.detectChanges();
-      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
       ctx.fixture.componentRef.setInput('open', true);
       ctx.fixture.detectChanges();
       await ctx.fixture.whenStable();
@@ -118,7 +116,6 @@ describe('CandidateFormComponent', () => {
       ctx.fixture.componentRef.setInput('open', true);
       ctx.fixture.componentRef.setInput('value', { personId: 'p1', year: 1, opinionsCollected: 0, retreats: [{ year: 1, isCompleted: true }] } satisfies CandidateFormValue);
       ctx.fixture.detectChanges();
-      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
       await ctx.fixture.whenStable();
       expect(retreatSelect(ctx.el, 1).value).toBe('done');
 
@@ -133,7 +130,7 @@ describe('CandidateFormComponent', () => {
   it('does not send a leftover reason when the formation is not stopped', async () => {
     const { fixture, el, saved } = render(true);
     await fixture.whenStable();
-    setSelect(el, 'select[name="personId"]', 'p1');
+    choosePerson(fixture, 'personId', 'p1');
     fixture.componentInstance.value.formationStopNote = 'stara notatka';
     fixture.detectChanges();
 
@@ -147,7 +144,7 @@ describe('CandidateFormComponent', () => {
     it('ticking "Ukończył formację" moves the year to III and is sent with the form', async () => {
       const { fixture, el, saved } = render(true);
       await fixture.whenStable();
-      setSelect(el, 'select[name="personId"]', 'p1');
+      choosePerson(fixture, 'personId', 'p1');
 
       (el.querySelector('input[name="isFormationCompleted"]') as HTMLInputElement).click();
       fixture.detectChanges();
@@ -167,7 +164,6 @@ describe('CandidateFormComponent', () => {
         { kind: 'Enrolled', fromYear: null, toYear: 1, atUtc: '2026-10-07T10:00:00Z', performedBy: null }
       ]);
       ctx.fixture.detectChanges();
-      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
       ctx.fixture.componentRef.setInput('open', true);
       ctx.fixture.detectChanges();
       await ctx.fixture.whenStable();

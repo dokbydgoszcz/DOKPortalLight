@@ -4,14 +4,13 @@ import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FormatorsService } from './formators.service';
 import { Formator, FormatorFormValue } from './formator.model';
-import { PeopleService } from '../people/people.service';
-import { Person } from '../people/person.model';
+import { PersonPickerComponent } from '../../shared/person-picker/person-picker.component';
 import { ToastService } from '../../core/notifications/toast.service';
 
 @Component({
   selector: 'app-formators-list',
   standalone: true,
-  imports: [HasPermissionDirective, ExportButtonComponent, FormsModule],
+  imports: [HasPermissionDirective, ExportButtonComponent, FormsModule, PersonPickerComponent],
   templateUrl: './formators-list.component.html',
   styleUrl: './formators-list.component.scss'
 })
@@ -19,21 +18,15 @@ export class FormatorsListComponent implements OnInit {
   readonly formators = signal<Formator[]>([]);
   readonly isFormOpen = signal(false);
   readonly editingId = signal<string | null>(null);
-  people: Person[] = [];
   formValue: FormatorFormValue = { personId: '', function: '' };
 
   constructor(
     private readonly formatorsService: FormatorsService,
-    private readonly peopleService: PeopleService,
     private readonly toast: ToastService
   ) {}
 
   ngOnInit(): void {
     this.load();
-    this.peopleService.search('', 1, 200).subscribe({
-      next: result => (this.people = result.items),
-      error: () => this.toast.error('Nie udało się wczytać listy osób.')
-    });
   }
 
   load(): void {

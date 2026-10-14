@@ -9,12 +9,7 @@
         <div class="form-grid">
           <div class="field">
             <label>Osoba</label>
-            <select [(ngModel)]="value.personId" name="personId" [disabled]="!!editingName">
-              <option value="">— wybierz —</option>
-              @for (person of people; track person.id) {
-                <option [value]="person.id">{{ person.fullName }}</option>
-              }
-            </select>
+            <app-person-picker [(ngModel)]="value.personId" name="personId" [disabled]="!!editingName" />
           </div>
           <div class="field">
             <label>Ścieżka</label>
@@ -34,21 +29,11 @@
           </div>
           <div class="field">
             <label>Katechista prowadzący</label>
-            <select [(ngModel)]="value.catechistPersonId" name="catechistPersonId">
-              <option value="">— wybierz —</option>
-              @for (person of people; track person.id) {
-                <option [value]="person.id">{{ person.fullName }}</option>
-              }
-            </select>
+            <app-person-picker [(ngModel)]="value.catechistPersonId" name="catechistPersonId" />
           </div>
           <div class="field">
             <label>Mentor (opcjonalnie)</label>
-            <select [(ngModel)]="value.mentorPersonId" name="mentorPersonId">
-              <option value="">— brak —</option>
-              @for (person of people; track person.id) {
-                <option [value]="person.id">{{ person.fullName }}</option>
-              }
-            </select>
+            <app-person-picker [(ngModel)]="value.mentorPersonId" name="mentorPersonId" placeholder="Wpisz nazwisko (puste = brak mentora)…" />
           </div>
         </div>
       </div>

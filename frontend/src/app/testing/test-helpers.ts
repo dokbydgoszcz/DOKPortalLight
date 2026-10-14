@@ -89,3 +89,38 @@ export function setSelectByLabel(el: HTMLElement, selector: string, label: strin
 export function textOf(el: HTMLElement): string {
   return (el.textContent ?? '').replace(/\s+/g, ' ').trim();
 }
+
+/**
+ * Wybór osoby w <app-person-picker>: wpisuje imię i nazwisko, odpowiada na wyszukiwanie tą osobą i klika podpowiedź.
+ * `host` to selektor pickera, np. 'app-person-picker[name="personId"]'.
+ */
+export function pickPerson(
+  ctx: { fixture: ComponentFixture<unknown>; http: HttpTestingController; el: HTMLElement },
+  host: string,
+  person: { id: string; fullName: string; email?: string | null }
+): void {
+  setInput(ctx.el, `${host} input`, person.fullName);
+  ctx.http
+    .expectOne(r => r.url === api('/api/people') && r.params.get('query') === person.fullName)
+    .flush(paged([{ email: null, ...person }]));
+  ctx.fixture.detectChanges();
+  const option = ctx.el.querySelector<HTMLElement>(`${host} li[role="option"]`);
+  if (!option) throw new Error(`Brak podpowiedzi w ${host}`);
+  option.click();
+  ctx.fixture.detectChanges();
+}
+
+/** Ustawia osobę w <app-person-picker name="…"> bez wyszukiwania (gdy test nie sprawdza samego pickera). */
+export function choosePerson(fixture: ComponentFixture<unknown>, name: string, id: string, fullName = id): void {
+  const picker = fixture.debugElement.query(d => d.name === 'app-person-picker' && d.attributes['name'] === name);
+  if (!picker) throw new Error(`Brak wyboru osoby: ${name}`);
+  picker.componentInstance.choose({ id, fullName });
+  fixture.detectChanges();
+}
+
+/** Id osoby wybranej w <app-person-picker name="…">. */
+export function pickedPerson(fixture: ComponentFixture<unknown>, name: string): string {
+  const picker = fixture.debugElement.query(d => d.name === 'app-person-picker' && d.attributes['name'] === name);
+  if (!picker) throw new Error(`Brak wyboru osoby: ${name}`);
+  return picker.componentInstance.selectedId();
+}

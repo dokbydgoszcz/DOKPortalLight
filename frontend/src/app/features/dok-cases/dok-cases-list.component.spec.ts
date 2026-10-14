@@ -3,7 +3,7 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DokCasesListComponent } from './dok-cases-list.component';
 import { ToastService } from '../../core/notifications/toast.service';
-import { api, click, clickByText, paged, setInput, setSelect, setup, textOf } from '../../testing/test-helpers';
+import { api, click, clickByText, paged, pickPerson, setInput, setSelect, setup, textOf } from '../../testing/test-helpers';
 
 const dokCase = {
   id: '1', personId: 'p1', personFullName: 'Jan Kowalski', parishName: null, path: 'Confirmation', stage: 'Evangelization',
@@ -23,7 +23,6 @@ function boot(items = [dokCase, secondCase], totalCount = items.length) {
   const lists = ctx.http.match(r => r.url === casesUrl);
   expect(lists.length).toBe(2);
   lists.forEach(r => r.flush({ items, totalCount, page: 1, pageSize: 20 }));
-  ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
   ctx.fixture.detectChanges();
   return ctx;
 }
@@ -89,10 +88,9 @@ describe('DokCasesListComponent', () => {
       const save = () => Array.from(ctx.el.querySelectorAll<HTMLButtonElement>('.modal-foot button')).find(b => b.textContent!.includes('Zapisz'))!;
       expect(save().disabled).toBe(true);
 
-      setSelect(ctx.el, 'select[name="personId"]', 'p1');
-      ctx.fixture.detectChanges();
+      pickPerson(ctx, 'app-person-picker[name="personId"]', people[0]);
       expect(save().disabled).toBe(true);
-      setSelect(ctx.el, 'select[name="catechistPersonId"]', 'c1');
+      pickPerson(ctx, 'app-person-picker[name="catechistPersonId"]', people[1]);
       setSelect(ctx.el, 'select[name="path"]', 'Confirmation');
       ctx.fixture.detectChanges();
       await ctx.fixture.whenStable();
@@ -113,9 +111,8 @@ describe('DokCasesListComponent', () => {
 
     it('shows an error toast when saving fails and closes the form on cancel', async () => {
       const ctx = await openForm();
-      setSelect(ctx.el, 'select[name="personId"]', 'p1');
-      setSelect(ctx.el, 'select[name="catechistPersonId"]', 'c1');
-      ctx.fixture.detectChanges();
+      pickPerson(ctx, 'app-person-picker[name="personId"]', people[0]);
+      pickPerson(ctx, 'app-person-picker[name="catechistPersonId"]', people[1]);
 
       clickByText(ctx.el, 'Zapisz', '.modal-foot button');
       ctx.http.expectOne(r => r.method === 'POST').flush('x', { status: 400, statusText: 'Bad Request' });
@@ -136,11 +133,12 @@ describe('DokCasesListComponent', () => {
       const ctx = setup(DokCasesListComponent);
       ctx.fixture.detectChanges();
       ctx.http.match(r => r.url === casesUrl).forEach(r => r.flush(paged([dokCase, secondCase])));
-      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged([...people, mentor]));
       ctx.fixture.detectChanges();
       editLink(ctx.el).click();
       ctx.fixture.detectChanges();
       await ctx.fixture.whenStable();
+      ctx.http.expectOne(api('/api/people/p1')).flush(people[0]);
+      ctx.http.expectOne(api('/api/people/c1')).flush(people[1]);
       ctx.fixture.detectChanges();
       return ctx;
     }
@@ -149,16 +147,15 @@ describe('DokCasesListComponent', () => {
       const ctx = await openEdit();
 
       expect(textOf(ctx.el)).toContain('Edytuj sprawę — Jan Kowalski');
-      expect(ctx.el.querySelector<HTMLSelectElement>('select[name="personId"]')!.disabled).toBe(true);
+      expect(ctx.el.querySelector<HTMLInputElement>('app-person-picker[name="personId"] input')!.disabled).toBe(true);
       expect(ctx.el.querySelector<HTMLSelectElement>('select[name="stage"]')!.value).toBe('Evangelization');
-      expect(ctx.el.querySelector<HTMLSelectElement>('select[name="catechistPersonId"]')!.value).toBe('c1');
+      expect(ctx.el.querySelector<HTMLInputElement>('app-person-picker[name="catechistPersonId"] input')!.value).toBe('Anna Maj');
     });
 
     it('saves the new stage, catechist and mentor with PUT and reloads', async () => {
       const ctx = await openEdit();
       setSelect(ctx.el, 'select[name="stage"]', 'Graduate');
-      setSelect(ctx.el, 'select[name="mentorPersonId"]', 'm1');
-      ctx.fixture.detectChanges();
+      pickPerson(ctx, 'app-person-picker[name="mentorPersonId"]', mentor);
 
       clickByText(ctx.el, 'Zapisz', '.modal-foot button');
       const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${casesUrl}/1`);
@@ -188,7 +185,8 @@ describe('DokCasesListComponent', () => {
       await ctx.fixture.whenStable();
 
       expect(textOf(ctx.el)).toContain('Nowy podopieczny DOK');
-      expect(ctx.el.querySelector<HTMLSelectElement>('select[name="personId"]')!.disabled).toBe(false);
+      ctx.fixture.detectChanges();
+      expect(ctx.el.querySelector<HTMLInputElement>('app-person-picker[name="personId"] input')!.disabled).toBe(false);
     });
 
     it('shows the history of changes with their authors', async () => {
@@ -232,8 +230,7 @@ describe('DokCasesListComponent', () => {
       ctx.fixture.detectChanges();
       const list = ctx.http.expectOne(r => r.url === casesUrl && r.params.get('pageSize') === '20');
       ctx.http.expectOne(r => r.url === casesUrl && r.params.get('pageSize') === '1000').flush(paged([dokCase, secondCase]));
-      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
-      return { ...ctx, list };
+          return { ...ctx, list };
     }
 
     it('starts filtered when the address carries a stage (from a dashboard tile)', () => {
@@ -514,8 +511,7 @@ describe('DokCasesListComponent', () => {
         const ctx = setup(DokCasesListComponent, { granted: ['PastoralNotes.View'] });
         ctx.fixture.detectChanges();
         ctx.http.match(r => r.url === casesUrl).forEach(r => r.flush({ items: [dokCase], totalCount: 1, page: 1, pageSize: 20 }));
-        ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
-        ctx.fixture.detectChanges();
+              ctx.fixture.detectChanges();
         clickByText(ctx.el, 'Notatki', '.link');
         ctx.http.expectOne(notesUrl).flush([noteWithFile]);
         ctx.fixture.detectChanges();
@@ -841,8 +837,7 @@ describe('DokCasesListComponent', () => {
         const ctx = setup(DokCasesListComponent, { granted: ['CaseDocuments.View'] });
         ctx.fixture.detectChanges();
         ctx.http.match(r => r.url === casesUrl).forEach(r => r.flush({ items: [dokCase], totalCount: 1, page: 1, pageSize: 20 }));
-        ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
-        ctx.fixture.detectChanges();
+              ctx.fixture.detectChanges();
         clickByText(ctx.el, 'Dokumenty', '.link');
         ctx.http.expectOne(docsUrl).flush([provided]);
         ctx.fixture.detectChanges();

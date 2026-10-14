@@ -4,14 +4,13 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DocumentsService } from './documents.service';
 import { DOCUMENT_TEMPLATE_LABELS, GeneratedDocument, GenerateDocumentValue, OFFERED_TEMPLATES } from './generated-document.model';
-import { PeopleService } from '../people/people.service';
-import { Person } from '../people/person.model';
+import { PersonPickerComponent } from '../../shared/person-picker/person-picker.component';
 import { ToastService } from '../../core/notifications/toast.service';
 
 @Component({
   selector: 'app-documents',
   standalone: true,
-  imports: [HasPermissionDirective, FormsModule, DatePipe],
+  imports: [HasPermissionDirective, FormsModule, DatePipe, PersonPickerComponent],
   templateUrl: './documents.component.html',
   styleUrl: './documents.component.scss'
 })
@@ -19,18 +18,15 @@ export class DocumentsComponent implements OnInit {
   readonly history = signal<GeneratedDocument[]>([]);
   readonly templateLabels = DOCUMENT_TEMPLATE_LABELS;
   readonly templates = OFFERED_TEMPLATES;
-  people: Person[] = [];
   form: GenerateDocumentValue = { template: 'LetterToBishop', personId: '', additionalNotes: '' };
 
   constructor(
     private readonly documentsService: DocumentsService,
-    private readonly peopleService: PeopleService,
     private readonly toast: ToastService
   ) {}
 
   ngOnInit(): void {
     this.load();
-    this.peopleService.search('', 1, 200).subscribe(result => (this.people = result.items));
   }
 
   load(): void {

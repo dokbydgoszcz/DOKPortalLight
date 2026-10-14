@@ -1,8 +1,7 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
-import { PeopleService } from '../people/people.service';
-import { Person } from '../people/person.model';
+import { PersonPickerComponent } from '../../shared/person-picker/person-picker.component';
 import { CandidateFormValue, CandidateFormationEvent, CandidateRetreat, eventText, romanYear } from './candidate.model';
 
 export type RetreatStatus = '' | 'pending' | 'done';
@@ -14,11 +13,11 @@ const emptyStatuses = (): Record<number, RetreatStatus> => ({ 1: '', 2: '', 3: '
 @Component({
   selector: 'app-candidate-form',
   standalone: true,
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, PersonPickerComponent],
   templateUrl: './candidate-form.component.html',
   styleUrl: './candidate-form.component.scss'
 })
-export class CandidateFormComponent implements OnInit {
+export class CandidateFormComponent {
   @Input() open = false;
   @Input() editing = false;
   /** Historia zmian roku edytowanego kandydata (od najnowszej). */
@@ -39,15 +38,8 @@ export class CandidateFormComponent implements OnInit {
   readonly years = YEARS;
   readonly romanYear = romanYear;
   readonly eventText = eventText;
-  people: Person[] = [];
   retreatStatus: Record<number, RetreatStatus> = emptyStatuses();
   private _value: CandidateFormValue = { personId: '', year: 1, opinionsCollected: 0, retreats: [] };
-
-  constructor(private readonly peopleService: PeopleService) {}
-
-  ngOnInit(): void {
-    this.peopleService.search('', 1, 200).subscribe(result => (this.people = result.items));
-  }
 
   /** Wymagana osoba, a przy zatrzymanej formacji także powód. */
   get canSave(): boolean {

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ParishBoardComponent } from './parish-board.component';
 import { ParishNeed } from './parish-need.model';
 import { ToastService } from '../../core/notifications/toast.service';
-import { api, clickByText, paged, setInput, setSelect, setup, textOf } from '../../testing/test-helpers';
+import { api, clickByText, paged, setInput, setSelect, setup, textOf , choosePerson } from '../../testing/test-helpers';
 
 const openNeed: ParishNeed = {
   id: 'n1', parishId: 'pa1', parishName: 'św. Mateusza', description: 'Potrzebny katechista', status: 'Open',
@@ -29,7 +29,6 @@ function boot(needs: ParishNeed[] = [openNeed, assignedNeed]) {
   ctx.fixture.detectChanges();
   ctx.http.expectOne(url).flush(needs);
   ctx.http.expectOne(api('/api/parishes')).flush(parishes);
-  ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
   ctx.fixture.detectChanges();
   return ctx;
 }
@@ -97,18 +96,16 @@ describe('ParishBoardComponent', () => {
     expect(textOf(el)).toContain('Brak zapotrzebowań.');
   });
 
-  it('shows toasts when needs, parishes or people cannot be loaded', () => {
+  it('shows toasts when needs or parishes cannot be loaded', () => {
     const { fixture, http } = setup(ParishBoardComponent);
     fixture.detectChanges();
 
     http.expectOne(url).flush('x', { status: 500, statusText: 'Server Error' });
     http.expectOne(api('/api/parishes')).flush('x', { status: 500, statusText: 'Server Error' });
-    http.expectOne(r => r.url === api('/api/people')).flush('x', { status: 500, statusText: 'Server Error' });
 
     expect(toastMessages()).toEqual(expect.arrayContaining([
       'Nie udało się wczytać zapotrzebowań parafii.',
-      'Nie udało się wczytać listy parafii.',
-      'Nie udało się wczytać listy osób.'
+      'Nie udało się wczytać listy parafii.'
     ]));
   });
 
@@ -177,7 +174,7 @@ describe('ParishBoardComponent', () => {
       const ctx = await openAssign();
       expect(textOf(ctx.el)).toContain('Skieruj katechistę');
 
-      setSelect(ctx.el, 'select[name="assignPersonId"]', 'p1');
+      choosePerson(ctx.fixture, 'assignPersonId', 'p1');
       ctx.fixture.detectChanges();
       clickByText(ctx.el, 'Skieruj', '.modal-foot button');
 
@@ -196,7 +193,7 @@ describe('ParishBoardComponent', () => {
       const confirm = () => ctx.el.querySelector('.modal-foot .btn.primary') as HTMLButtonElement;
 
       expect(confirm().disabled).toBe(true);
-      setSelect(ctx.el, 'select[name="assignPersonId"]', 'p1');
+      choosePerson(ctx.fixture, 'assignPersonId', 'p1');
       ctx.fixture.detectChanges();
 
       expect(confirm().disabled).toBe(false);
@@ -204,7 +201,7 @@ describe('ParishBoardComponent', () => {
 
     it('shows a toast when assigning fails and closes the dialog on cancel', async () => {
       const ctx = await openAssign();
-      setSelect(ctx.el, 'select[name="assignPersonId"]', 'p1');
+      choosePerson(ctx.fixture, 'assignPersonId', 'p1');
       ctx.fixture.detectChanges();
 
       clickByText(ctx.el, 'Skieruj', '.modal-foot button');
@@ -218,7 +215,7 @@ describe('ParishBoardComponent', () => {
 
     it('shows the server message when the person cannot be assigned', async () => {
       const ctx = await openAssign();
-      setSelect(ctx.el, 'select[name="assignPersonId"]', 'p1');
+      choosePerson(ctx.fixture, 'assignPersonId', 'p1');
       ctx.fixture.detectChanges();
 
       clickByText(ctx.el, 'Skieruj', '.modal-foot button');
@@ -232,8 +229,12 @@ describe('ParishBoardComponent', () => {
       clickByText(ctx.el, '＋ Kolejna osoba', '.list-row button');
       ctx.fixture.detectChanges();
 
-      const options = Array.from(ctx.el.querySelectorAll('select[name="assignPersonId"] option')).map(o => o.textContent!.trim());
-      expect(options).toEqual(['— wybierz —', 'Beata Lis']);
+      ctx.el.querySelector<HTMLInputElement>('app-person-picker[name="assignPersonId"] input')!.dispatchEvent(new Event('focus'));
+      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
+      ctx.fixture.detectChanges();
+
+      const options = Array.from(ctx.el.querySelectorAll('app-person-picker[name="assignPersonId"] li')).map(o => o.textContent!.trim());
+      expect(options).toEqual(['Beata Lis']);
     });
 
     it('does nothing when confirming without an open assignment', () => {
@@ -285,7 +286,7 @@ describe('ParishBoardComponent', () => {
       ctx.fixture.detectChanges();
       await ctx.fixture.whenStable();
 
-      setSelect(ctx.el, 'select[name="assignPersonId"]', 'p3');
+      choosePerson(ctx.fixture, 'assignPersonId', 'p3');
       ctx.fixture.detectChanges();
       clickByText(ctx.el, 'Skieruj', '.modal-foot button');
 
@@ -330,7 +331,6 @@ describe('ParishBoardComponent', () => {
       ctx.fixture.detectChanges();
       ctx.http.expectOne(url).flush([assignedNeed]);
       ctx.http.expectOne(api('/api/parishes')).flush(parishes);
-      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
       ctx.fixture.detectChanges();
 
       expect(textOf(ctx.el)).toContain('Anna Maj');

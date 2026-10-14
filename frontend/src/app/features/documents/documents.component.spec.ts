@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DocumentsComponent } from './documents.component';
 import { GeneratedDocument } from './generated-document.model';
 import { ToastService } from '../../core/notifications/toast.service';
-import { api, clickByText, paged, setInput, setSelect, setup, textOf } from '../../testing/test-helpers';
+import { api, clickByText, paged, setInput, setSelect, setup, textOf , choosePerson, pickedPerson } from '../../testing/test-helpers';
 
 const history: GeneratedDocument[] = [{
   id: 'd1', template: 'LetterToBishop', personId: 'p1', personFullName: 'Jan Kowalski',
@@ -19,7 +19,6 @@ function boot(items: GeneratedDocument[] = history) {
   const ctx = setup(DocumentsComponent);
   ctx.fixture.detectChanges();
   ctx.http.expectOne(url).flush(items);
-  ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
   ctx.fixture.detectChanges();
   return ctx;
 }
@@ -49,7 +48,7 @@ describe('DocumentsComponent', () => {
     expect(el.querySelectorAll('select[name="template"] option').length).toBe(11);
     expect(generateButton(el).disabled).toBe(true);
 
-    setSelect(el, 'select[name="personId"]', 'p1');
+    choosePerson(fixture, 'personId', 'p1');
     fixture.detectChanges();
     expect(generateButton(el).disabled).toBe(false);
   });
@@ -65,7 +64,7 @@ describe('DocumentsComponent', () => {
     });
 
     setSelect(ctx.el, 'select[name="template"]', 'ConversionConsent');
-    setSelect(ctx.el, 'select[name="personId"]', 'p1');
+    choosePerson(ctx.fixture, 'personId', 'p1');
     setInput(ctx.el, 'textarea[name="additionalNotes"]', 'Pilne');
     ctx.fixture.detectChanges();
     generateButton(ctx.el).click();
@@ -83,7 +82,7 @@ describe('DocumentsComponent', () => {
   it('tells the user when generating the document fails', async () => {
     const ctx = boot();
     await ctx.fixture.whenStable();
-    setSelect(ctx.el, 'select[name="personId"]', 'p1');
+    choosePerson(ctx.fixture, 'personId', 'p1');
     ctx.fixture.detectChanges();
 
     generateButton(ctx.el).click();
@@ -103,7 +102,6 @@ describe('DocumentsComponent', () => {
     const ctx = setup(DocumentsComponent, { granted: ['Documents.View'] });
     ctx.fixture.detectChanges();
     ctx.http.expectOne(url).flush(history);
-    ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
     ctx.fixture.detectChanges();
 
     expect(clickByTextSafe(ctx.el, 'Generuj PDF')).toBe(false);
@@ -204,7 +202,6 @@ describe('DocumentsComponent', () => {
       const ctx = setup(DocumentsComponent, { granted: ['Documents.View'] });
       ctx.fixture.detectChanges();
       ctx.http.expectOne(url).flush(history);
-      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
       ctx.fixture.detectChanges();
 
       expect(rowOf(ctx.el, 'Jan Kowalski').textContent).toContain('Pobierz');

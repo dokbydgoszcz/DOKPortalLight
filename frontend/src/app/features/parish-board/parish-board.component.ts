@@ -3,16 +3,15 @@ import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ParishNeedsService } from './parish-needs.service';
 import { ParishesService } from './parishes.service';
-import { PeopleService } from '../people/people.service';
 import { AssignedPerson, CreateParishNeedValue, Parish, ParishNeed } from './parish-need.model';
-import { Person } from '../people/person.model';
+import { PersonPickerComponent } from '../../shared/person-picker/person-picker.component';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
 
 @Component({
   selector: 'app-parish-board',
   standalone: true,
-  imports: [HasPermissionDirective, FormsModule],
+  imports: [HasPermissionDirective, FormsModule, PersonPickerComponent],
   templateUrl: './parish-board.component.html',
   styleUrl: './parish-board.component.scss'
 })
@@ -22,14 +21,12 @@ export class ParishBoardComponent implements OnInit {
   readonly editingNeedId = signal<string | null>(null);
   readonly assigningNeedId = signal<string | null>(null);
   parishes: Parish[] = [];
-  people: Person[] = [];
   newNeed: CreateParishNeedValue = { parishId: '', description: '' };
   assignPersonId = '';
 
   constructor(
     private readonly parishNeedsService: ParishNeedsService,
     private readonly parishesService: ParishesService,
-    private readonly peopleService: PeopleService,
     private readonly toast: ToastService
   ) {}
 
@@ -38,10 +35,6 @@ export class ParishBoardComponent implements OnInit {
     this.parishesService.list().subscribe({
       next: parishes => (this.parishes = parishes),
       error: () => this.toast.error('Nie udało się wczytać listy parafii.')
-    });
-    this.peopleService.search('', 1, 200).subscribe({
-      next: result => (this.people = result.items),
-      error: () => this.toast.error('Nie udało się wczytać listy osób.')
     });
   }
 
@@ -81,11 +74,10 @@ export class ParishBoardComponent implements OnInit {
     });
   }
 
-  /** Osoby, których jeszcze nie skierowano do zapotrzebowania z otwartego okna. */
-  assignablePeople(): Person[] {
+  /** Osoby już skierowane do zapotrzebowania z otwartego okna – picker ich nie podpowiada. */
+  assignedIds(): string[] {
     const need = this.needs().find(n => n.id === this.assigningNeedId());
-    const assigned = new Set((need?.assignedPeople ?? []).map(p => p.personId));
-    return this.people.filter(p => !assigned.has(p.id));
+    return (need?.assignedPeople ?? []).map(p => p.personId);
   }
 
   openAssignForm(need: ParishNeed): void {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DokCaseFormComponent } from './dok-case-form.component';
 import { DokCaseFormValue } from './dok-case.model';
-import { api, clickByText, paged, setSelect, setup } from '../../testing/test-helpers';
+import { clickByText, pickPerson, setSelect, setup } from '../../testing/test-helpers';
 
 const people = [
   { id: 'p1', firstName: 'Jan', lastName: 'Kowalski', fullName: 'Jan Kowalski', email: null, phone: null, birthDate: null, parishId: null, parishName: null, notes: null },
@@ -18,8 +18,6 @@ function render(open: boolean) {
   ctx.fixture.componentInstance.save.subscribe(v => saved.push(v));
   ctx.fixture.componentInstance.cancel.subscribe(() => cancelled++);
   ctx.fixture.detectChanges();
-  ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
-  // Like in the app: the people load while the form is closed, opening it (input change) refreshes the view.
   ctx.fixture.componentRef.setInput('open', open);
   ctx.fixture.detectChanges();
   return { ...ctx, saved, cancelled: () => cancelled };
@@ -29,30 +27,29 @@ const saveButton = (el: HTMLElement) =>
   Array.from(el.querySelectorAll<HTMLButtonElement>('.modal-foot button')).find(b => b.textContent!.includes('Zapisz'))!;
 
 describe('DokCaseFormComponent', () => {
-  it('loads up to 200 people for the selectors and renders nothing while closed', () => {
+  it('renders nothing while closed', () => {
     const { el } = render(false);
 
     expect(el.querySelector('.modal')).toBeNull();
   });
 
-  it('lists the people as options for both the person and the catechist', async () => {
+  it('picks the person, the catechist and the mentor by typing a name', async () => {
     const { fixture, el } = render(true);
     await fixture.whenStable();
 
-    expect(el.querySelectorAll('select[name="personId"] option').length).toBe(3);
-    expect(el.querySelectorAll('select[name="catechistPersonId"] option').length).toBe(3);
+    expect(el.querySelectorAll('app-person-picker').length).toBe(3);
   });
 
   it('enables saving only once both a person and a catechist are chosen and emits the chosen values', async () => {
-    const { fixture, el, saved } = render(true);
+    const ctx = render(true);
+    const { fixture, el, saved } = ctx;
     await fixture.whenStable();
     expect(saveButton(el).disabled).toBe(true);
 
-    setSelect(el, 'select[name="personId"]', 'p1');
-    fixture.detectChanges();
+    pickPerson(ctx, 'app-person-picker[name="personId"]', people[0]);
     expect(saveButton(el).disabled).toBe(true);
 
-    setSelect(el, 'select[name="catechistPersonId"]', 'c1');
+    pickPerson(ctx, 'app-person-picker[name="catechistPersonId"]', people[1]);
     setSelect(el, 'select[name="path"]', 'Communion');
     fixture.detectChanges();
     await fixture.whenStable();

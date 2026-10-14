@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CandidatesListComponent } from './candidates-list.component';
 import { Candidate } from './candidate.model';
 import { ToastService } from '../../core/notifications/toast.service';
-import { api, clickByText, paged, setInput, setSelect, setSelectByLabel, setup, textOf } from '../../testing/test-helpers';
+import { api, clickByText, paged, setInput, setSelect, setSelectByLabel, setup, textOf , choosePerson, pickedPerson } from '../../testing/test-helpers';
 
 const lewandowska: Candidate = {
   id: '1', personId: 'p1', personFullName: 'Agnieszka Lewandowska', parishName: null, year: 3,
@@ -34,7 +34,6 @@ function boot(items: Candidate[] = [lewandowska, nowak], totalCount = items.leng
   const lists = ctx.http.match(r => r.url === url);
   expect(lists.length).toBe(2);
   lists.forEach(r => r.flush({ items, totalCount, page: 1, pageSize: 20 }));
-  ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
   ctx.fixture.detectChanges();
   return ctx;
 }
@@ -89,7 +88,7 @@ describe('CandidatesListComponent', () => {
       const ctx = await openForm();
       expect(saveButton(ctx.el).disabled).toBe(true);
 
-      setSelect(ctx.el, 'select[name="personId"]', 'p1');
+      choosePerson(ctx.fixture, 'personId', 'p1');
       setSelectByLabel(ctx.el, 'select[name="year"]', 'II ROK');
       setInput(ctx.el, 'input[name="attendancePercentage"]', '85');
       setInput(ctx.el, 'input[name="opinionsCollected"]', '1');
@@ -110,7 +109,7 @@ describe('CandidatesListComponent', () => {
 
     it('shows a toast when saving fails and closes the form on cancel', async () => {
       const ctx = await openForm();
-      setSelect(ctx.el, 'select[name="personId"]', 'p1');
+      choosePerson(ctx.fixture, 'personId', 'p1');
       ctx.fixture.detectChanges();
 
       saveButton(ctx.el).click();
@@ -189,7 +188,7 @@ describe('CandidatesListComponent', () => {
       const ctx = await openEdit();
 
       expect(textOf(ctx.el)).toContain('Edytuj kandydata');
-      expect((ctx.el.querySelector('select[name="personId"]') as HTMLSelectElement).value).toBe('p1');
+      expect(pickedPerson(ctx.fixture, 'personId')).toBe('p1');
       expect((ctx.el.querySelector('select[name="year"]') as HTMLSelectElement).value).toContain('3');
       expect((ctx.el.querySelector('input[name="attendancePercentage"]') as HTMLInputElement).value).toBe('94');
       expect((ctx.el.querySelector('select[name="retreat3"]') as HTMLSelectElement).value).toBe('pending');

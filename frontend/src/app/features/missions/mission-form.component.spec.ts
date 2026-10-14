@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MissionFormComponent } from './mission-form.component';
 import { MissionFormValue } from './mission.model';
-import { api, clickByText, paged, setInput, setSelect, setup } from '../../testing/test-helpers';
+import { api, clickByText, paged, setInput, setSelect, setup , choosePerson, pickedPerson } from '../../testing/test-helpers';
 
 const parishes = [
   { id: 'pa1', name: 'Parafia św. Jana', city: 'Bydgoszcz' },
@@ -21,7 +21,6 @@ function render(open: boolean) {
   ctx.fixture.componentInstance.save.subscribe(v => saved.push(v));
   ctx.fixture.componentInstance.cancel.subscribe(() => cancelled++);
   ctx.fixture.detectChanges();
-  ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
   ctx.http.expectOne(r => r.url === api('/api/parishes')).flush(parishes);
   ctx.fixture.componentRef.setInput('open', open);
   ctx.fixture.detectChanges();
@@ -43,7 +42,7 @@ describe('MissionFormComponent', () => {
     await fixture.whenStable();
     expect(saveButton(el).disabled).toBe(true);
 
-    setSelect(el, 'select[name="personId"]', 'p1');
+    choosePerson(fixture, 'personId', 'p1');
     setInput(el, 'input[name="servicePlace"]', 'Parafia św. Jana');
     setInput(el, 'input[name="missionStartDate"]', '2026-01-01');
     setInput(el, 'input[name="missionEndDate"]', '2029-01-01');
@@ -57,7 +56,7 @@ describe('MissionFormComponent', () => {
   it('keeps saving disabled until both mission dates are chosen', async () => {
     const { fixture, el, saved } = render(true);
     await fixture.whenStable();
-    setSelect(el, 'select[name="personId"]', 'p1');
+    choosePerson(fixture, 'personId', 'p1');
     fixture.detectChanges();
     expect(saveButton(el).disabled).toBe(true);
     expect(el.textContent).toContain('Uzupełnij pola oznaczone *');
@@ -78,7 +77,7 @@ describe('MissionFormComponent', () => {
   it('does not send an emptied optional grant date as an empty string', async () => {
     const { fixture, el, saved } = render(true);
     await fixture.whenStable();
-    setSelect(el, 'select[name="personId"]', 'p1');
+    choosePerson(fixture, 'personId', 'p1');
     setInput(el, 'input[name="missionStartDate"]', '2026-01-01');
     setInput(el, 'input[name="missionEndDate"]', '2029-01-01');
     setInput(el, 'input[name="grantedDate"]', '2025-12-20');
@@ -107,7 +106,7 @@ describe('MissionFormComponent', () => {
     it('still accepts a place that is not in the register', async () => {
       const { fixture, el, saved } = render(true);
       await fixture.whenStable();
-      setSelect(el, 'select[name="personId"]', 'p1');
+      choosePerson(fixture, 'personId', 'p1');
       setInput(el, 'input[name="servicePlace"]', 'Szkoła nr 5 w Bydgoszczy');
       setInput(el, 'input[name="missionStartDate"]', '2026-01-01');
       setInput(el, 'input[name="missionEndDate"]', '2029-01-01');
@@ -123,7 +122,6 @@ describe('MissionFormComponent', () => {
       ctx.fixture.componentRef.setInput('open', true);
       ctx.fixture.componentRef.setInput('value', { personId: '', servicePlace: '', missionStartDate: '', missionEndDate: '' });
       ctx.fixture.detectChanges();
-      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
       ctx.http.expectOne(r => r.url === api('/api/parishes')).flush('x', { status: 500, statusText: 'Server Error' });
       ctx.fixture.detectChanges();
       await ctx.fixture.whenStable();
@@ -142,7 +140,7 @@ describe('MissionFormComponent', () => {
       expect(checkbox.closest('label')!.classList.contains('checkbox-label')).toBe(true);
       expect(el.textContent).toContain('Posłany do DOK');
 
-      setSelect(el, 'select[name="personId"]', 'p1');
+      choosePerson(fixture, 'personId', 'p1');
       setInput(el, 'input[name="missionStartDate"]', '2026-01-01');
       setInput(el, 'input[name="missionEndDate"]', '2029-01-01');
       checkbox.click();

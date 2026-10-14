@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MissionsListComponent } from './missions-list.component';
 import { Mission, PendingCatechist } from './mission.model';
 import { ToastService } from '../../core/notifications/toast.service';
-import { api, clickByText, paged, setInput, setSelect, setup, textOf } from '../../testing/test-helpers';
+import { api, clickByText, paged, setInput, setSelect, setup, textOf , choosePerson, pickedPerson } from '../../testing/test-helpers';
 
 const mission: Mission = {
   id: '1', personId: 'p1', personFullName: 'Anna Maj', servicePlace: 'Parafia św. Mateusza',
@@ -24,7 +24,6 @@ function boot(items: Mission[] = [mission], totalCount = items.length, pending: 
   ctx.fixture.detectChanges();
   ctx.http.expectOne(r => r.url === url).flush({ items, totalCount, page: 1, pageSize: 20 });
   ctx.http.expectOne(`${url}/pending`).flush(pending);
-  ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
   ctx.http.expectOne(r => r.url === api('/api/parishes')).flush([]);
   ctx.fixture.detectChanges();
   return ctx;
@@ -93,7 +92,7 @@ describe('MissionsListComponent', () => {
       const ctx = await openForm();
       expect(saveButton(ctx.el).disabled).toBe(true);
 
-      setSelect(ctx.el, 'select[name="personId"]', 'p1');
+      choosePerson(ctx.fixture, 'personId', 'p1');
       setInput(ctx.el, 'input[name="servicePlace"]', 'Parafia św. Jana');
       setInput(ctx.el, 'input[name="missionStartDate"]', '2026-01-01');
       setInput(ctx.el, 'input[name="missionEndDate"]', '2029-01-01');
@@ -118,7 +117,7 @@ describe('MissionsListComponent', () => {
 
     it('shows a toast when saving fails and closes the form on cancel', async () => {
       const ctx = await openForm();
-      setSelect(ctx.el, 'select[name="personId"]', 'p1');
+      choosePerson(ctx.fixture, 'personId', 'p1');
       setInput(ctx.el, 'input[name="missionStartDate"]', '2026-01-01');
       setInput(ctx.el, 'input[name="missionEndDate"]', '2029-01-01');
       ctx.fixture.detectChanges();
@@ -190,7 +189,7 @@ describe('MissionsListComponent', () => {
       const ctx = await openEdit();
 
       expect(textOf(ctx.el)).toContain('Edytuj misję');
-      expect((ctx.el.querySelector('select[name="personId"]') as HTMLSelectElement).value).toBe('p1');
+      expect(pickedPerson(ctx.fixture, 'personId')).toBe('p1');
       expect((ctx.el.querySelector('input[name="servicePlace"]') as HTMLInputElement).value).toBe('Parafia św. Mateusza');
       expect((ctx.el.querySelector('input[name="missionStartDate"]') as HTMLInputElement).value).toBe('2023-10-15');
       expect((ctx.el.querySelector('input[name="missionEndDate"]') as HTMLInputElement).value).toBe('2026-10-14');
@@ -247,7 +246,6 @@ describe('MissionsListComponent', () => {
       const ctx = setup(MissionsListComponent, { granted: ['Missions.View'] });
       ctx.fixture.detectChanges();
       ctx.http.expectOne(r => r.url === url).flush({ items: [detailed], totalCount: 1, page: 1, pageSize: 20 });
-      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged(people));
       ctx.http.expectOne(r => r.url === api('/api/parishes')).flush([]);
       ctx.fixture.detectChanges();
 

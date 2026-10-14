@@ -19,12 +19,7 @@
       </div>
       <div class="field">
         <label>Osoba</label>
-        <select [(ngModel)]="form.personId" name="personId">
-          <option value="">— wybierz —</option>
-          @for (person of people; track person.id) {
-            <option [value]="person.id">{{ person.fullName }}</option>
-          }
-        </select>
+        <app-person-picker [(ngModel)]="form.personId" name="personId" />
       </div>
       <div class="field full"><label>Uwagi dodatkowe</label><textarea [(ngModel)]="form.additionalNotes" name="additionalNotes"></textarea></div>
     </div>

@@ -86,12 +86,7 @@
       <div class="modal-body">
         <div class="field">
           <label>Osoba</label>
-          <select [(ngModel)]="assignPersonId" name="assignPersonId">
-            <option value="">— wybierz —</option>
-            @for (person of assignablePeople(); track person.id) {
-              <option [value]="person.id">{{ person.fullName }}</option>
-            }
-          </select>
+          <app-person-picker [(ngModel)]="assignPersonId" name="assignPersonId" [exclude]="assignedIds()" />
         </div>
       </div>
       <div class="modal-foot">

@@ -1,18 +1,17 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PeopleService } from '../people/people.service';
-import { Person } from '../people/person.model';
+import { PersonPickerComponent } from '../../shared/person-picker/person-picker.component';
 import { DokCaseFormValue, DokPath, DokStage } from './dok-case.model';
 import { DOK_PATH_LABELS, DOK_STAGE_LABELS, firstStageOf, stagesOf } from './dok-stages';
 
 @Component({
   selector: 'app-dok-case-form',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, PersonPickerComponent],
   templateUrl: './dok-case-form.component.html',
   styleUrl: './dok-case-form.component.scss'
 })
-export class DokCaseFormComponent implements OnInit {
+export class DokCaseFormComponent {
   @Input() open = false;
   @Input() value: DokCaseFormValue = { personId: '', path: 'BaptismCandidate', stage: 'Prekatechumenate', catechistPersonId: '' };
   /** Imię i nazwisko podopiecznego edytowanej sprawy; pusty = nowa sprawa. Przy edycji podopiecznego nie można zmienić. */
@@ -23,14 +22,6 @@ export class DokCaseFormComponent implements OnInit {
   readonly pathLabels = DOK_PATH_LABELS;
   readonly stageLabels = DOK_STAGE_LABELS;
   readonly paths = Object.keys(DOK_PATH_LABELS) as DokPath[];
-  people: Person[] = [];
-
-  constructor(private readonly peopleService: PeopleService) {}
-
-  ngOnInit(): void {
-    this.peopleService.search('', 1, 200).subscribe(result => (this.people = result.items));
-  }
-
   /** Etapy dostępne na wybranej ścieżce. */
   get stages(): readonly DokStage[] {
     return stagesOf(this.value.path);
