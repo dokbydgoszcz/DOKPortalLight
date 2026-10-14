@@ -84,6 +84,25 @@ describe('AuthService', () => {
     expect(localStorage.getItem('dokportal.token')).toBeNull();
   });
 
+  it('reloads the login page when the in-app navigation fails (e.g. after a new version was deployed)', async () => {
+    const router = TestBed.inject(Router) as unknown as { navigateByUrl: ReturnType<typeof vi.fn> };
+    const hard = vi.fn();
+    service.hardNavigate = hard;
+
+    router.navigateByUrl.mockResolvedValueOnce(false);
+    service.logout();
+    await new Promise(r => setTimeout(r));
+    router.navigateByUrl.mockRejectedValueOnce(new TypeError('Failed to fetch dynamically imported module'));
+    service.logout();
+    await new Promise(r => setTimeout(r));
+    router.navigateByUrl.mockResolvedValueOnce(true);
+    service.logout();
+    await new Promise(r => setTimeout(r));
+
+    expect(hard).toHaveBeenCalledTimes(2);
+    expect(hard).toHaveBeenCalledWith('/login');
+  });
+
   it('decodes permission claims given as a single string or as an array', () => {
     localStorage.setItem('dokportal.permissionsAware', '1');
     const single = createFakeJwt({ role: 'Biskup', permission: 'Missions.View', exp: 9999999999 });

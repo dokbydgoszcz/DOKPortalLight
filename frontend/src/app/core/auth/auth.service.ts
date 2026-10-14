@@ -159,13 +159,19 @@ export class AuthService {
     this.tokenSignal.set(response.token);
   }
 
+  /** Pełne przeładowanie pod adres (wydzielone, żeby dało się je podmienić w testach). */
+  hardNavigate = (url: string): void => window.location.assign(url);
+
   logout(reason?: 'idle' | 'expired'): void {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(PERMISSIONS_AWARE_KEY);
     localStorage.removeItem(MUST_CHANGE_KEY);
     this.mustChangePassword.set(false);
     this.tokenSignal.set(null);
-    this.router.navigateByUrl('/login', reason ? { state: { reason } } : undefined);
+    // Gdy przejście się nie uda (np. po aktualizacji aplikacji), strona logowania wczyta się od nowa.
+    const fallback = () => this.hardNavigate('/login');
+    Promise.resolve(this.router.navigateByUrl('/login', reason ? { state: { reason } } : undefined))
+      .then(ok => { if (ok === false) fallback(); }, fallback);
   }
 
   hasRole(role: string): boolean {
