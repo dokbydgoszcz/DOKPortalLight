@@ -225,7 +225,7 @@ public class ExportServiceTests
         };
         db.DokCases.Add(dokCase);
         db.Meetings.AddRange(
-            new Meeting { Id = Guid.NewGuid(), DokCaseId = dokCase.Id, MeetingDate = new DateOnly(2026, 10, 1), IsAttended = true, Notes = "ok" },
+            new Meeting { Id = Guid.NewGuid(), DokCaseId = dokCase.Id, MeetingDate = new DateOnly(2026, 10, 1), StartTime = new TimeOnly(18, 0), EndTime = new TimeOnly(20, 0), IsAttended = true, Notes = "ok" },
             new Meeting { Id = Guid.NewGuid(), GroupLabel = "Grupa B", MeetingDate = new DateOnly(2026, 10, 2) },
             new Meeting { Id = Guid.NewGuid(), GroupLabel = "Grupa C", MeetingDate = new DateOnly(2026, 10, 3), IsAttended = false },
             new Meeting { Id = Guid.NewGuid(), GroupLabel = "Usunięte", MeetingDate = new DateOnly(2026, 10, 4), DeletedAtUtc = DateTime.UtcNow });
@@ -233,10 +233,10 @@ public class ExportServiceTests
 
         var sheet = OpenSheet(await new ExportService(db).ExportMeetingsAsync(default));
 
-        Assert.Equal(new[] { "Data", "Podopieczny / grupa", "Obecność", "Uwagi" }, Row(sheet, 1, 4));
-        Assert.Equal(new[] { "2026-10-01", "Jan Kowalski", "Tak", "ok" }, Row(sheet, 2, 4));
-        Assert.Equal(new[] { "2026-10-02", "Grupa B", "—", "" }, Row(sheet, 3, 4));
-        Assert.Equal(new[] { "2026-10-03", "Grupa C", "Nie", "" }, Row(sheet, 4, 4));
+        Assert.Equal(new[] { "Data", "Godziny", "Podopieczny / grupa", "Obecność", "Uwagi" }, Row(sheet, 1, 5));
+        Assert.Equal(new[] { "2026-10-01", "18:00–20:00", "Jan Kowalski", "Tak", "ok" }, Row(sheet, 2, 5));
+        Assert.Equal(new[] { "2026-10-02", "", "Grupa B", "—", "" }, Row(sheet, 3, 5));
+        Assert.Equal(new[] { "2026-10-03", "", "Grupa C", "Nie", "" }, Row(sheet, 4, 5));
         Assert.Equal(4, sheet.LastRowUsed()!.RowNumber());
     }
 

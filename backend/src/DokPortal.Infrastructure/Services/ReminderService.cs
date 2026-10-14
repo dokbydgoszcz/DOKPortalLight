@@ -134,6 +134,7 @@ public class ReminderService : IReminderService
     private sealed record UpcomingMeetingRow(
         Guid MeetingId,
         DateOnly MeetingDate,
+        TimeOnly? StartTime,
         string PersonFirstName,
         string PersonLastName,
         string? CatechistEmail);
@@ -151,7 +152,7 @@ public class ReminderService : IReminderService
             where dokCase.Stage != DokStage.Graduate && dokCase.InterruptedOn == null
             join person in _db.People on dokCase.PersonId equals person.Id
             join catechist in _db.People on dokCase.CatechistPersonId equals catechist.Id
-            select new UpcomingMeetingRow(meeting.Id, meeting.MeetingDate, person.FirstName, person.LastName, catechist.Email)
+            select new UpcomingMeetingRow(meeting.Id, meeting.MeetingDate, meeting.StartTime, person.FirstName, person.LastName, catechist.Email)
         ).ToListAsync(ct);
 
         var emailsSentToCatechists = 0;
@@ -167,7 +168,8 @@ public class ReminderService : IReminderService
 
             var personFullName = $"{row.PersonFirstName} {row.PersonLastName}";
             var when = row.MeetingDate == today ? "dziś" : "jutro";
-            var body = $"Przypomnienie: {when} ({row.MeetingDate:yyyy-MM-dd}) odbywa się spotkanie z podopiecznym {personFullName}.";
+            var hour = row.StartTime is { } t ? $" o {t:HH\\:mm}" : "";
+            var body = $"Przypomnienie: {when} ({row.MeetingDate:yyyy-MM-dd}){hour} odbywa się spotkanie z podopiecznym {personFullName}.";
             try
             {
                 await _emailSender.SendAsync(row.CatechistEmail!, "Nadchodzące spotkanie — przypomnienie", body, ct);

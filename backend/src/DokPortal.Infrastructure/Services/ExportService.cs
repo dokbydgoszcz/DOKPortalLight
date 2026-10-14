@@ -169,13 +169,15 @@ public class ExportService : IExportService
             .Include(m => m.DokCase).ThenInclude(c => c!.Person)
             .OrderBy(m => m.MeetingDate)
             .ToListAsync(ct);
+        meetings = meetings.OrderBy(m => m.MeetingDate).ThenBy(m => m.StartTime).ToList();
 
         return BuildWorkbook(
             "Spotkania",
-            new[] { "Data", "Podopieczny / grupa", "Obecność", "Uwagi" },
+            new[] { "Data", "Godziny", "Podopieczny / grupa", "Obecność", "Uwagi" },
             meetings.Select(m => new object?[]
             {
                 FormatDate(m.MeetingDate),
+                m.StartTime is { } s ? (m.EndTime is { } e ? $"{s:HH\\:mm}–{e:HH\\:mm}" : $"{s:HH\\:mm}") : null,
                 m.DokCase?.Person?.FullName ?? m.GroupLabel,
                 m.IsAttended is bool attended ? YesNo(attended) : "—",
                 m.Notes

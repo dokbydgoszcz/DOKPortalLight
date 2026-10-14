@@ -25,7 +25,7 @@
       <tbody>
         @for (meeting of meetings(); track meeting.id) {
           <tr>
-            <td>{{ meeting.meetingDate }}</td>
+            <td>{{ meeting.meetingDate }}@if (timeRange(meeting)) { <div class="small-muted">{{ timeRange(meeting) }}</div> }</td>
             <td>
               {{ meeting.caseLabel ?? meeting.groupLabel }}
               @if (meeting.attendees.length > 0) {
@@ -96,6 +96,15 @@
       <div class="modal-body">
         <div class="form-grid">
           <div class="field"><label>Data <span class="required">*</span></label><input type="date" [(ngModel)]="newMeeting.meetingDate" name="meetingDate" /></div>
+          <div class="field">
+            <label>Godziny</label>
+            <div class="time-range">
+              <input type="time" step="300" [(ngModel)]="newMeeting.startTime" name="startTime" aria-label="Od" />
+              <span>–</span>
+              <input type="time" step="300" [(ngModel)]="newMeeting.endTime" name="endTime" aria-label="Do" />
+            </div>
+            @if (timeProblem) { <span class="form-hint" style="color:var(--danger)">{{ timeProblem }}</span> }
+          </div>
           <div class="field"><label>Grupa / opis</label><input [(ngModel)]="newMeeting.groupLabel" name="groupLabel" /></div>
           <div class="field">
             <label class="checkbox-label"><input type="checkbox" name="useAttendees" [checked]="useAttendees()" (change)="onUseAttendeesChange($any($event.target).checked)" /> Zajęcia z listą uczestników</label>
@@ -127,11 +136,11 @@
         </div>
       </div>
       <div class="modal-foot">
-        @if (!newMeeting.meetingDate) {
+        @if (!newMeeting.meetingDate || timeProblem) {
           <span class="form-hint">Uzupełnij pola oznaczone *</span>
         }
         <button class="btn ghost" (click)="cancel()">Anuluj</button>
-        <button class="btn primary" [disabled]="!newMeeting.meetingDate" (click)="createMeeting()">Zapisz</button>
+        <button class="btn primary" [disabled]="!newMeeting.meetingDate || !!timeProblem" (click)="createMeeting()">Zapisz</button>
       </div>
     </div>
   </div>

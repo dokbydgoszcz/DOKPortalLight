@@ -5,6 +5,8 @@ public class CreateMeetingRequest
     public Guid? DokCaseId { get; init; }
     public string? GroupLabel { get; init; }
     public required DateOnly MeetingDate { get; init; }
+    public TimeOnly? StartTime { get; init; }
+    public TimeOnly? EndTime { get; init; }
     public bool? IsAttended { get; init; }
     public string? Notes { get; init; }
     /// <summary>Uczestnicy zajęć grupowych (wyklucza się z DokCaseId).</summary>

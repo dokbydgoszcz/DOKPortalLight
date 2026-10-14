@@ -642,6 +642,9 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Property<Guid?>("DokCaseId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<TimeOnly?>("EndTime")
+                        .HasColumnType("time");
+
                     b.Property<string>("GroupLabel")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -657,6 +660,9 @@ namespace DokPortal.Infrastructure.Migrations
 
                     b.Property<DateTime?>("ReminderSentAtUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<TimeOnly?>("StartTime")
+                        .HasColumnType("time");
 
                     b.HasKey("Id");
 
@@ -1033,6 +1039,10 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
+                    b.Property<string>("CalendarFeedToken")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
@@ -1087,6 +1097,10 @@ namespace DokPortal.Infrastructure.Migrations
                         .HasColumnType("nvarchar(256)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CalendarFeedToken")
+                        .IsUnique()
+                        .HasFilter("[CalendarFeedToken] IS NOT NULL");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");

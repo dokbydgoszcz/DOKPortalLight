@@ -6,7 +6,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
 import { FormsModule } from '@angular/forms';
 import { MeetingsService } from './meetings.service';
-import { CreateMeetingValue, Meeting, MeetingAttendee } from './meeting.model';
+import { CreateMeetingValue, DEFAULT_END, DEFAULT_START, Meeting, MeetingAttendee, hhmm, timeRange } from './meeting.model';
 import { ToastService } from '../../core/notifications/toast.service';
 import { DokCasesService } from '../dok-cases/dok-cases.service';
 import { DokCase } from '../dok-cases/dok-case.model';
@@ -38,6 +38,7 @@ export class MeetingsListComponent implements OnInit {
   readonly attendeeSelection = signal<Record<string, boolean | null>>({});
   readonly expandedIds = signal<ReadonlySet<string>>(new Set());
   newMeeting: CreateMeetingValue = { groupLabel: '', meetingDate: '' };
+  readonly timeRange = timeRange;
   /** Lista albo kalendarz; wybór zapamiętuje przeglądarka. */
   readonly view = signal<'list' | 'calendar'>(readView());
   readonly canManage = inject(AuthService).hasPermission(Permissions.MeetingsManage);
@@ -90,14 +91,29 @@ export class MeetingsListComponent implements OnInit {
   }
 
   /** Klik w pusty dzień kalendarza: nowe spotkanie z tą datą. */
-  openAddFormForDate(date: string): void {
+  openAddFormForDate(value: string): void {
     this.openAddForm();
-    this.newMeeting.meetingDate = date;
+    this.newMeeting.meetingDate = value.slice(0, 10);
+    // Klik w godzinę w widoku tygodnia: spotkanie od tej godziny, na dwie godziny.
+    if (value.length > 10) {
+      const start = value.slice(11, 16);
+      const endHour = Math.min(Number(start.slice(0, 2)) + 2, 23);
+      this.newMeeting.startTime = start;
+      this.newMeeting.endTime = `${String(endHour).padStart(2, '0')}:${endHour === 23 && Number(start.slice(0, 2)) + 2 > 23 ? '59' : start.slice(3, 5)}`;
+    }
+  }
+
+  /** Błąd godzin widoczny od razu (koniec przed początkiem, koniec bez początku). */
+  get timeProblem(): string | null {
+    const { startTime, endTime } = this.newMeeting;
+    if (endTime && !startTime) return 'Podaj godzinę rozpoczęcia.';
+    if (startTime && endTime && endTime <= startTime) return 'Koniec musi być później niż początek.';
+    return null;
   }
 
   openAddForm(): void {
     this.editingId.set(null);
-    this.newMeeting = { groupLabel: '', meetingDate: '' };
+    this.newMeeting = { groupLabel: '', meetingDate: '', startTime: DEFAULT_START, endTime: DEFAULT_END };
     this.useAttendees.set(false);
     this.attendeeSelection.set({});
     this.isFormOpen.set(true);
@@ -109,6 +125,8 @@ export class MeetingsListComponent implements OnInit {
       dokCaseId: meeting.dokCaseId ?? undefined,
       groupLabel: meeting.groupLabel ?? undefined,
       meetingDate: meeting.meetingDate,
+      startTime: hhmm(meeting.startTime) || undefined,
+      endTime: hhmm(meeting.endTime) || undefined,
       isAttended: meeting.isAttended ?? undefined,
       notes: meeting.notes ?? undefined
     };
@@ -144,6 +162,8 @@ export class MeetingsListComponent implements OnInit {
     const id = this.editingId();
     const value: CreateMeetingValue = {
       ...this.newMeeting,
+      startTime: this.newMeeting.startTime || undefined,
+      endTime: this.newMeeting.endTime || undefined,
       attendees: this.useAttendees()
         ? Object.entries(this.attendeeSelection()).map(([dokCaseId, isAttended]) => ({ dokCaseId, isAttended: isAttended ?? undefined }))
         : undefined

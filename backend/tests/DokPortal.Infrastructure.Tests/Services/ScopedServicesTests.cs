@@ -284,7 +284,7 @@ public class ScopedServicesTests
 
         Assert.Equal("Jan Kowalski", cases.Cell(2, 1).GetString());
         Assert.True(cases.Cell(3, 1).IsEmpty());
-        Assert.Equal("Jan Kowalski", meetings.Cell(2, 2).GetString());
-        Assert.True(meetings.Cell(3, 2).IsEmpty());
+        Assert.Equal("Jan Kowalski", meetings.Cell(2, 3).GetString());
+        Assert.True(meetings.Cell(3, 3).IsEmpty());
     }
 }

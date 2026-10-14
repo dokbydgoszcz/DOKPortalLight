@@ -4,7 +4,8 @@ import plLocale from '@fullcalendar/core/locales/pl';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
-import { Meeting } from './meeting.model';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import { Meeting, hhmm } from './meeting.model';
 
 /** Kolor spotkania: obecny / nieobecny / jeszcze nieoznaczone; zajęcia grupowe osobnym kolorem. */
 export function meetingColor(meeting: Meeting): { className: string; status: string } {
@@ -20,15 +21,18 @@ export function meetingColor(meeting: Meeting): { className: string; status: str
   return { className: 'mc-pending', status: 'obecność nieoznaczona' };
 }
 
-/** Spotkania jako wydarzenia całodniowe kalendarza (spotkania mają samą datę, bez godziny). */
+/** Spotkania jako wydarzenia kalendarza; bez godziny – całodniowe. */
 export function toCalendarEvents(meetings: Meeting[]): EventInput[] {
   return meetings.map(m => {
     const { className, status } = meetingColor(m);
+    const start = hhmm(m.startTime);
+    const end = hhmm(m.endTime);
     return {
       id: m.id,
       title: m.caseLabel ?? m.groupLabel ?? 'Spotkanie',
-      start: m.meetingDate,
-      allDay: true,
+      start: start ? `${m.meetingDate}T${start}` : m.meetingDate,
+      end: start && end ? `${m.meetingDate}T${end}` : undefined,
+      allDay: !start,
       classNames: [className],
       extendedProps: { status, notes: m.notes }
     };
@@ -71,11 +75,16 @@ export class MeetingsCalendarComponent implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.calendar = new Calendar(this.host.nativeElement, {
-      plugins: [dayGridPlugin, interactionPlugin, listPlugin],
+      plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin],
       locale: plLocale,
       // Na wąskim ekranie siatka miesiąca ucina nazwiska – zaczynamy od listy.
       initialView: typeof window !== 'undefined' && window.innerWidth < 640 ? 'listMonth' : 'dayGridMonth',
-      headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,dayGridWeek,listMonth' },
+      headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listMonth' },
+      slotMinTime: '07:00:00',
+      slotMaxTime: '22:00:00',
+      allDayText: 'cały dzień',
+      eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+      displayEventEnd: true,
       buttonText: { today: 'dziś', month: 'miesiąc', week: 'tydzień', list: 'lista' },
       height: 'auto',
       dayMaxEvents: 4,

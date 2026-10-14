@@ -45,6 +45,12 @@ public class AppDbContext : IdentityDbContext<AppUser>
     {
         base.OnModelCreating(builder);
 
+        builder.Entity<AppUser>(entity =>
+        {
+            entity.Property(u => u.CalendarFeedToken).HasMaxLength(64);
+            entity.HasIndex(u => u.CalendarFeedToken).IsUnique().HasFilter("[CalendarFeedToken] IS NOT NULL");
+        });
+
         builder.Entity<Parish>(entity =>
         {
             entity.Property(p => p.Name).IsRequired().HasMaxLength(200);

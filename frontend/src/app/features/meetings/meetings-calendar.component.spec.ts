@@ -31,4 +31,13 @@ describe('meetings calendar', () => {
     expect(group.title).toBe('Grupa A');
     expect(unnamed.title).toBe('Spotkanie');
   });
+
+  it('places meetings with hours in the time grid', () => {
+    const [timed, startOnly] = toCalendarEvents([
+      { ...base, startTime: '18:00:00', endTime: '20:00:00' },
+      { ...base, id: 'm2', startTime: '09:30:00', endTime: null }
+    ]);
+    expect(timed).toMatchObject({ start: '2026-10-14T18:00', end: '2026-10-14T20:00', allDay: false });
+    expect(startOnly).toMatchObject({ start: '2026-10-14T09:30', end: undefined, allDay: false });
+  });
 });

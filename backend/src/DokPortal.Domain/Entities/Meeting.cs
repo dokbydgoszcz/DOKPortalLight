@@ -10,6 +10,9 @@ public class Meeting : ISoftDeletable
     public Guid? CatechistPersonId { get; set; }
     public List<MeetingAttendee> Attendees { get; set; } = new();
     public DateOnly MeetingDate { get; set; }
+    /// <summary>Godzina rozpoczęcia i zakończenia (czas lokalny, Polska); puste = spotkanie bez godziny (cały dzień).</summary>
+    public TimeOnly? StartTime { get; set; }
+    public TimeOnly? EndTime { get; set; }
     public bool? IsAttended { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAtUtc { get; set; }

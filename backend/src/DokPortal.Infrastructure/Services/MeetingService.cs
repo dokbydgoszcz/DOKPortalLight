@@ -23,6 +23,19 @@ public class MeetingService : IMeetingService
         return _db.Meetings.ForScope(_db, scope);
     }
 
+    /// <summary>
+    /// Zmieniać i usuwać spotkanie może osoba z pełnym zakresem, prowadzący zajęcia grupowe albo katechista sprawy
+    /// (spotkanie indywidualne). Zajęcia „udostępnione” (bo uczestniczy w nich mój podopieczny) są tylko do podglądu i obecności.
+    /// </summary>
+    private async Task EnsureCanManageAsync(Meeting meeting, CancellationToken ct)
+    {
+        var scope = await _scope.GetAsync(ct);
+        if (scope.ViewAll) return;
+        if (meeting.DokCaseId is { } caseId && await _db.DokCases.ForScope(scope).AnyAsync(c => c.Id == caseId, ct)) return;
+        if (meeting.DokCaseId is null && scope.PersonId is { } personId && meeting.CatechistPersonId == personId) return;
+        throw new InvalidOperationException("Te zajęcia prowadzi inna osoba – możesz tylko zaznaczyć obecność swojego podopiecznego.");
+    }
+
     private static IQueryable<Meeting> WithDetails(IQueryable<Meeting> meetings) =>
         meetings
             .Include(m => m.DokCase).ThenInclude(c => c!.Person)
@@ -34,6 +47,11 @@ public class MeetingService : IMeetingService
     /// </summary>
     private async Task ValidateAsync(CreateMeetingRequest request, CaseScope scope, CancellationToken ct)
     {
+        if (request.EndTime is not null && request.StartTime is null)
+            throw new InvalidOperationException("Podaj godzinę rozpoczęcia, skoro jest godzina zakończenia.");
+        if (request.StartTime is { } start && request.EndTime is { } end && end <= start)
+            throw new InvalidOperationException("Godzina zakończenia musi być późniejsza niż rozpoczęcia.");
+
         var attendeeIds = (request.Attendees ?? Array.Empty<AttendeeRequest>()).Select(a => a.DokCaseId).ToList();
 
         if (request.DokCaseId is not null && attendeeIds.Count > 0)
@@ -60,7 +78,7 @@ public class MeetingService : IMeetingService
         var meetings = await WithDetails(await VisibleAsync(ct)).AsNoTracking()
             .OrderByDescending(m => m.MeetingDate)
             .ToListAsync(ct);
-        return meetings.Select(ToDto).ToList();
+        return meetings.OrderByDescending(m => m.MeetingDate).ThenBy(m => m.StartTime).Select(ToDto).ToList();
     }
 
     public async Task<MeetingDto?> GetByIdAsync(Guid id, CancellationToken ct)
@@ -82,6 +100,8 @@ public class MeetingService : IMeetingService
             GroupLabel = request.GroupLabel,
             CatechistPersonId = request.DokCaseId is null ? scope.PersonId : null,
             MeetingDate = request.MeetingDate,
+            StartTime = request.StartTime,
+            EndTime = request.EndTime,
             IsAttended = request.IsAttended,
             Notes = request.Notes,
             CreatedAtUtc = DateTime.UtcNow,
@@ -101,17 +121,20 @@ public class MeetingService : IMeetingService
         var scope = await _scope.GetAsync(ct);
         var meeting = await (await VisibleAsync(ct)).Include(m => m.Attendees).FirstOrDefaultAsync(m => m.Id == id, ct);
         if (meeting is null) return null;
+        await EnsureCanManageAsync(meeting, ct);
         await ValidateAsync(request, scope, ct);
 
         meeting.DokCaseId = request.DokCaseId;
         meeting.GroupLabel = request.GroupLabel;
         meeting.CatechistPersonId = request.DokCaseId is null ? meeting.CatechistPersonId ?? scope.PersonId : null;
-        if (meeting.MeetingDate != request.MeetingDate)
+        if (meeting.MeetingDate != request.MeetingDate || meeting.StartTime != request.StartTime)
         {
             // Przesunięte spotkanie dostaje przypomnienie na nowy termin.
             meeting.ReminderSentAtUtc = null;
         }
         meeting.MeetingDate = request.MeetingDate;
+        meeting.StartTime = request.StartTime;
+        meeting.EndTime = request.EndTime;
         meeting.IsAttended = request.IsAttended;
         meeting.Notes = request.Notes;
 
@@ -152,6 +175,10 @@ public class MeetingService : IMeetingService
         var meeting = await (await VisibleAsync(ct)).Include(m => m.Attendees).FirstOrDefaultAsync(m => m.Id == meetingId, ct);
         var attendee = meeting?.Attendees.FirstOrDefault(a => a.DokCaseId == dokCaseId);
         if (attendee is null) return null;
+        // W cudzych zajęciach katechista zaznacza obecność tylko swoich podopiecznych.
+        var scope = await _scope.GetAsync(ct);
+        var ownsMeeting = scope.ViewAll || (scope.PersonId is { } owner && meeting!.CatechistPersonId == owner);
+        if (!ownsMeeting && !await _db.DokCases.ForScope(scope).AnyAsync(c => c.Id == dokCaseId, ct)) return null;
 
         attendee.IsAttended = isAttended;
         await _db.SaveChangesAsync(ct);
@@ -163,6 +190,7 @@ public class MeetingService : IMeetingService
     {
         var meeting = await (await VisibleAsync(ct)).FirstOrDefaultAsync(m => m.Id == id, ct);
         if (meeting is null) return false;
+        await EnsureCanManageAsync(meeting, ct);
 
         meeting.DeletedAtUtc = DateTime.UtcNow;
         meeting.DeletedBy = deletedBy;
@@ -177,6 +205,8 @@ public class MeetingService : IMeetingService
         CaseLabel = m.DokCase?.Person?.FullName,
         GroupLabel = m.GroupLabel,
         MeetingDate = m.MeetingDate,
+        StartTime = m.StartTime,
+        EndTime = m.EndTime,
         IsAttended = m.IsAttended,
         Notes = m.Notes,
         Attendees = m.Attendees

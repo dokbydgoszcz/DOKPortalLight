@@ -5,12 +5,14 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
 import { MfaSettingsComponent } from './mfa-settings.component';
+import { CalendarFeedComponent } from './calendar-feed.component';
+import { Permissions } from '../../core/auth/permissions';
 
 /** Zmiana własnego hasła; obowiązkowa, gdy hasło nadał administrator. */
 @Component({
   selector: 'app-change-password',
   standalone: true,
-  imports: [FormsModule, MfaSettingsComponent],
+  imports: [FormsModule, MfaSettingsComponent, CalendarFeedComponent],
   template: `
     <div class="page-heading">
       <div><h2>Moje konto</h2><p>Konto: {{ auth.email() }}</p></div>
@@ -51,6 +53,9 @@ import { MfaSettingsComponent } from './mfa-settings.component';
     </section>
     @if (!auth.mustChangePassword()) {
       <app-mfa-settings />
+      @if (canSeeMeetings) {
+        <app-calendar-feed />
+      }
     }
     </div>
   `,
@@ -70,6 +75,11 @@ export class ChangePasswordComponent {
   repeat = '';
   readonly isSaving = signal(false);
   readonly error = signal<string | null>(null);
+
+  /** Adres kalendarza ma sens tylko dla osób widzących harmonogram spotkań. */
+  get canSeeMeetings(): boolean {
+    return this.auth.hasPermission?.(Permissions.MeetingsView) ?? false;
+  }
 
   constructor(
     readonly auth: AuthService,

@@ -7,6 +7,8 @@ public class MeetingDto
     public string? CaseLabel { get; init; }
     public string? GroupLabel { get; init; }
     public required DateOnly MeetingDate { get; init; }
+    public TimeOnly? StartTime { get; init; }
+    public TimeOnly? EndTime { get; init; }
     public bool? IsAttended { get; init; }
     public string? Notes { get; init; }
     public IReadOnlyList<MeetingAttendeeDto> Attendees { get; init; } = Array.Empty<MeetingAttendeeDto>();

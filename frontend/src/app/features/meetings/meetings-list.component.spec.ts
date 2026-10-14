@@ -517,4 +517,61 @@ describe('MeetingsListComponent', () => {
     expect(component.isFormOpen()).toBe(false);
     expect(toastMessages()).toEqual(expect.arrayContaining(['Jan Kowalski – 2026-09-25: ok', 'Grupa – 2026-09-25']));
   });
+  describe('hours', () => {
+    it('suggests 18:00–20:00 for a new meeting and sends the hours', async () => {
+      const ctx = boot();
+      clickByText(ctx.el, 'Dodaj spotkanie');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+
+      expect((ctx.el.querySelector('input[name="startTime"]') as HTMLInputElement).value).toBe('18:00');
+      expect((ctx.el.querySelector('input[name="endTime"]') as HTMLInputElement).value).toBe('20:00');
+      setInput(ctx.el, 'input[name="meetingDate"]', '2026-10-20');
+      setInput(ctx.el, 'input[name="groupLabel"]', 'Grupa');
+      ctx.fixture.detectChanges();
+      saveButton(ctx.el).click();
+
+      const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
+      expect(req.request.body.startTime).toBe('18:00');
+      expect(req.request.body.endTime).toBe('20:00');
+    });
+
+    it('blocks an end before the start, and allows a meeting without hours', async () => {
+      const ctx = boot();
+      const component = ctx.fixture.componentInstance;
+      component.openAddForm();
+      component.newMeeting.endTime = '17:00';
+      expect(component.timeProblem).toContain('później');
+      component.newMeeting.startTime = '';
+      expect(component.timeProblem).toContain('rozpoczęcia');
+      component.newMeeting.endTime = '';
+      expect(component.timeProblem).toBeNull();
+      component.newMeeting.meetingDate = '2026-10-20';
+      component.newMeeting.groupLabel = 'Grupa';
+      component.createMeeting();
+
+      const body = ctx.http.expectOne(r => r.method === 'POST').request.body;
+      expect(body.startTime).toBeUndefined();
+      expect(body.endTime).toBeUndefined();
+    });
+
+    it('shows the hours in the list and keeps them when editing', () => {
+      const timed = { ...caseMeeting, startTime: '18:00:00', endTime: '20:00:00' };
+      const ctx = boot([timed]);
+      expect(textOf(ctx.el)).toContain('18:00–20:00');
+
+      ctx.fixture.componentInstance.openEditForm(timed);
+      expect(ctx.fixture.componentInstance.newMeeting.startTime).toBe('18:00');
+      expect(ctx.fixture.componentInstance.newMeeting.endTime).toBe('20:00');
+    });
+
+    it('takes the clicked hour from the week view', () => {
+      const ctx = boot();
+      const component = ctx.fixture.componentInstance;
+      component.openAddFormForDate('2026-10-20T17:30:00+02:00');
+      expect(component.newMeeting).toMatchObject({ meetingDate: '2026-10-20', startTime: '17:30', endTime: '19:30' });
+      component.openAddFormForDate('2026-10-20T22:30:00+02:00');
+      expect(component.newMeeting).toMatchObject({ startTime: '22:30', endTime: '23:59' });
+    });
+  });
 });
