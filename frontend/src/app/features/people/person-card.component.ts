@@ -17,7 +17,8 @@ const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 /** Strony, z których można wejść na kartę osoby (parametr „z”), i powrót do nich. */
 export const BACK_TARGETS: Record<string, { url: string; label: string }> = {
   osoby: { url: '/people', label: 'Wróć do listy osób' },
-  uzytkownicy: { url: '/admin/users', label: 'Wróć do użytkowników i ról' }
+  uzytkownicy: { url: '/admin/users', label: 'Wróć do użytkowników i ról' },
+  parafie: { url: '/parishes', label: 'Wróć do listy parafii' }
 };
 
 @Component({

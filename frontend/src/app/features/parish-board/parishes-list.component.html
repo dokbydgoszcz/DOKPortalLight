@@ -14,12 +14,19 @@
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Nazwa</th><th>Miejscowość</th><th></th></tr></thead>
+      <thead><tr><th>Nazwa</th><th>Miejscowość</th><th>Proboszcz</th><th></th></tr></thead>
       <tbody>
         @for (parish of filteredParishes(); track parish.id) {
           <tr>
             <td><b>{{ parish.name }}</b></td>
             <td>{{ parish.city }}</td>
+            <td>
+              @if (parish.pastorPersonId) {
+                <a class="person-link" [routerLink]="['/people', parish.pastorPersonId]" [queryParams]="{ z: 'parafie' }">{{ parish.pastorFullName }}</a>
+              } @else {
+                <span class="small-muted">—</span>
+              }
+            </td>
             <td>
               <ng-container *appHasPermission="'Parishes.Manage'">
                 <span class="link" (click)="openEditForm(parish)">Edytuj</span>
@@ -29,7 +36,7 @@
             </td>
           </tr>
         } @empty {
-          <tr><td colspan="3" class="empty">Brak parafii.</td></tr>
+          <tr><td colspan="4" class="empty">Brak parafii.</td></tr>
         }
       </tbody>
     </table>
@@ -47,6 +54,16 @@
         <div class="form-grid">
           <div class="field full"><label>Nazwa (wezwanie)</label><input [(ngModel)]="newParish.name" name="name" placeholder="np. św. Antoniego z Padwy" /></div>
           <div class="field full"><label>Miejscowość</label><input [(ngModel)]="newParish.city" name="city" placeholder="np. Bydgoszcz" /></div>
+          <div class="field full">
+            <label>Proboszcz</label>
+            <select [(ngModel)]="newParish.pastorPersonId" name="pastorPersonId">
+              <option [ngValue]="null">— brak —</option>
+              @for (pastor of pastors(); track pastor.id) {
+                <option [ngValue]="pastor.id">{{ pastor.fullName }}@if (pastor.parishName && pastor.id !== newParish.pastorPersonId) { (obecnie: {{ pastor.parishName }}) }</option>
+              }
+            </select>
+            <span class="form-hint">Lista osób z funkcją Proboszcz (nadasz ją w „Osoby”). Wybór przenosi funkcję tej osoby na tę parafię; dotychczasowy proboszcz zostaje bez przypisanej parafii.</span>
+          </div>
         </div>
       </div>
       <div class="modal-foot">

@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ParishesListComponent } from './parishes-list.component';
 import { ToastService } from '../../core/notifications/toast.service';
-import { api, clickByText, setInput, setup, textOf } from '../../testing/test-helpers';
+import { api, clickByText, paged, setInput, setup, textOf } from '../../testing/test-helpers';
 
 const parishes = [
   { id: 'pa1', name: 'św. Mateusza', city: 'Bydgoszcz' },
@@ -81,7 +81,7 @@ describe('ParishesListComponent', () => {
       clickByText(ctx.el, 'Zapisz', '.modal-foot button');
 
       const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
-      expect(req.request.body).toEqual({ name: 'św. Antoniego', city: 'Bydgoszcz' });
+      expect(req.request.body).toEqual({ name: 'św. Antoniego', city: 'Bydgoszcz', pastorPersonId: null });
       req.flush(parishes[0]);
       ctx.fixture.detectChanges();
 
@@ -179,7 +179,7 @@ describe('ParishesListComponent', () => {
       saveButton(ctx.el).click();
 
       const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === `${url}/pa2`);
-      expect(req.request.body).toEqual({ name: 'Matki Bożej Częstochowskiej', city: 'Chełmża' });
+      expect(req.request.body).toEqual({ name: 'Matki Bożej Częstochowskiej', city: 'Chełmża', pastorPersonId: null });
       req.flush({ id: 'pa2', name: 'Matki Bożej Częstochowskiej', city: 'Chełmża' });
       ctx.fixture.detectChanges();
 
@@ -232,6 +232,45 @@ describe('ParishesListComponent', () => {
       expect(textOf(ctx.el)).not.toContain('Dodaj parafię');
       expect(textOf(ctx.el)).not.toContain('Edytuj');
       expect(textOf(ctx.el)).not.toContain('Usuń');
+    });
+  });
+  describe('pastor', () => {
+    it('shows the pastor with a link to the person card and lets the pastor be chosen', async () => {
+      const ctx = setup(ParishesListComponent);
+      ctx.fixture.detectChanges();
+      ctx.http.expectOne(url).flush([{ id: 'pa1', name: 'św. Wojciecha', city: 'Bydgoszcz', pastorPersonId: 'p1', pastorFullName: 'ks. Jan Nowak' }]);
+      ctx.fixture.detectChanges();
+      const link = ctx.el.querySelector('a.person-link')!;
+      expect(link.textContent).toContain('ks. Jan Nowak');
+      expect(link.getAttribute('href')).toBe('/people/p1?z=parafie');
+
+      clickByText(ctx.el, 'Edytuj');
+      ctx.http.expectOne(r => r.url === api('/api/people') && r.params.get('function') === 'Pastor').flush(paged([
+        { id: 'p1', fullName: 'ks. Jan Nowak', functions: [{ type: 'Pastor', parishName: 'św. Wojciecha' }] },
+        { id: 'p2', fullName: 'ks. Adam Lis', functions: [{ type: 'Pastor', parishName: 'Fara' }] }
+      ]));
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      expect(textOf(ctx.el)).toContain('ks. Adam Lis (obecnie: Fara)');
+      const select = ctx.el.querySelector('select[name="pastorPersonId"]') as HTMLSelectElement;
+      select.selectedIndex = 2;
+      select.dispatchEvent(new Event('change'));
+      ctx.fixture.detectChanges();
+      clickByText(ctx.el, "Zapisz", ".modal-foot button");
+
+      const req = ctx.http.expectOne(r => r.method === 'PUT');
+      expect(req.request.body.pastorPersonId).toBe('p2');
+      req.flush({ title: 'Nie znaleziono osoby wskazanej jako proboszcz.' }, { status: 400, statusText: 'Bad Request' });
+      expect(toastMessages()).toContain('Nie znaleziono osoby wskazanej jako proboszcz.');
+    });
+
+    it('keeps the form usable when the pastor list cannot be loaded', () => {
+      const ctx = setup(ParishesListComponent);
+      ctx.fixture.detectChanges();
+      ctx.http.expectOne(url).flush([]);
+      ctx.fixture.componentInstance.openAddForm();
+      ctx.http.expectOne(r => r.url === api('/api/people')).flush('x', { status: 403, statusText: 'Forbidden' });
+      expect(ctx.fixture.componentInstance.pastors()).toEqual([]);
     });
   });
 });

@@ -11,15 +11,22 @@ export class ParishesService {
     return this.http.get<Parish[]>(`${environment.apiBaseUrl}/api/parishes`);
   }
 
-  create(value: { name: string; city?: string }) {
+  create(value: ParishFormValue) {
     return this.http.post<Parish>(`${environment.apiBaseUrl}/api/parishes`, value);
   }
 
-  update(id: string, value: { name: string; city?: string }) {
+  update(id: string, value: ParishFormValue) {
     return this.http.put<Parish>(`${environment.apiBaseUrl}/api/parishes/${id}`, value);
   }
 
   delete(id: string) {
     return this.http.delete<void>(`${environment.apiBaseUrl}/api/parishes/${id}`);
   }
+}
+
+/** Dane formularza parafii; proboszcz zawsze wysyłany (null = parafia bez proboszcza). */
+export interface ParishFormValue {
+  name: string;
+  city?: string;
+  pastorPersonId: string | null;
 }

@@ -22,4 +22,7 @@ export interface Parish {
   id: string;
   name: string;
   city: string | null;
+  /** Proboszcz: osoba z funkcją Proboszcz przypisaną do tej parafii. */
+  pastorPersonId?: string | null;
+  pastorFullName?: string | null;
 }

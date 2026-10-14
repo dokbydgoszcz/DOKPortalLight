@@ -2,7 +2,9 @@ import { ExportButtonComponent } from '../../shared/export/export-button.compone
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ParishesService } from './parishes.service';
+import { ParishFormValue, ParishesService } from './parishes.service';
+import { RouterLink } from '@angular/router';
+import { PeopleService } from '../people/people.service';
 import { Parish } from './parish-need.model';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
@@ -10,7 +12,7 @@ import { serverMessage } from '../../shared/http-error';
 @Component({
   selector: 'app-parishes-list',
   standalone: true,
-  imports: [ExportButtonComponent, HasPermissionDirective, FormsModule],
+  imports: [ExportButtonComponent, HasPermissionDirective, FormsModule, RouterLink],
   templateUrl: './parishes-list.component.html',
   styleUrl: './parishes-list.component.scss'
 })
@@ -19,12 +21,26 @@ export class ParishesListComponent implements OnInit {
   readonly query = signal('');
   readonly isFormOpen = signal(false);
   readonly editingId = signal<string | null>(null);
-  newParish: { name: string; city?: string } = { name: '', city: '' };
+  newParish: ParishFormValue = { name: '', city: '', pastorPersonId: null };
+  /** Osoby z funkcją Proboszcz – do wyboru w formularzu. */
+  readonly pastors = signal<{ id: string; fullName: string; parishName: string | null }[]>([]);
 
   constructor(
     private readonly parishesService: ParishesService,
-    private readonly toast: ToastService
+    private readonly toast: ToastService,
+    private readonly peopleService: PeopleService
   ) {}
+
+  private loadPastors(): void {
+    this.peopleService.search('', 1, 200, 'Pastor').subscribe({
+      next: result => this.pastors.set(result.items.map(p => ({
+        id: p.id,
+        fullName: p.fullName,
+        parishName: p.functions?.find(f => f.type === 'Pastor')?.parishName ?? null
+      }))),
+      error: () => this.pastors.set([])
+    });
+  }
 
   ngOnInit(): void {
     this.load();
@@ -47,14 +63,16 @@ export class ParishesListComponent implements OnInit {
 
   openAddForm(): void {
     this.editingId.set(null);
-    this.newParish = { name: '', city: '' };
+    this.newParish = { name: '', city: '', pastorPersonId: null };
     this.isFormOpen.set(true);
+    this.loadPastors();
   }
 
   openEditForm(parish: Parish): void {
     this.editingId.set(parish.id);
-    this.newParish = { name: parish.name, city: parish.city ?? '' };
+    this.newParish = { name: parish.name, city: parish.city ?? '', pastorPersonId: parish.pastorPersonId ?? null };
     this.isFormOpen.set(true);
+    this.loadPastors();
   }
 
   saveParish(): void {
@@ -70,7 +88,7 @@ export class ParishesListComponent implements OnInit {
         this.toast.success(id ? 'Zapisano zmiany.' : 'Dodano parafię.');
         this.load();
       },
-      error: () => this.toast.error(id ? 'Nie udało się zapisać zmian.' : 'Nie udało się dodać parafii.')
+      error: err => this.toast.error(serverMessage(err, id ? 'Nie udało się zapisać zmian.' : 'Nie udało się dodać parafii.'))
     });
   }
 
