@@ -1,0 +1,104 @@
+:host {
+  display: block;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+/* Kolory spotkań – te same w legendzie i w kalendarzu. */
+.mc-present { background: #2f7d5b; }
+.mc-absent { background: #c2414b; }
+.mc-pending { background: #8a958f; }
+.mc-group { background: #3d6fb6; }
+
+:host ::ng-deep {
+  .fc {
+    --fc-border-color: var(--line, #e5e7eb);
+    --fc-today-bg-color: #fbf6e7;
+    --fc-button-bg-color: #ffffff;
+    --fc-button-border-color: var(--line, #e5e7eb);
+    --fc-button-text-color: var(--text, #1d2b27);
+    --fc-button-hover-bg-color: #f1f4f2;
+    --fc-button-hover-border-color: var(--line, #e5e7eb);
+    --fc-button-active-bg-color: #1c3d36;
+    --fc-button-active-border-color: #1c3d36;
+    font-size: 13px;
+  }
+
+  .fc .fc-toolbar-title {
+    font-size: 18px;
+    font-weight: 800;
+    text-transform: capitalize;
+  }
+
+  .fc .fc-button {
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 8px;
+    text-transform: none;
+    box-shadow: none;
+  }
+
+  .fc .fc-button-primary:not(:disabled).fc-button-active,
+  .fc .fc-button-primary:not(:disabled):active {
+    color: #fff;
+  }
+
+  .fc .fc-col-header-cell-cushion,
+  .fc .fc-daygrid-day-number {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .fc .fc-daygrid-day:hover {
+    background: #f7faf8;
+    cursor: pointer;
+  }
+
+  .fc-event.mc-present, .fc-event.mc-absent, .fc-event.mc-pending, .fc-event.mc-group {
+    border: 0;
+    color: #fff;
+    padding: 1px 4px;
+    cursor: pointer;
+  }
+
+  .fc-event.mc-present { background: #2f7d5b; }
+  .fc-event.mc-absent { background: #c2414b; }
+  .fc-event.mc-pending { background: #8a958f; }
+  .fc-event.mc-group { background: #3d6fb6; }
+
+  .fc-event .fc-event-title {
+    font-weight: 600;
+  }
+
+  .fc-list-event.mc-present, .fc-list-event.mc-absent, .fc-list-event.mc-pending, .fc-list-event.mc-group {
+    background: transparent;
+    color: inherit;
+  }
+
+  @media (max-width: 640px) {
+    .fc .fc-toolbar {
+      flex-direction: column;
+      gap: 8px;
+    }
+  }
+}

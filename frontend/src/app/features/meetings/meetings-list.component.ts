@@ -1,6 +1,9 @@
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { MeetingsCalendarComponent } from './meetings-calendar.component';
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { FormsModule } from '@angular/forms';
 import { MeetingsService } from './meetings.service';
 import { CreateMeetingValue, Meeting, MeetingAttendee } from './meeting.model';
@@ -8,10 +11,20 @@ import { ToastService } from '../../core/notifications/toast.service';
 import { DokCasesService } from '../dok-cases/dok-cases.service';
 import { DokCase } from '../dok-cases/dok-case.model';
 
+const VIEW_KEY = 'dokportal.meetingsView';
+
+function readView(): 'list' | 'calendar' {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'calendar' ? 'calendar' : 'list';
+  } catch {
+    return 'list';
+  }
+}
+
 @Component({
   selector: 'app-meetings-list',
   standalone: true,
-  imports: [HasPermissionDirective, ExportButtonComponent, FormsModule],
+  imports: [HasPermissionDirective, ExportButtonComponent, FormsModule, MeetingsCalendarComponent],
   templateUrl: './meetings-list.component.html',
   styleUrl: './meetings-list.component.scss'
 })
@@ -25,6 +38,9 @@ export class MeetingsListComponent implements OnInit {
   readonly attendeeSelection = signal<Record<string, boolean | null>>({});
   readonly expandedIds = signal<ReadonlySet<string>>(new Set());
   newMeeting: CreateMeetingValue = { groupLabel: '', meetingDate: '' };
+  /** Lista albo kalendarz; wybór zapamiętuje przeglądarka. */
+  readonly view = signal<'list' | 'calendar'>(readView());
+  readonly canManage = inject(AuthService).hasPermission(Permissions.MeetingsManage);
 
   constructor(
     private readonly meetingsService: MeetingsService,
@@ -53,6 +69,30 @@ export class MeetingsListComponent implements OnInit {
       next: meetings => this.meetings.set(meetings),
       error: () => this.toast.error('Nie udało się wczytać listy spotkań.')
     });
+  }
+
+  setView(view: 'list' | 'calendar'): void {
+    this.view.set(view);
+    try {
+      localStorage.setItem(VIEW_KEY, view);
+    } catch {
+      // brak dostępu do pamięci przeglądarki – widok i tak działa
+    }
+  }
+
+  /** Klik w spotkanie w kalendarzu: edycja (z uprawnieniem) albo szczegóły na liście. */
+  onCalendarMeeting(meeting: Meeting): void {
+    if (this.canManage) {
+      this.openEditForm(meeting);
+      return;
+    }
+    this.toast.success(`${meeting.caseLabel ?? meeting.groupLabel} – ${meeting.meetingDate}${meeting.notes ? ': ' + meeting.notes : ''}`);
+  }
+
+  /** Klik w pusty dzień kalendarza: nowe spotkanie z tą datą. */
+  openAddFormForDate(date: string): void {
+    this.openAddForm();
+    this.newMeeting.meetingDate = date;
   }
 
   openAddForm(): void {

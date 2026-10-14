@@ -470,4 +470,51 @@ describe('MeetingsListComponent', () => {
       ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([caseMeeting]);
     });
   });
+  describe('calendar view', () => {
+    afterEach(() => {
+      try { localStorage.removeItem('dokportal.meetingsView'); } catch { /* brak pamięci */ }
+    });
+
+    it('switches to the calendar, remembers the choice and shows the meetings in it', async () => {
+      const ctx = boot();
+      clickByText(ctx.el, 'Kalendarz', 'button');
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+
+      expect(localStorage.getItem('dokportal.meetingsView')).toBe('calendar');
+      expect(textOf(ctx.el)).not.toContain('Podopieczny / grupa');
+      expect(ctx.el.querySelector('app-meetings-calendar .fc')).not.toBeNull();
+      expect(textOf(ctx.el)).toContain('zajęcia grupowe');
+
+      clickByText(ctx.el, 'Lista', 'button');
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Podopieczny / grupa');
+    });
+
+    it('opens a new meeting for the clicked day, and the meeting form for a clicked meeting', () => {
+      const ctx = boot();
+      const component = ctx.fixture.componentInstance;
+
+      component.openAddFormForDate('2026-10-20');
+      expect(component.newMeeting.meetingDate).toBe('2026-10-20');
+      expect(component.editingId()).toBeNull();
+
+      component.onCalendarMeeting(caseMeeting);
+      expect(component.editingId()).toBe('m2');
+    });
+  });
+  it('only shows the details of a clicked meeting to people who cannot edit meetings', () => {
+    const ctx = setup(MeetingsListComponent, { granted: ['Meetings.View'] });
+    ctx.fixture.detectChanges();
+    ctx.http.expectOne(url).flush([caseMeeting]);
+    ctx.http.match(r => r.url === casesUrl).forEach(r => r.flush(paged([])));
+    const component = ctx.fixture.componentInstance;
+
+    component.onCalendarMeeting(caseMeeting);
+    component.onCalendarMeeting({ ...caseMeeting, caseLabel: null, groupLabel: 'Grupa', notes: null });
+
+    expect(component.editingId()).toBeNull();
+    expect(component.isFormOpen()).toBe(false);
+    expect(toastMessages()).toEqual(expect.arrayContaining(['Jan Kowalski – 2026-09-25: ok', 'Grupa – 2026-09-25']));
+  });
 });
