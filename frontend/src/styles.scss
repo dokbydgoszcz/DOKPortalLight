@@ -190,8 +190,15 @@ tr:hover td{background:#FAFAF7}
 .close{border:0;background:#EEF2EF;width:34px;height:34px;border-radius:9px}
 .modal-body{padding:20px}
 .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+/* Listy rozwijane (filtry nad tabelami i w formularzach): jeden wygląd w całym portalu; .field select nadpisuje szerokość. */
+select{font:inherit;font-size:13px;color:var(--text);background-color:white;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2365716E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;border:1px solid var(--line);border-radius:10px;padding:8px 34px 8px 11px;min-height:38px;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none}
+select:hover{border-color:#c5cfc9}
+select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+select:disabled{background-color:#f3f5f3;cursor:not-allowed;opacity:.8}
+.card-head.filters{justify-content:flex-start;flex-wrap:wrap}
 .field label{display:block;font-size:10px;text-transform:uppercase;color:#6C7A75;font-weight:800;margin-bottom:6px}
-.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 11px;outline:none;background:white}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 11px;outline:none;background-color:white}
+.field select{padding-right:34px}
 .field textarea{min-height:92px;resize:vertical}
 .field input[type="checkbox"]{width:auto;padding:0;margin:0;border:0;flex:none}
 .field label.checkbox-label{display:flex;align-items:center;gap:8px;margin-bottom:0;text-transform:none;font-size:13px;font-weight:600;color:var(--text);cursor:pointer}

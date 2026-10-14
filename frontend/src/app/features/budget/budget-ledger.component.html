@@ -8,7 +8,7 @@
 
 <div class="card period-bar" style="margin-bottom:16px">
   <div class="card-body" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-    <label for="period-mode">Okres:</label>
+    <label for="period-mode" style="font-size:13px;color:var(--muted);font-weight:600">Okres:</label>
     <select id="period-mode" name="periodMode" [(ngModel)]="periodMode" (ngModelChange)="onPeriodChange()">
       <option value="all">Cały okres</option>
       <option value="year">Rok</option>
