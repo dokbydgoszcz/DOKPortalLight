@@ -21,6 +21,20 @@ function boot(users: object[] = [user]) {
   return ctx;
 }
 
+function bootCreate(users: object[] = [user]) {
+  const ctx = boot(users);
+  clickByText(ctx.el, '＋ Nowe konto', 'button');
+  ctx.fixture.detectChanges();
+  return ctx;
+}
+
+function openEdit(ctx: ReturnType<typeof boot>, index = 0) {
+  (ctx.el.querySelectorAll<HTMLButtonElement>('.actions-cell button')[index]).click();
+  ctx.fixture.detectChanges();
+}
+
+const save = (el: HTMLElement) => clickByText(el, 'Zapisz', '.modal-foot button');
+
 function fillAccount(el: HTMLElement, email: string, password: string, confirm: string) {
   setInput(el, 'input[name="email"]', email);
   setInput(el, 'input[name="password"]', password);
@@ -32,56 +46,63 @@ function toasts() {
 }
 
 describe('UsersListComponent', () => {
-  afterEach(() => vi.useRealTimers());
-
-  it('renders emails returned from the API', () => {
-    const { el } = boot();
-
-    expect(textOf(el)).toContain('admin@dokportal.local');
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
-  it('renders one role column per role returned by the API', () => {
-    const { el } = boot();
+  describe('the list', () => {
+    it('shows login, linked person, roles in Polish and the account state, read-only', () => {
+      const { el } = boot([user, { ...linkedUser, mfaEnabled: true }, { ...unlinkedCatechist, isActive: false }]);
 
-    const headers = Array.from(el.querySelectorAll('thead th')).map(th => th.textContent!.trim());
-    expect(headers).toContain('Biskup');
-    expect(el.querySelectorAll('tbody input[type="checkbox"]').length).toBe(2);
-  });
+      const headers = Array.from(el.querySelectorAll('thead th')).map(th => th.textContent!.trim());
+      expect(headers).toEqual(['Login', 'Osoba', 'Role', 'Stan', '']);
+      const text = textOf(el);
+      expect(text).toContain('admin@dokportal.local');
+      expect(text).toContain('Katechista prowadzący');
+      expect(text).toContain('MFA');
+      expect(text).toContain('wyłączone');
+      expect(text).toContain('Katechista bez osoby nie zobaczy podopiecznych.');
+      expect(el.querySelector('a.person-link')?.getAttribute('href')).toBe('/people/p9');
+      expect(el.querySelectorAll('tbody input').length).toBe(0);
+    });
 
-  it('names the roles in readable Polish and keeps unknown (custom) roles as they are', () => {
-    const ctx = setup(UsersListComponent);
-    ctx.fixture.detectChanges();
-    flushAll(ctx.http, api('/api/users'), [user]);
-    flushAll(ctx.http, api('/api/users/roles'), ['Administrator', 'DyrektorSKSP', 'DyrektorDOK', 'KatechistaProwadzacy', 'Wlasna']);
-    ctx.fixture.detectChanges();
+    it('keeps custom role names as they are', () => {
+      const { el } = boot([{ ...user, roles: ['Wlasna'] }]);
+      expect(textOf(el)).toContain('Wlasna');
+    });
 
-    const headers = Array.from(ctx.el.querySelectorAll('thead th')).map(th => th.textContent!.trim());
-    expect(headers).toEqual(expect.arrayContaining(['Dyrektor SKŚP', 'Dyrektor DOK', 'Katechista prowadzący', 'Wlasna']));
-  });
+    it('shows toasts when the user list or the role list cannot be loaded', () => {
+      const ctx = setup(UsersListComponent);
+      ctx.fixture.detectChanges();
+      ctx.http.expectOne(api('/api/users')).flush('x', { status: 500, statusText: 'Error' });
+      ctx.http.expectOne(api('/api/users/roles')).flush('x', { status: 500, statusText: 'Error' });
 
-  it('keeps “brak” and the link apart, and puts the account actions in one row', () => {
-    const { el } = boot([unlinkedCatechist]);
+      expect(toasts().map(t => t.message)).toEqual(expect.arrayContaining(['Nie udało się wczytać listy użytkowników.', 'Nie udało się wczytać listy ról.']));
+    });
 
-    const person = el.querySelector('.person-cell') as HTMLElement;
-    expect(Array.from(person.children).map(c => c.textContent!.trim()).slice(0, 2)).toEqual(['brak', 'Powiąż']);
-    expect(el.querySelector('.account-actions')!.querySelectorAll('button').length).toBe(2);
-  });
+    it('opens and closes the new account window', () => {
+      const ctx = bootCreate();
+      expect(textOf(ctx.el)).toContain('Nowe konto');
+      clickByText(ctx.el, 'Anuluj', '.modal-foot button');
+      ctx.fixture.detectChanges();
+      expect(ctx.el.querySelector('.modal')).toBeNull();
+    });
 
-  it('shows toasts when the user list or the role list cannot be loaded', () => {
-    const { fixture, http } = setup(UsersListComponent);
-    fixture.detectChanges();
+    it('gives the new account the roles ticked in the window', () => {
+      const { el, http, fixture } = bootCreate();
+      (el.querySelectorAll<HTMLInputElement>('.role-checks input')[1]).click();
+      fixture.detectChanges();
+      fillAccount(el, 'nowy@example.org', 'Sekret123!', 'Sekret123!');
+      clickByText(el, 'Utwórz konto');
 
-    http.expectOne(api('/api/users')).flush('x', { status: 500, statusText: 'Server Error' });
-    http.expectOne(api('/api/users/roles')).flush('x', { status: 500, statusText: 'Server Error' });
-
-    const messages = toasts().map(t => t.message);
-    expect(messages).toContain('Nie udało się wczytać listy użytkowników.');
-    expect(messages).toContain('Nie udało się wczytać listy ról.');
+      expect(http.expectOne(r => r.method === 'POST' && r.url === api('/api/users')).request.body.roles).toEqual(['Biskup']);
+    });
   });
 
   describe('creating an account', () => {
     it('rejects mismatched passwords without calling the API', () => {
-      const { fixture, http, el } = boot();
+      const { fixture, http, el } = bootCreate();
       fillAccount(el, 'nowy@example.org', 'Sekret123!', 'inne');
 
       clickByText(el, 'Utwórz konto');
@@ -93,7 +114,7 @@ describe('UsersListComponent', () => {
 
     it('creates an account for a person found through the debounced search', () => {
       vi.useFakeTimers();
-      const { fixture, http, el } = boot();
+      const { fixture, http, el } = bootCreate();
 
       setInput(el, 'input[name="personQuery"]', 'Jan');
       http.expectNone(r => r.url === api('/api/people'));
@@ -116,12 +137,12 @@ describe('UsersListComponent', () => {
       expect(toasts().map(t => t.message)).toContain('Konto użytkownika utworzone.');
       expect(fixture.componentInstance.newUser).toEqual({ email: '', password: '', roles: [] });
       expect(fixture.componentInstance.confirmPassword).toBe('');
-      expect(el.querySelector('input[name="personQuery"]')).not.toBeNull();
+      expect(fixture.componentInstance.isCreateOpen()).toBe(false);
     });
 
     function pickPerson(found: object) {
       vi.useFakeTimers();
-      const ctx = boot();
+      const ctx = bootCreate();
       setInput(ctx.el, 'input[name="personQuery"]', 'Jan');
       vi.advanceTimersByTime(300);
       ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged([found]));
@@ -164,7 +185,7 @@ describe('UsersListComponent', () => {
 
     it('debounces the search: only the last query is sent and a blank query sends nothing', () => {
       vi.useFakeTimers();
-      const { http, el } = boot();
+      const { http, el } = bootCreate();
 
       setInput(el, 'input[name="personQuery"]', 'Ja');
       vi.advanceTimersByTime(100);
@@ -179,7 +200,7 @@ describe('UsersListComponent', () => {
 
     it('shows a toast when the person search fails', () => {
       vi.useFakeTimers();
-      const { http, el } = boot();
+      const { http, el } = bootCreate();
 
       setInput(el, 'input[name="personQuery"]', 'Jan');
       vi.advanceTimersByTime(300);
@@ -190,7 +211,7 @@ describe('UsersListComponent', () => {
 
     it('lets the user change the selected person', () => {
       vi.useFakeTimers();
-      const { fixture, http, el } = boot();
+      const { fixture, http, el } = bootCreate();
       setInput(el, 'input[name="personQuery"]', 'Jan');
       vi.advanceTimersByTime(300);
       http.expectOne(r => r.url === api('/api/people')).flush(paged([person]));
@@ -205,7 +226,7 @@ describe('UsersListComponent', () => {
     });
 
     it('creates a new person first when adding an account for someone who is not in the database', () => {
-      const { fixture, http, el } = boot();
+      const { fixture, http, el } = bootCreate();
       clickByText(el, 'Dodaj nową osobę');
       fixture.detectChanges();
       fillAccount(el, 'ewa@example.org', 'Sekret123!', 'Sekret123!');
@@ -227,7 +248,7 @@ describe('UsersListComponent', () => {
     });
 
     it('shows an error when the new person cannot be created, and allows cancelling', () => {
-      const { fixture, http, el } = boot();
+      const { fixture, http, el } = bootCreate();
       clickByText(el, 'Dodaj nową osobę');
       fixture.detectChanges();
       fillAccount(el, 'ewa@example.org', 'Sekret123!', 'Sekret123!');
@@ -246,7 +267,7 @@ describe('UsersListComponent', () => {
     });
 
     it('shows an error when the account cannot be created', () => {
-      const { fixture, http, el } = boot();
+      const { fixture, http, el } = bootCreate();
       fillAccount(el, 'nowy@example.org', 'Sekret123!', 'Sekret123!');
 
       clickByText(el, 'Utwórz konto');
@@ -258,7 +279,7 @@ describe('UsersListComponent', () => {
     });
 
     it('shows the server reason when the person or the account is refused', () => {
-      const { fixture, http, el } = boot();
+      const { fixture, http, el } = bootCreate();
       clickByText(el, 'Dodaj nową osobę');
       fixture.detectChanges();
       fillAccount(el, 'ewa@example.org', 'Sekret123!', 'Sekret123!');
@@ -281,337 +302,185 @@ describe('UsersListComponent', () => {
     });
   });
 
-  describe('assigning roles', () => {
-    it('sends the full role list when a role is added or removed and reloads afterwards', () => {
-      const { fixture, http, el } = boot();
-      const boxes = () => Array.from(el.querySelectorAll<HTMLInputElement>('tbody input[type="checkbox"]'));
-
-      boxes()[1].checked = true;
-      boxes()[1].dispatchEvent(new Event('change'));
-      const add = http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u1/roles'));
-      expect(add.request.body).toEqual({ roles: ['Administrator', 'Biskup'] });
-      add.flush({ ...user, roles: ['Administrator', 'Biskup'] });
-      flushAll(http, api('/api/users'), [{ ...user, roles: ['Administrator', 'Biskup'] }]);
-      flushAll(http, api('/api/users/roles'), ['Administrator', 'Biskup']);
-      fixture.detectChanges();
-
-      boxes()[0].checked = false;
-      boxes()[0].dispatchEvent(new Event('change'));
-      const remove = http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u1/roles'));
-      expect(remove.request.body).toEqual({ roles: ['Biskup'] });
-    });
-
-    it('shows a toast when the roles cannot be updated', () => {
-      const { http, el } = boot();
-      const box = el.querySelectorAll<HTMLInputElement>('tbody input[type="checkbox"]')[1];
-
-      box.checked = true;
-      box.dispatchEvent(new Event('change'));
-      http.expectOne(r => r.method === 'PUT').flush('x', { status: 500, statusText: 'Server Error' });
-
-      expect(toasts().map(t => t.message)).toContain('Nie udało się zaktualizować ról.');
-    });
-
-    it('shows why the roles cannot be changed (e.g. the last administrator)', () => {
-      const { http, el } = boot();
-      const box = el.querySelectorAll<HTMLInputElement>('tbody input[type="checkbox"]')[0];
-
-      box.checked = false;
-      box.dispatchEvent(new Event('change'));
-      http.expectOne(r => r.method === 'PUT').flush({ title: 'To ostatni aktywny administrator.' }, { status: 400, statusText: 'Bad Request' });
-
-      expect(toasts().map(t => t.message)).toContain('To ostatni aktywny administrator.');
-      flushAll(http, api('/api/users'), [user]);
-    });
-  });
-
-  describe('deactivating an account', () => {
-    it('deactivates an active account after confirmation and reloads', () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-      const { http, el } = boot([{ ...linkedUser, isActive: true }]);
-
-      clickByText(el, 'Wyłącz konto', 'button');
-      expect(confirmSpy).toHaveBeenCalledWith('Wyłączyć konto anna@example.org? Osoba nie zaloguje się, a jej otwarte sesje wygasną.');
-      const req = http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u2/active'));
-      expect(req.request.body).toEqual({ isActive: false });
-      req.flush({ ...linkedUser, isActive: false });
-
-      expect(toasts().map(t => t.message)).toContain('Konto wyłączone.');
-      flushAll(http, api('/api/users'), [{ ...linkedUser, isActive: false }]);
-      confirmSpy.mockRestore();
-    });
-
-    it('marks an inactive account and turns it back on', () => {
-      const { http, el, fixture } = boot([{ ...linkedUser, isActive: false }]);
-      fixture.detectChanges();
-
-      expect(textOf(el)).toContain('nieaktywne');
-      clickByText(el, 'Włącz konto', 'button');
-      http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u2/active')).flush({ ...linkedUser, isActive: true });
-
-      expect(toasts().map(t => t.message)).toContain('Konto włączone.');
-      flushAll(http, api('/api/users'), [linkedUser]);
-    });
-
-    it('does nothing without confirmation and shows the server message on failure', () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-      const { http, el } = boot([{ ...user, isActive: true }]);
-
-      clickByText(el, 'Wyłącz konto', 'button');
-      http.expectNone(r => r.method === 'PUT');
-      confirmSpy.mockReturnValue(true);
-      clickByText(el, 'Wyłącz konto', 'button');
-      http.expectOne(r => r.method === 'PUT').flush({ title: 'Nie możesz wyłączyć własnego konta.' }, { status: 400, statusText: 'Bad Request' });
-
-      expect(toasts().map(t => t.message)).toContain('Nie możesz wyłączyć własnego konta.');
-      confirmSpy.mockRestore();
-    });
-  });
-
-  describe('resetting a password', () => {
-    function startReset() {
-      const ctx = boot();
-      clickByText(ctx.el, 'Resetuj hasło');
-      ctx.fixture.detectChanges();
-      return ctx;
-    }
-
-    it('rejects an empty or mismatched password', () => {
-      const { fixture, http, el } = startReset();
-
-      setInput(el, 'input[placeholder="Nowe hasło"]', 'Nowe12345!');
-      setInput(el, 'input[placeholder="Powtórz"]', 'Inne12345!');
-      clickByText(el, 'Zapisz');
-      fixture.detectChanges();
-
-      expect(textOf(el)).toContain('Podane hasła różnią się od siebie.');
-      http.expectNone(r => r.method === 'PUT');
-    });
-
-    it('sends the new password, closes the editor and confirms with a toast', () => {
-      const { fixture, http, el } = startReset();
-      setInput(el, 'input[placeholder="Nowe hasło"]', 'Nowe12345!');
-      setInput(el, 'input[placeholder="Powtórz"]', 'Nowe12345!');
-
-      clickByText(el, 'Zapisz');
-      const req = http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u1/reset-password'));
-      expect(req.request.body).toEqual({ newPassword: 'Nowe12345!' });
-      req.flush(null);
-      fixture.detectChanges();
-
-      expect(toasts().map(t => t.message)).toContain('Hasło zresetowane.');
-      expect(el.querySelector('input[placeholder="Nowe hasło"]')).toBeNull();
-    });
-
-    it('shows an error when the reset fails and lets the user cancel', () => {
-      const { fixture, http, el } = startReset();
-      setInput(el, 'input[placeholder="Nowe hasło"]', 'Nowe12345!');
-      setInput(el, 'input[placeholder="Powtórz"]', 'Nowe12345!');
-
-      clickByText(el, 'Zapisz');
-      http.expectOne(r => r.method === 'PUT').flush('x', { status: 500, statusText: 'Server Error' });
-      fixture.detectChanges();
-      expect(textOf(el)).toContain('Nie udało się zresetować hasła.');
-
-      clickByText(el, 'Anuluj');
-      fixture.detectChanges();
-      expect(el.querySelector('input[placeholder="Nowe hasło"]')).toBeNull();
-    });
-  });
-
-  describe('linking accounts to people', () => {
-    const rowOf = (el: HTMLElement, email: string) =>
-      Array.from(el.querySelectorAll('tbody tr')).find(r => r.textContent!.includes(email)) as HTMLElement;
-    const linkLink = (el: HTMLElement, email: string, text: string) =>
-      Array.from(rowOf(el, email).querySelectorAll<HTMLElement>('.link, button')).find(e => e.textContent!.trim() === text)!;
-
-    it('shows the linked person, or a note when the account has none', () => {
-      const { el } = boot([linkedUser, unlinkedCatechist]);
-
-      expect(el.querySelector('thead')!.textContent).toContain('Osoba');
-      expect(rowOf(el, 'anna@example.org').textContent).toContain('Anna Maj');
-      expect(rowOf(el, 'kat@example.org').textContent).toContain('brak');
-      expect(rowOf(el, 'kat@example.org').textContent).toContain('nie zobaczy podopiecznych');
-      expect(rowOf(el, 'anna@example.org').textContent).not.toContain('nie zobaczy');
-    });
-
-    it('searches for a person and links the account to the chosen one', () => {
-      vi.useFakeTimers();
-      const { fixture, http, el } = boot([unlinkedCatechist]);
-
-      linkLink(el, 'kat@example.org', 'Powiąż').click();
-      fixture.detectChanges();
-      setInput(el, 'input[name="linkQuery"]', 'Kowal');
-      vi.advanceTimersByTime(300);
-      http.expectOne(r => r.url === api('/api/people') && r.params.get('query') === 'Kowal').flush(paged([person]));
-      fixture.detectChanges();
-      clickByText(el, 'Jan Kowalski', '.link-results button');
-
-      const req = http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u3/person'));
-      expect(req.request.body).toEqual({ personId: 'p1' });
-      req.flush({ ...unlinkedCatechist, personId: 'p1', personFullName: 'Jan Kowalski' });
-      expect(toasts().map(t => t.message)).toContain('Konto powiązane z osobą.');
-      flushAll(http, api('/api/users'), [{ ...unlinkedCatechist, personId: 'p1', personFullName: 'Jan Kowalski' }]);
-      flushAll(http, api('/api/users/roles'), ['KatechistaProwadzacy']);
-    });
-
-    it('shows the server message when the person already has another account', () => {
-      vi.useFakeTimers();
-      const { fixture, http, el } = boot([unlinkedCatechist]);
-      linkLink(el, 'kat@example.org', 'Powiąż').click();
-      fixture.detectChanges();
-      setInput(el, 'input[name="linkQuery"]', 'Kowal');
-      vi.advanceTimersByTime(300);
-      http.expectOne(r => r.url === api('/api/people')).flush(paged([person]));
-      fixture.detectChanges();
-      clickByText(el, 'Jan Kowalski', '.link-results button');
-
-      http.expectOne(r => r.method === 'PUT').flush({ title: 'Ta osoba ma już konto: jan@example.org.' }, { status: 400, statusText: 'Bad Request' });
-      fixture.detectChanges();
-
-      expect(textOf(el)).toContain('Ta osoba ma już konto: jan@example.org.');
-    });
-
-    it('falls back to a generic message when the server gives no details', () => {
-      vi.useFakeTimers();
-      const { fixture, http, el } = boot([unlinkedCatechist]);
-      linkLink(el, 'kat@example.org', 'Powiąż').click();
-      fixture.detectChanges();
-      setInput(el, 'input[name="linkQuery"]', 'Kowal');
-      vi.advanceTimersByTime(300);
-      http.expectOne(r => r.url === api('/api/people')).flush(paged([person]));
-      fixture.detectChanges();
-      clickByText(el, 'Jan Kowalski', '.link-results button');
-
-      http.expectOne(r => r.method === 'PUT').flush('x', { status: 500, statusText: 'Server Error' });
-      fixture.detectChanges();
-
-      expect(textOf(el)).toContain('Nie udało się powiązać konta z osobą.');
-    });
-
-    it('offers to change the person of a linked account and can cancel', () => {
-      const { fixture, http, el } = boot([linkedUser]);
-
-      linkLink(el, 'anna@example.org', 'Zmień').click();
-      fixture.detectChanges();
-      expect(el.querySelector('input[name="linkQuery"]')).not.toBeNull();
-
-      clickByText(el, 'Anuluj', 'tbody button');
-      fixture.detectChanges();
-
-      expect(el.querySelector('input[name="linkQuery"]')).toBeNull();
-      http.expectNone(r => r.method === 'PUT');
-    });
-
-    it('unlinks the account after confirmation', () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
-      const { http, el } = boot([linkedUser]);
-
-      linkLink(el, 'anna@example.org', 'Odepnij').click();
-
-      const req = http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u2/person'));
-      expect(req.request.body).toEqual({ personId: null });
-      req.flush({ ...linkedUser, personId: null, personFullName: null });
-      expect(toasts().map(t => t.message)).toContain('Konto odpięte od osoby.');
-      flushAll(http, api('/api/users'), [linkedUser]);
-      flushAll(http, api('/api/users/roles'), ['KatechistaProwadzacy']);
-    });
-
-    it('does nothing when unlinking is not confirmed', () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
-      const { http, el } = boot([linkedUser]);
-
-      linkLink(el, 'anna@example.org', 'Odepnij').click();
-
-      http.expectNone(r => r.method === 'PUT');
-    });
-
-    it('shows an error toast when unlinking fails', () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
-      const { http, el } = boot([linkedUser]);
-
-      linkLink(el, 'anna@example.org', 'Odepnij').click();
-      http.expectOne(r => r.method === 'PUT').flush('x', { status: 500, statusText: 'Server Error' });
-
-      expect(toasts().map(t => t.message)).toContain('Nie udało się odpiąć konta od osoby.');
-    });
-
-    it('clears the results when the search box is emptied', () => {
-      vi.useFakeTimers();
-      const { fixture, el, http } = boot([unlinkedCatechist]);
-      linkLink(el, 'kat@example.org', 'Powiąż').click();
-      fixture.detectChanges();
-      setInput(el, 'input[name="linkQuery"]', 'Kowal');
-      vi.advanceTimersByTime(300);
-      http.expectOne(r => r.url === api('/api/people')).flush(paged([person]));
-      fixture.detectChanges();
-      expect(el.querySelectorAll('.link-results button').length).toBe(1);
-
-      setInput(el, 'input[name="linkQuery"]', '   ');
-      fixture.detectChanges();
-
-      expect(el.querySelectorAll('.link-results button').length).toBe(0);
-    });
-  });
-  describe('login, MFA and the person card', () => {
-    const messages = () => toasts().map(t => t.message);
-
-    it('heads the column "Login" and corrects a login in place', async () => {
-      const ctx = boot([user, linkedUser]);
-      expect(ctx.el.querySelector('thead th')?.textContent).toBe('Login');
-      ctx.fixture.componentInstance.startLoginEdit(linkedUser as never);
-      ctx.fixture.detectChanges();
+  describe('editing an account', () => {
+    it('opens the account in a window with its login, person and roles', async () => {
+      const ctx = boot([linkedUser]);
+      openEdit(ctx);
       await ctx.fixture.whenStable();
-      setInput(ctx.el, 'input[name="loginValue"]', 'anna.maj@example.org');
+
+      expect((ctx.el.querySelector('#edit-login') as HTMLInputElement).value).toBe('anna@example.org');
+      expect(textOf(ctx.el)).toContain('Anna Maj');
+      expect(textOf(ctx.el)).toContain('Zmiana loginu zmienia też e-mail powiązanej osoby.');
+      clickByText(ctx.el, '×', '.modal .close');
       ctx.fixture.detectChanges();
-      clickByText(ctx.el, 'Zapisz', '.login-edit button');
-
-      const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u2/login'));
-      expect(req.request.body).toEqual({ email: 'anna.maj@example.org' });
-      req.flush({ ...linkedUser, email: 'anna.maj@example.org' });
-      expect(messages()).toContain('Login zmieniony na anna.maj@example.org (e-mail osoby też).');
+      expect(ctx.el.querySelector('.modal')).toBeNull();
     });
 
-    it('does nothing for an unchanged login and shows refusals', () => {
+    it('saves only what changed: login, then person, then roles', async () => {
+      vi.useFakeTimers();
+      const ctx = boot([linkedUser]);
+      openEdit(ctx);
+      setInput(ctx.el, '#edit-login', 'anna.maj@example.org');
+      clickByText(ctx.el, 'Zmień', '.person-row .link');
+      ctx.fixture.detectChanges();
+      setInput(ctx.el, 'input[name="linkQuery"]', 'Jan');
+      vi.advanceTimersByTime(300);
+      ctx.http.expectOne(r => r.url === api('/api/people')).flush(paged([person]));
+      ctx.fixture.detectChanges();
+      clickByText(ctx.el, 'Jan Kowalski', 'button.pick-row');
+      ctx.fixture.detectChanges();
+      (ctx.el.querySelector('input[name="role-Biskup"]') as HTMLInputElement).click();
+      ctx.fixture.detectChanges();
+      vi.useRealTimers();
+
+      save(ctx.el);
+      await Promise.resolve();
+      ctx.http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u2/login')).flush({ ...linkedUser });
+      await new Promise(r => setTimeout(r));
+      const personReq = ctx.http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u2/person'));
+      expect(personReq.request.body).toEqual({ personId: 'p1' });
+      personReq.flush({ ...linkedUser });
+      await new Promise(r => setTimeout(r));
+      const rolesReq = ctx.http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u2/roles'));
+      expect(rolesReq.request.body).toEqual({ roles: ['KatechistaProwadzacy', 'Biskup'] });
+      rolesReq.flush({ ...linkedUser });
+      await new Promise(r => setTimeout(r));
+
+      expect(toasts().map(t => t.message)).toContain('Zapisano zmiany konta.');
+      expect(ctx.fixture.componentInstance.editing()).toBeNull();
+    });
+
+    it('unlinks the person and reports refusals, keeping the window open', async () => {
+      const ctx = boot([linkedUser]);
+      openEdit(ctx);
+      clickByText(ctx.el, 'Odepnij', '.person-row .link');
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Powiąż z osobą');
+
+      save(ctx.el);
+      await Promise.resolve();
+      ctx.http.expectOne(r => r.url === api('/api/users/u2/person'))
+        .flush({ title: 'To ostatni administrator.' }, { status: 400, statusText: 'Bad Request' });
+      await new Promise(r => setTimeout(r));
+      ctx.fixture.detectChanges();
+
+      expect(textOf(ctx.el)).toContain('To ostatni administrator.');
+      expect(ctx.fixture.componentInstance.editing()).not.toBeNull();
+    });
+
+    it('needs a login, and sends nothing when nothing changed', async () => {
+      const ctx = boot([linkedUser]);
+      openEdit(ctx);
+      setInput(ctx.el, '#edit-login', '  ');
+      save(ctx.el);
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Podaj login');
+
+      setInput(ctx.el, '#edit-login', 'anna@example.org');
+      save(ctx.el);
+      await new Promise(r => setTimeout(r));
+      ctx.http.expectNone(r => r.method === 'PUT');
+    });
+
+    it('cancels picking a person', () => {
+      vi.useFakeTimers();
       const ctx = boot([user]);
-      const component = ctx.fixture.componentInstance;
-      component.startLoginEdit(user as never);
-      component.saveLogin(user as never);
-      ctx.http.expectNone(r => r.url.endsWith('/login'));
-      expect(component.editingLoginId()).toBeNull();
-
-      component.startLoginEdit(user as never);
-      component.loginValue = 'zajety@example.org';
-      component.saveLogin(user as never);
-      ctx.http.expectOne(r => r.url === api('/api/users/u1/login')).flush({ title: 'Ten adres jest już loginem innego konta.' }, { status: 400, statusText: 'Bad Request' });
-      expect(messages()).toContain('Ten adres jest już loginem innego konta.');
-
-      component.loginValue = 'nowy@example.org';
-      component.saveLogin(user as never);
-      ctx.http.expectOne(r => r.url === api('/api/users/u1/login')).flush({ ...user, email: 'nowy@example.org' });
-      expect(messages()).toContain('Login zmieniony na nowy@example.org.');
+      openEdit(ctx);
+      clickByText(ctx.el, 'Powiąż z osobą', '.person-row .link');
+      ctx.fixture.detectChanges();
+      setInput(ctx.el, 'input[name="linkQuery"]', '  ');
+      vi.advanceTimersByTime(500);
+      ctx.http.expectNone(r => r.url === api('/api/people'));
+      setInput(ctx.el, 'input[name="linkQuery"]', 'Jan');
+      vi.advanceTimersByTime(300);
+      ctx.http.expectOne(r => r.url === api('/api/people')).flush('x', { status: 500, statusText: 'Error' });
+      expect(toasts().map(t => t.message)).toContain('Nie udało się wyszukać osób.');
+      clickByText(ctx.el, 'Anuluj wybór', 'button');
+      ctx.fixture.detectChanges();
+      expect(ctx.el.querySelector('input[name="linkQuery"]')).toBeNull();
     });
 
-    it('turns MFA off for an account after confirmation', () => {
+    it('resets the password from the window', () => {
+      const ctx = boot([user]);
+      openEdit(ctx);
+      clickByText(ctx.el, 'Resetuj hasło', 'button');
+      ctx.fixture.detectChanges();
+      setInput(ctx.el, 'input[name="resetPasswordValue"]', 'Tymczas123!');
+      setInput(ctx.el, 'input[name="resetPasswordConfirm"]', 'Inne');
+      clickByText(ctx.el, 'Ustaw hasło', 'button');
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Podane hasła różnią się od siebie.');
+
+      setInput(ctx.el, 'input[name="resetPasswordConfirm"]', 'Tymczas123!');
+      clickByText(ctx.el, 'Ustaw hasło', 'button');
+      const req = ctx.http.expectOne(r => r.url === api('/api/users/u1/reset-password'));
+      expect(req.request.body).toEqual({ newPassword: 'Tymczas123!' });
+      req.flush(null);
+      expect(toasts().map(t => t.message)).toContain('Hasło zresetowane – przy logowaniu użytkownik ustawi własne.');
+      ctx.fixture.detectChanges();
+
+      clickByText(ctx.el, 'Resetuj hasło', 'button');
+      ctx.fixture.detectChanges();
+      setInput(ctx.el, 'input[name="resetPasswordValue"]', 'a');
+      setInput(ctx.el, 'input[name="resetPasswordConfirm"]', 'a');
+      clickByText(ctx.el, 'Ustaw hasło', 'button');
+      ctx.http.expectOne(r => r.url === api('/api/users/u1/reset-password')).flush({ title: 'Hasło musi mieć co najmniej 8 znaków.' }, { status: 400, statusText: 'Bad Request' });
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('co najmniej 8 znaków');
+      clickByText(ctx.el, 'Anuluj', '.reset-row button');
+      ctx.fixture.detectChanges();
+      expect(ctx.el.querySelector('input[name="resetPasswordValue"]')).toBeNull();
+    });
+
+    it('turns MFA off after confirmation', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
       const ctx = boot([{ ...linkedUser, mfaEnabled: true }]);
-      expect(textOf(ctx.el)).toContain('MFA');
-      const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
+      openEdit(ctx);
       clickByText(ctx.el, 'Wyłącz MFA', 'button');
-      ctx.http.expectNone(r => r.url.endsWith('/mfa'));
+      ctx.http.expectNone(r => r.method === 'DELETE');
+
       clickByText(ctx.el, 'Wyłącz MFA', 'button');
       ctx.http.expectOne(r => r.method === 'DELETE' && r.url === api('/api/users/u2/mfa')).flush({ ...linkedUser, mfaEnabled: false });
-      expect(messages()).toContain('Weryfikacja dwuetapowa wyłączona.');
-      clickByText(ctx.el, 'Wyłącz MFA', 'button');
-      ctx.http.expectOne(r => r.method === 'DELETE').flush({ title: 'Brak dostępu.' }, { status: 403, statusText: 'Forbidden' });
-      expect(messages()).toContain('Brak dostępu.');
-      confirm.mockRestore();
+      ctx.fixture.detectChanges();
+
+      expect(confirmSpy).toHaveBeenCalledTimes(2);
+      expect(toasts().map(t => t.message)).toContain('Weryfikacja dwuetapowa wyłączona.');
+      expect(ctx.el.querySelector('.modal')?.textContent).not.toContain('Wyłącz MFA');
+      clickByText(ctx.el, 'Wyłącz konto', 'button');
     });
 
-    it('links the person name to the person card', () => {
+    it('shows refusals of MFA reset and of disabling', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const ctx = boot([{ ...linkedUser, mfaEnabled: true }]);
+      openEdit(ctx);
+      clickByText(ctx.el, 'Wyłącz MFA', 'button');
+      ctx.http.expectOne(r => r.method === 'DELETE').flush('x', { status: 500, statusText: 'Error' });
+      clickByText(ctx.el, 'Wyłącz konto', 'button');
+      ctx.http.expectOne(r => r.url === api('/api/users/u2/active')).flush({ title: 'Nie możesz wyłączyć własnego konta.' }, { status: 400, statusText: 'Bad Request' });
+      ctx.fixture.detectChanges();
+
+      expect(textOf(ctx.el)).toContain('Nie możesz wyłączyć własnego konta.');
+    });
+
+    it('disables an account after confirmation and turns it back on', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
       const ctx = boot([linkedUser]);
-      const link = ctx.el.querySelector('a.person-link') as HTMLAnchorElement;
-      expect(link.textContent).toBe('Anna Maj');
-      expect(link.getAttribute('href')).toBe('/people/p9');
+      openEdit(ctx);
+      clickByText(ctx.el, 'Wyłącz konto', 'button');
+      ctx.http.expectNone(r => r.url.endsWith('/active'));
+
+      clickByText(ctx.el, 'Wyłącz konto', 'button');
+      const off = ctx.http.expectOne(r => r.url === api('/api/users/u2/active'));
+      expect(off.request.body).toEqual({ isActive: false });
+      off.flush({ ...linkedUser, isActive: false });
+      ctx.fixture.detectChanges();
+      expect(toasts().map(t => t.message)).toContain('Konto wyłączone.');
+
+      clickByText(ctx.el, 'Włącz konto', 'button');
+      const on = ctx.http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u2/active') && r.body.isActive === true);
+      on.flush({ ...linkedUser, isActive: true });
+      expect(toasts().map(t => t.message)).toContain('Konto włączone.');
+      expect(confirmSpy).toHaveBeenCalledTimes(2);
     });
   });
 });

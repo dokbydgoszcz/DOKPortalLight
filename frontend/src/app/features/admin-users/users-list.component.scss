@@ -1,21 +1,6 @@
-.person-cell {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
-}
-
-.role-col {
-  text-align: center;
-  white-space: nowrap;
-}
-
-.account-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px;
-  white-space: nowrap;
+.login-cell {
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .person-link {
@@ -23,18 +8,69 @@
   font-weight: 600;
 }
 
-.small-link {
-  margin-left: 6px;
-  font-size: 12px;
-}
-
-.login-edit {
-  display: flex;
-  gap: 6px;
-  align-items: center;
+.role-list {
+  display: inline-flex;
   flex-wrap: wrap;
+  gap: 4px;
 }
 
-.login-edit input {
-  min-width: 220px;
+.actions-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.warn {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--danger);
+}
+
+.edit-body {
+  display: grid;
+  gap: 16px;
+}
+
+.role-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 8px 16px;
+}
+
+.person-row,
+.security-actions,
+.reset-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.reset-row input {
+  flex: 1 1 140px;
+}
+
+.pick-list {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.pick-row {
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.danger {
+  color: var(--danger);
+}
+
+.form-error {
+  color: var(--danger);
+  font-size: 13px;
 }

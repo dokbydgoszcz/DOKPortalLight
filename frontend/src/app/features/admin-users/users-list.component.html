@@ -1,9 +1,55 @@
 <div class="page-heading">
-  <div><h2>Użytkownicy i role</h2><p>Zarządzanie kontami i przypisaniem ról RBAC.</p></div>
+  <div><h2>Użytkownicy i role</h2><p>Konta, powiązane osoby i role. Zmiany robisz w „Edytuj”.</p></div>
+  <button class="btn primary" type="button" (click)="openCreate()">＋ Nowe konto</button>
 </div>
 
-<div class="card" style="margin-bottom:16px">
-  <div class="card-body">
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Login</th><th>Osoba</th><th>Role</th><th>Stan</th><th></th></tr></thead>
+      <tbody>
+        @for (user of users(); track user.id) {
+          <tr>
+            <td class="login-cell">{{ user.email }}</td>
+            <td>
+              @if (user.personId) {
+                <a class="person-link" [routerLink]="['/people', user.personId]" title="Karta osoby">{{ user.personFullName }}</a>
+              } @else {
+                <span class="small-muted">—</span>
+                @if (user.roles.includes('KatechistaProwadzacy')) {
+                  <div class="warn">Katechista bez osoby nie zobaczy podopiecznych.</div>
+                }
+              }
+            </td>
+            <td>
+              <span class="role-list">
+                @for (role of user.roles; track role) { <span class="pill blue">{{ roleLabel(role) }}</span> } @empty { <span class="small-muted">brak ról</span> }
+              </span>
+            </td>
+            <td>
+              <span class="role-list">
+                @if (user.isActive === false) { <span class="pill red">wyłączone</span> } @else { <span class="pill green">aktywne</span> }
+                @if (user.mfaEnabled) { <span class="pill green" title="Weryfikacja dwuetapowa włączona">MFA</span> }
+              </span>
+            </td>
+            <td class="actions-cell"><button class="btn ghost small" type="button" (click)="openEdit(user)">Edytuj</button></td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5" class="empty">Brak kont.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (isCreateOpen()) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Nowe konto</h3>
+        <button class="close" type="button" (click)="closeCreate()">×</button>
+      </div>
+      <div class="modal-body">
     <div class="field" style="margin-bottom:12px">
       <label>Osoba</label>
       @if (selectedPerson(); as person) {
@@ -71,107 +117,111 @@
       </div>
       <div class="field full"><label>Hasło</label><input type="password" [(ngModel)]="newUser.password" name="password" /></div>
       <div class="field full"><label>Powtórz hasło</label><input type="password" [(ngModel)]="confirmPassword" name="confirmPassword" /><span class="form-hint">Hasło tymczasowe – po pierwszym logowaniu użytkownik musi ustawić własne.</span></div>
+      <div class="field full">
+        <label>Role</label>
+        <div class="role-checks">
+          @for (role of allRoles(); track role) {
+            <label class="checkbox-label"><input type="checkbox" [checked]="newUser.roles.includes(role)" (change)="toggleNewRole(role, $any($event.target).checked)" /> {{ roleLabel(role) }}</label>
+          }
+        </div>
+      </div>
       @if (createError()) {
         <div class="field full"><div class="note" style="border-color:#f2b8bf;background:#fff0f2">{{ createError() }}</div></div>
       }
-      <div class="field full">
-        <button class="btn primary" (click)="createUser()">＋ Utwórz konto</button>
+    </div>
+        </div>
+      <div class="modal-foot">
+        <button class="btn ghost" type="button" (click)="closeCreate()">Anuluj</button>
+        <button class="btn primary" type="button" (click)="createUser()">Utwórz konto</button>
       </div>
     </div>
   </div>
-</div>
+}
 
-<div class="card">
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Login</th><th>Osoba</th>@for (role of allRoles(); track role) {<th class="role-col">{{ roleLabel(role) }}</th>}<th></th></tr></thead>
-      <tbody>
-        @for (user of users(); track user.id) {
-          <tr>
-            <td>
-              @if (editingLoginId() === user.id) {
-                <div class="login-edit">
-                  <input type="email" name="loginValue" [(ngModel)]="loginValue" aria-label="Nowy login" />
-                  <button class="btn primary small" type="button" (click)="saveLogin(user)">Zapisz</button>
-                  <button class="btn ghost small" type="button" (click)="editingLoginId.set(null)">Anuluj</button>
-                </div>
+@if (editing(); as user) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Edytuj konto</h3>
+        <button class="close" type="button" (click)="closeEdit()">×</button>
+      </div>
+      <div class="modal-body edit-body">
+        <div class="field">
+          <label for="edit-login">Login (e-mail)</label>
+          <input id="edit-login" type="email" name="editLogin" [(ngModel)]="editLogin" />
+          @if (editPerson()) {
+            <div class="small-muted">Zmiana loginu zmienia też e-mail powiązanej osoby.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label>Osoba</label>
+          @if (isPickingPerson()) {
+            <input name="linkQuery" [(ngModel)]="linkQuery" (ngModelChange)="onLinkQueryChange()" placeholder="Szukaj osoby po nazwisku…" />
+            <div class="pick-list">
+              @for (candidate of linkResults(); track candidate.id) {
+                <button class="pick-row" type="button" (click)="pickPerson(candidate)">
+                  {{ candidate.fullName }}@if (candidate.email) { <span class="small-muted"> — {{ candidate.email }}</span> }
+                </button>
+              }
+            </div>
+            <button class="btn ghost small" type="button" (click)="isPickingPerson.set(false)">Anuluj wybór</button>
+          } @else {
+            <div class="person-row">
+              @if (editPerson(); as p) {
+                <b>{{ p.fullName }}</b>
+                <span class="link" (click)="isPickingPerson.set(true)">Zmień</span>
+                <span class="link danger" (click)="editPerson.set(null)">Odepnij</span>
               } @else {
-                {{ user.email }}
-                <span class="link small-link" title="Popraw login (np. literówkę)" (click)="startLoginEdit(user)">Zmień login</span>
+                <span class="small-muted">brak</span>
+                <span class="link" (click)="isPickingPerson.set(true)">Powiąż z osobą</span>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="field">
+          <label>Role</label>
+          <div class="role-checks">
+            @for (role of allRoles(); track role) {
+              <label class="checkbox-label"><input type="checkbox" [name]="'role-' + role" [checked]="hasEditRole(role)" (change)="toggleEditRole(role, $any($event.target).checked)" /> {{ roleLabel(role) }}</label>
+            }
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Bezpieczeństwo</label>
+          @if (isResetOpen()) {
+            <div class="reset-row">
+              <input type="password" placeholder="Nowe hasło" name="resetPasswordValue" [(ngModel)]="resetPasswordValue" />
+              <input type="password" placeholder="Powtórz" name="resetPasswordConfirm" [(ngModel)]="resetPasswordConfirm" />
+              <button class="btn primary small" type="button" (click)="confirmResetPassword()">Ustaw hasło</button>
+              <button class="btn ghost small" type="button" (click)="isResetOpen.set(false)">Anuluj</button>
+            </div>
+            <div class="small-muted">Hasło tymczasowe – przy logowaniu użytkownik ustawi własne.</div>
+          } @else {
+            <div class="security-actions">
+              <button class="btn ghost small" type="button" (click)="openReset()">Resetuj hasło</button>
+              @if (user.mfaEnabled) {
+                <button class="btn ghost small" type="button" title="Np. gdy użytkownik zgubił telefon" (click)="resetMfa()">Wyłącz MFA</button>
               }
               @if (user.isActive === false) {
-                <span class="pill">nieaktywne</span>
-              }
-              @if (user.mfaEnabled) {
-                <span class="pill green" title="Weryfikacja dwuetapowa włączona">MFA</span>
-              }
-            </td>
-            <td>
-              @if (linkingUserId() === user.id) {
-                <div>
-                  <input [(ngModel)]="linkQuery" name="linkQuery" (ngModelChange)="onLinkQueryChange()" placeholder="Szukaj osoby…" />
-                  <div class="link-results">
-                    @for (candidate of linkResults(); track candidate.id) {
-                      <button class="list-row" type="button" style="width:100%;text-align:left;border:1px solid var(--line);cursor:pointer" (click)="linkPerson(user, candidate)">
-                        {{ candidate.fullName }}@if (candidate.email) { <span class="small-muted"> — {{ candidate.email }}</span> }
-                      </button>
-                    }
-                  </div>
-                  @if (linkError()) {
-                    <div class="small-muted" style="color:var(--danger)">{{ linkError() }}</div>
-                  }
-                  <button class="btn ghost small" type="button" (click)="cancelLinking()">Anuluj</button>
-                </div>
-              } @else if (user.personFullName) {
-                <div class="person-cell">
-                  <a class="person-link" [routerLink]="['/people', user.personId]" title="Karta osoby">{{ user.personFullName }}</a>
-                  <span class="link" (click)="startLinking(user.id)">Zmień</span>
-                  <span class="link" style="color:var(--danger)" (click)="unlinkPerson(user)">Odepnij</span>
-                </div>
+                <button class="btn ghost small" type="button" (click)="setActive(true)">Włącz konto</button>
               } @else {
-                <div class="person-cell">
-                  <span class="small-muted">brak</span>
-                  <span class="link" (click)="startLinking(user.id)">Powiąż</span>
-                </div>
-                @if (user.roles.includes('KatechistaProwadzacy')) {
-                  <div class="small-muted" style="color:var(--danger)">Katechista bez osoby nie zobaczy podopiecznych.</div>
-                }
+                <button class="btn ghost small danger" type="button" (click)="setActive(false)">Wyłącz konto</button>
               }
-            </td>
-            @for (role of allRoles(); track role) {
-              <td class="role-col">
-                <input type="checkbox" [checked]="user.roles.includes(role)"
-                       (change)="toggleRole(user, role, $any($event.target).checked)" />
-              </td>
-            }
-            <td>
-              @if (resettingUserId() === user.id) {
-                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                  <input type="password" placeholder="Nowe hasło" [(ngModel)]="resetPasswordValue" name="resetPasswordValue" style="width:120px" />
-                  <input type="password" placeholder="Powtórz" [(ngModel)]="resetPasswordConfirm" name="resetPasswordConfirm" style="width:120px" />
-                  <button class="btn primary small" type="button" (click)="confirmResetPassword(user.id)">Zapisz</button>
-                  <button class="btn ghost small" type="button" (click)="cancelResetPassword()">Anuluj</button>
-                  @if (resetError()) {
-                    <span class="small-muted" style="color:var(--danger)">{{ resetError() }}</span>
-                  }
-                </div>
-              } @else {
-                <div class="account-actions">
-                <button class="btn ghost small" type="button" (click)="startResetPassword(user.id)">Resetuj hasło</button>
-                @if (user.mfaEnabled) {
-                  <button class="btn ghost small" type="button" title="Konto ma weryfikację dwuetapową; wyłącz, gdy użytkownik zgubił telefon" (click)="resetMfa(user)">Wyłącz MFA</button>
-                }
-                @if (user.isActive === false) {
-                  <button class="btn ghost small" type="button" (click)="setActive(user, true)">Włącz konto</button>
-                } @else {
-                  <button class="btn ghost small" type="button" style="color:var(--danger)" (click)="setActive(user, false)">Wyłącz konto</button>
-                }
-                </div>
-              }
-            </td>
-          </tr>
+            </div>
+          }
+        </div>
+
+        @if (editError()) {
+          <div class="form-error" role="alert">{{ editError() }}</div>
         }
-      </tbody>
-    </table>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" type="button" (click)="closeEdit()">Anuluj</button>
+        <button class="btn primary" type="button" [disabled]="saving()" (click)="saveEdit()">{{ saving() ? 'Zapisywanie…' : 'Zapisz' }}</button>
+      </div>
+    </div>
   </div>
-</div>
+}

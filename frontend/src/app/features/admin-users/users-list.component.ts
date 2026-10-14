@@ -1,5 +1,5 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { UsersService } from './users.service';
@@ -39,17 +39,6 @@ export class UsersListComponent implements OnInit {
   newPersonLastName = '';
   private personSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /** Powiązanie istniejącego konta z osobą (wiersz w tabeli rozwija wyszukiwarkę osób). */
-  readonly linkingUserId = signal<string | null>(null);
-  linkQuery = '';
-  readonly linkResults = signal<Person[]>([]);
-  readonly linkError = signal<string | null>(null);
-  private linkSearchTimer: ReturnType<typeof setTimeout> | null = null;
-
-  readonly resettingUserId = signal<string | null>(null);
-  resetPasswordValue = '';
-  resetPasswordConfirm = '';
-  readonly resetError = signal<string | null>(null);
 
   constructor(
     private readonly usersService: UsersService,
@@ -163,6 +152,7 @@ export class UsersListComponent implements OnInit {
         this.addingNewPerson.set(false);
         this.newPersonFirstName = '';
         this.newPersonLastName = '';
+        this.isCreateOpen.set(false);
         this.toast.success('Konto użytkownika utworzone.');
         this.load();
       },
@@ -170,76 +160,69 @@ export class UsersListComponent implements OnInit {
     });
   }
 
-  toggleRole(user: AppUserAccount, role: string, checked: boolean): void {
-    const roles = checked ? [...user.roles, role] : user.roles.filter(r => r !== role);
-    this.usersService.assignRoles(user.id, roles).subscribe({
-      next: () => this.load(),
-      error: err => {
-        this.toast.error(serverMessage(err, 'Nie udało się zaktualizować ról.'));
-        this.load();
-      }
-    });
+  // ---------- Nowe konto (okno) ----------
+
+  readonly isCreateOpen = signal(false);
+
+  openCreate(): void {
+    this.newUser = { email: '', password: '', roles: [] };
+    this.confirmPassword = '';
+    this.createError.set(null);
+    this.selectedPerson.set(null);
+    this.addingNewPerson.set(false);
+    this.personQuery = '';
+    this.personResults.set([]);
+    this.isCreateOpen.set(true);
   }
 
-  /** Wyłączone konto nie zaloguje się, a jego otwarte sesje wygasają; można je włączyć z powrotem. */
-  /** Edycja loginu (e-maila) konta w wierszu tabeli. */
-  readonly editingLoginId = signal<string | null>(null);
-  loginValue = '';
-
-  startLoginEdit(user: AppUserAccount): void {
-    this.loginValue = user.email;
-    this.editingLoginId.set(user.id);
+  closeCreate(): void {
+    this.isCreateOpen.set(false);
   }
 
-  saveLogin(user: AppUserAccount): void {
-    const email = this.loginValue.trim();
-    if (!email || email === user.email) {
-      this.editingLoginId.set(null);
-      return;
-    }
-    this.usersService.changeLogin(user.id, email).subscribe({
-      next: () => {
-        this.editingLoginId.set(null);
-        this.toast.success(user.personId
-          ? `Login zmieniony na ${email} (e-mail osoby też).`
-          : `Login zmieniony na ${email}.`);
-        this.load();
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się zmienić loginu.'))
-    });
+  toggleNewRole(role: string, checked: boolean): void {
+    this.newUser.roles = checked ? [...this.newUser.roles, role] : this.newUser.roles.filter(r => r !== role);
   }
 
-  resetMfa(user: AppUserAccount): void {
-    if (!confirm(`Wyłączyć weryfikację dwuetapową dla ${user.email}? Użytkownik zaloguje się samym hasłem i może ją potem włączyć od nowa (np. na nowym telefonie).`)) return;
-    this.usersService.resetMfa(user.id).subscribe({
-      next: () => {
-        this.toast.success('Weryfikacja dwuetapowa wyłączona.');
-        this.load();
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się wyłączyć weryfikacji dwuetapowej.'))
-    });
-  }
+  // ---------- Edycja konta (okno) ----------
 
-  setActive(user: AppUserAccount, isActive: boolean): void {
-    if (!isActive && !confirm(`Wyłączyć konto ${user.email}? Osoba nie zaloguje się, a jej otwarte sesje wygasną.`)) return;
-    this.usersService.setActive(user.id, isActive).subscribe({
-      next: () => {
-        this.toast.success(isActive ? 'Konto włączone.' : 'Konto wyłączone.');
-        this.load();
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się zmienić stanu konta.'))
-    });
-  }
+  /** Konto otwarte w oknie edycji. */
+  readonly editing = signal<AppUserAccount | null>(null);
+  editLogin = '';
+  editRoles: string[] = [];
+  /** Osoba wybrana w oknie (null = bez osoby). */
+  readonly editPerson = signal<{ id: string; fullName: string } | null>(null);
+  readonly isPickingPerson = signal(false);
+  linkQuery = '';
+  readonly linkResults = signal<Person[]>([]);
+  private linkSearchTimer: ReturnType<typeof setTimeout> | null = null;
+  readonly editError = signal<string | null>(null);
+  readonly saving = signal(false);
+  readonly isResetOpen = signal(false);
+  resetPasswordValue = '';
+  resetPasswordConfirm = '';
 
-  startLinking(userId: string): void {
-    this.linkingUserId.set(userId);
+  openEdit(user: AppUserAccount): void {
+    this.editing.set(user);
+    this.editLogin = user.email;
+    this.editRoles = [...user.roles];
+    this.editPerson.set(user.personId ? { id: user.personId, fullName: user.personFullName ?? '' } : null);
+    this.isPickingPerson.set(false);
     this.linkQuery = '';
     this.linkResults.set([]);
-    this.linkError.set(null);
+    this.editError.set(null);
+    this.isResetOpen.set(false);
   }
 
-  cancelLinking(): void {
-    this.linkingUserId.set(null);
+  closeEdit(): void {
+    this.editing.set(null);
+  }
+
+  hasEditRole(role: string): boolean {
+    return this.editRoles.includes(role);
+  }
+
+  toggleEditRole(role: string, checked: boolean): void {
+    this.editRoles = checked ? [...this.editRoles, role] : this.editRoles.filter(r => r !== role);
   }
 
   onLinkQueryChange(): void {
@@ -259,53 +242,89 @@ export class UsersListComponent implements OnInit {
     }, 300);
   }
 
-  linkPerson(user: AppUserAccount, person: Person): void {
-    this.linkError.set(null);
-    this.usersService.setPerson(user.id, person.id).subscribe({
-      next: () => {
-        this.linkingUserId.set(null);
-        this.toast.success('Konto powiązane z osobą.');
-        this.load();
-      },
-      error: (error: HttpErrorResponse) =>
-        this.linkError.set(error.error?.title ?? 'Nie udało się powiązać konta z osobą.')
-    });
+  pickPerson(person: Person): void {
+    this.editPerson.set({ id: person.id, fullName: person.fullName });
+    this.isPickingPerson.set(false);
+    this.linkQuery = '';
+    this.linkResults.set([]);
   }
 
-  unlinkPerson(user: AppUserAccount): void {
-    if (!confirm(`Odpiąć konto „${user.email}” od osoby ${user.personFullName}?`)) return;
-    this.usersService.setPerson(user.id, null).subscribe({
-      next: () => {
-        this.toast.success('Konto odpięte od osoby.');
-        this.load();
-      },
-      error: () => this.toast.error('Nie udało się odpiąć konta od osoby.')
-    });
-  }
-
-  startResetPassword(userId: string): void {
-    this.resettingUserId.set(userId);
-    this.resetPasswordValue = '';
-    this.resetPasswordConfirm = '';
-    this.resetError.set(null);
-  }
-
-  cancelResetPassword(): void {
-    this.resettingUserId.set(null);
-  }
-
-  confirmResetPassword(userId: string): void {
-    this.resetError.set(null);
-    if (!this.resetPasswordValue || this.resetPasswordValue !== this.resetPasswordConfirm) {
-      this.resetError.set('Podane hasła różnią się od siebie.');
+  /** Zapisuje zmienione pola po kolei: login, osoba, role. */
+  async saveEdit(): Promise<void> {
+    const user = this.editing();
+    if (!user || this.saving()) return;
+    const login = this.editLogin.trim();
+    if (!login) {
+      this.editError.set('Podaj login (adres e-mail).');
       return;
     }
-    this.usersService.resetPassword(userId, this.resetPasswordValue).subscribe({
+    this.editError.set(null);
+    this.saving.set(true);
+    try {
+      if (login !== user.email) await firstValueFrom(this.usersService.changeLogin(user.id, login));
+      const personId = this.editPerson()?.id ?? null;
+      if (personId !== user.personId) await firstValueFrom(this.usersService.setPerson(user.id, personId));
+      const sameRoles = this.editRoles.length === user.roles.length && this.editRoles.every(r => user.roles.includes(r));
+      if (!sameRoles) await firstValueFrom(this.usersService.assignRoles(user.id, this.editRoles));
+      this.editing.set(null);
+      this.toast.success('Zapisano zmiany konta.');
+    } catch (err) {
+      this.editError.set(serverMessage(err, 'Nie udało się zapisać zmian konta.'));
+    } finally {
+      this.saving.set(false);
+      this.load();
+    }
+  }
+
+  openReset(): void {
+    this.resetPasswordValue = '';
+    this.resetPasswordConfirm = '';
+    this.editError.set(null);
+    this.isResetOpen.set(true);
+  }
+
+  confirmResetPassword(): void {
+    const user = this.editing();
+    if (!user) return;
+    if (!this.resetPasswordValue || this.resetPasswordValue !== this.resetPasswordConfirm) {
+      this.editError.set('Podane hasła różnią się od siebie.');
+      return;
+    }
+    this.usersService.resetPassword(user.id, this.resetPasswordValue).subscribe({
       next: () => {
-        this.resettingUserId.set(null);
-        this.toast.success('Hasło zresetowane.');
+        this.isResetOpen.set(false);
+        this.editError.set(null);
+        this.toast.success('Hasło zresetowane – przy logowaniu użytkownik ustawi własne.');
       },
-      error: () => this.resetError.set('Nie udało się zresetować hasła.')
+      error: err => this.editError.set(serverMessage(err, 'Nie udało się zresetować hasła.'))
+    });
+  }
+
+  resetMfa(): void {
+    const user = this.editing();
+    if (!user || !confirm(`Wyłączyć weryfikację dwuetapową dla ${user.email}? Użytkownik zaloguje się samym hasłem i może ją potem włączyć od nowa (np. na nowym telefonie).`)) return;
+    this.usersService.resetMfa(user.id).subscribe({
+      next: updated => {
+        this.editing.set({ ...user, mfaEnabled: updated?.mfaEnabled ?? false });
+        this.toast.success('Weryfikacja dwuetapowa wyłączona.');
+        this.load();
+      },
+      error: err => this.editError.set(serverMessage(err, 'Nie udało się wyłączyć weryfikacji dwuetapowej.'))
+    });
+  }
+
+  /** Wyłączone konto nie zaloguje się, a jego otwarte sesje wygasają; można je włączyć z powrotem. */
+  setActive(isActive: boolean): void {
+    const user = this.editing();
+    if (!user) return;
+    if (!isActive && !confirm(`Wyłączyć konto ${user.email}? Osoba nie zaloguje się, a jej otwarte sesje wygasną.`)) return;
+    this.usersService.setActive(user.id, isActive).subscribe({
+      next: () => {
+        this.editing.set({ ...user, isActive });
+        this.toast.success(isActive ? 'Konto włączone.' : 'Konto wyłączone.');
+        this.load();
+      },
+      error: err => this.editError.set(serverMessage(err, 'Nie udało się zmienić stanu konta.'))
     });
   }
 }
