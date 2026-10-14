@@ -289,7 +289,7 @@ public class ReminderServiceTests
     }
 
     [Fact]
-    public async Task RunUpcomingMeetingsReminderAsync_SkipsGroupMeetingWithoutDokCase()
+    public async Task RunUpcomingMeetingsReminderAsync_GroupMeetingWithoutLeader_IsSkipped()
     {
         await using var db = CreateContext(Guid.NewGuid().ToString());
         db.Meetings.Add(new Meeting
@@ -304,8 +304,46 @@ public class ReminderServiceTests
 
         var result = await service.RunUpcomingMeetingsReminderAsync(default);
 
-        Assert.Equal(0, result.MeetingsProcessed);
+        Assert.Equal(0, result.EmailsSentToCatechists);
         Assert.Empty(emailSender.Sent);
+    }
+
+    [Fact]
+    public async Task RunUpcomingMeetingsReminderAsync_GroupMeeting_RemindsTheLeaderWithAttendeeCount()
+    {
+        await using var db = CreateContext(Guid.NewGuid().ToString());
+        var leader = NewPerson("prowadzacy@example.org");
+        var s1 = NewPerson();
+        var s2 = NewPerson();
+        db.People.AddRange(leader, s1, s2);
+        var c1 = NewDokCase(s1.Id, leader.Id);
+        var c2 = NewDokCase(s2.Id, leader.Id);
+        db.DokCases.AddRange(c1, c2);
+        var meeting = new Meeting
+        {
+            Id = Guid.NewGuid(), DokCaseId = null, GroupLabel = "Grupa czwartkowa", CatechistPersonId = leader.Id,
+            MeetingDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1), StartTime = new TimeOnly(18, 0),
+            CreatedAtUtc = DateTime.UtcNow,
+            Attendees = { new MeetingAttendee { Id = Guid.NewGuid(), DokCaseId = c1.Id }, new MeetingAttendee { Id = Guid.NewGuid(), DokCaseId = c2.Id } }
+        };
+        db.Meetings.Add(meeting);
+        await db.SaveChangesAsync();
+
+        var emailSender = new RecordingEmailSender();
+        var service = new ReminderService(db, emailSender, NullLogger<ReminderService>.Instance, new NameDayService(db));
+
+        var result = await service.RunUpcomingMeetingsReminderAsync(default);
+
+        Assert.Equal(1, result.EmailsSentToCatechists);
+        var mail = Assert.Single(emailSender.Sent);
+        Assert.Equal("prowadzacy@example.org", mail.To);
+        Assert.Contains("Grupa czwartkowa", mail.Body);
+        Assert.Contains("o 18:00", mail.Body);
+        Assert.Contains("2 uczestników", mail.Body);
+        Assert.NotNull((await db.Meetings.AsNoTracking().SingleAsync(m => m.Id == meeting.Id)).ReminderSentAtUtc);
+
+        var again = await service.RunUpcomingMeetingsReminderAsync(default);
+        Assert.Equal(0, again.EmailsSentToCatechists);
     }
 
     [Fact]

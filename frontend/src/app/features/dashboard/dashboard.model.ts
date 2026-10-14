@@ -18,6 +18,8 @@ export interface StalledCase {
 export interface UpcomingMeeting {
   meetingId: string;
   meetingDate: string;
+  startTime?: string | null;
+  endTime?: string | null;
   /** Podopieczny (spotkanie indywidualne) albo nazwa grupy. */
   label: string;
 }

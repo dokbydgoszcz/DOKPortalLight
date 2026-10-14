@@ -21,6 +21,8 @@ export interface Meeting {
   isAttended: boolean | null;
   notes: string | null;
   attendees: MeetingAttendee[];
+  /** Wspólne id spotkań założonych jako seria „co tydzień”. */
+  seriesId?: string | null;
 }
 
 export interface CreateMeetingValue {
@@ -32,6 +34,8 @@ export interface CreateMeetingValue {
   isAttended?: boolean;
   notes?: string;
   attendees?: AttendeeValue[];
+  /** Tylko przy dodawaniu: seria co tydzień do tej daty włącznie. */
+  repeatWeeklyUntil?: string;
 }
 
 /** Godzina bez sekund („18:00:00” → „18:00”). */
@@ -44,6 +48,13 @@ export function timeRange(meeting: Pick<Meeting, 'startTime' | 'endTime'>): stri
   const start = hhmm(meeting.startTime);
   const end = hhmm(meeting.endTime);
   return start ? (end ? `${start}–${end}` : start) : '';
+}
+
+/** Ile spotkań da seria co tydzień od `from` do `until` włącznie (0 przy złych datach). */
+export function weeklyCount(from: string, until: string | undefined): number {
+  if (!from || !until) return 0;
+  const days = (Date.parse(until) - Date.parse(from)) / 86_400_000;
+  return days > 0 ? Math.floor(days / 7) + 1 : 0;
 }
 
 /** Domyślne godziny nowego spotkania. */

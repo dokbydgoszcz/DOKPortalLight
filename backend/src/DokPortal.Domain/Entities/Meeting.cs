@@ -19,5 +19,8 @@ public class Meeting : ISoftDeletable
     public DateTime? DeletedAtUtc { get; set; }
     public string? DeletedBy { get; set; }
 
+    /// <summary>Wspólny identyfikator spotkań założonych jako seria „co tydzień”.</summary>
+    public Guid? SeriesId { get; set; }
+
     public DateTime? ReminderSentAtUtc { get; set; }
 }

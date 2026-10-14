@@ -11,6 +11,7 @@ import { UpcomingNameDay } from '../name-days/name-day.model';
 import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
 import { DashboardSummary } from './dashboard.model';
+import { timeRange } from '../meetings/meeting.model';
 import { DOK_PATH_LABELS, DOK_STAGE_LABELS } from '../dok-cases/dok-stages';
 
 const NAME_DAYS_WINDOW = 14;
@@ -35,7 +36,9 @@ export class DashboardComponent implements OnInit {
   readonly stageLabels = DOK_STAGE_LABELS;
   readonly pathLabels = DOK_PATH_LABELS;
 
+  readonly timeRange = timeRange;
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-14', text: 'Zajęcia cykliczne — przy dodawaniu spotkania zaznacz „Powtarzaj co tydzień” i podaj, do którego dnia: portal założy całą serię naraz (najwyżej na rok; formularz mówi, ile spotkań powstanie). Każde spotkanie z serii można potem zmienić osobno, a na liście ma znaczek „↻ co tydzień”. Przy usuwaniu spotkania z serii portal pyta, czy usunąć też kolejne spotkania tej serii. Przypomnienie e-mail „jutro/dziś” dostaje teraz także prowadzący zajęcia grupowe (z nazwą grupy, godziną i liczbą uczestników). Lista „Spotkania w najbliższych 7 dniach” na pulpicie pokazuje godziny.' },
     { date: '2026-10-14', text: 'Parafie — w rejestrze parafii jest kolumna „Proboszcz” (klik otwiera kartę osoby, z powrotem do listy parafii), a w „Edytuj” / „Dodaj parafię” można wybrać proboszcza spośród osób z funkcją Proboszcz. Wybór przenosi funkcję tej osoby na parafię; dotychczasowy proboszcz zostaje bez przypisanej parafii. To samo przypisanie widać i zmienisz też w Osoby → funkcja Proboszcz.' },
     { date: '2026-10-14', text: 'Wygląd — listy rozwijane (filtry nad tabelami, np. „W toku / Wszystkie etapy” w Podopiecznych DOK, funkcje w Osobach, okres w budżecie, filtry superwizji i dziennika zmian) mają ten sam styl co reszta portalu; filtry w Podopiecznych DOK stoją obok siebie.' },
     { date: '2026-10-14', text: 'Instrukcja „Spotkania w Kalendarzu Google w telefonie” — rozwijana ramka na górze „Harmonogram i obecności” (z linkiem do „Moje konto”) oraz stała instrukcja w sekcji „Kalendarz w telefonie”: utwórz adres i skopiuj go, na komputerze w calendar.google.com dodaj go przez „Inne kalendarze” → ＋ → „Z adresu URL”, a kalendarz pojawi się w telefonie; jest też wskazówka dla iPhone’a.' },

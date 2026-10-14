@@ -67,10 +67,10 @@ public class MeetingsController : ControllerBase
     [HttpDelete("{id:guid}")]
     [Audit("DeleteMeeting")]
     [HasPermission(Permissions.MeetingsManage)]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct, [FromQuery] bool withFollowing = false)
     {
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
-        var deleted = await _meetingService.DeleteAsync(id, currentUserId, ct);
+        var deleted = await _meetingService.DeleteAsync(id, currentUserId, ct, withFollowing);
         return deleted ? NoContent() : NotFound();
     }
 }

@@ -89,7 +89,7 @@ public class DashboardService : IDashboardService
         var meetingsInWindow = _db.Meetings.ForScope(_db, scope).Where(m => m.MeetingDate >= today && m.MeetingDate <= windowEnd);
         var meetingEntities = await meetingsInWindow
             .Include(m => m.DokCase).ThenInclude(c => c!.Person)
-            .OrderBy(m => m.MeetingDate).ThenBy(m => m.CreatedAtUtc)
+            .OrderBy(m => m.MeetingDate).ThenBy(m => m.StartTime).ThenBy(m => m.CreatedAtUtc)
             .Take(MeetingsShown)
             .AsNoTracking()
             .ToListAsync(ct);
@@ -97,6 +97,8 @@ public class DashboardService : IDashboardService
         {
             MeetingId = m.Id,
             MeetingDate = m.MeetingDate,
+            StartTime = m.StartTime,
+            EndTime = m.EndTime,
             Label = m.DokCase?.Person?.FullName ?? m.GroupLabel ?? "Spotkanie"
         }).ToList();
 

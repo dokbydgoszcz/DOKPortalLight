@@ -661,6 +661,9 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Property<DateTime?>("ReminderSentAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("SeriesId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<TimeOnly?>("StartTime")
                         .HasColumnType("time");
 

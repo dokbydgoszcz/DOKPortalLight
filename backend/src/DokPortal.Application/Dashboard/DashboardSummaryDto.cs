@@ -22,6 +22,8 @@ public class UpcomingMeetingDto
 {
     public required Guid MeetingId { get; init; }
     public required DateOnly MeetingDate { get; init; }
+    public TimeOnly? StartTime { get; init; }
+    public TimeOnly? EndTime { get; init; }
     /// <summary>Podopieczny (spotkanie indywidualne) albo nazwa grupy.</summary>
     public required string Label { get; init; }
 }

@@ -7,7 +7,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
 import { FormsModule } from '@angular/forms';
 import { MeetingsService } from './meetings.service';
-import { CreateMeetingValue, DEFAULT_END, DEFAULT_START, Meeting, MeetingAttendee, hhmm, timeRange } from './meeting.model';
+import { CreateMeetingValue, DEFAULT_END, DEFAULT_START, Meeting, MeetingAttendee, hhmm, timeRange, weeklyCount } from './meeting.model';
 import { ToastService } from '../../core/notifications/toast.service';
 import { DokCasesService } from '../dok-cases/dok-cases.service';
 import { DokCase } from '../dok-cases/dok-case.model';
@@ -35,6 +35,8 @@ export class MeetingsListComponent implements OnInit {
   readonly isFormOpen = signal(false);
   readonly editingId = signal<string | null>(null);
   readonly useAttendees = signal(false);
+  /** Nowe spotkanie jako seria co tydzień. */
+  readonly repeatWeekly = signal(false);
   /** Wybrani uczestnicy zajęć grupowych: id sprawy → zapisana obecność (zachowywana przy edycji). */
   readonly attendeeSelection = signal<Record<string, boolean | null>>({});
   readonly expandedIds = signal<ReadonlySet<string>>(new Set());
@@ -112,16 +114,36 @@ export class MeetingsListComponent implements OnInit {
     return null;
   }
 
+  /** Liczba spotkań w serii (przy zaznaczonym „Powtarzaj co tydzień”). */
+  get seriesCount(): number {
+    return weeklyCount(this.newMeeting.meetingDate, this.newMeeting.repeatWeeklyUntil);
+  }
+
+  get repeatProblem(): string | null {
+    if (!this.repeatWeekly() || this.editingId()) return null;
+    if (!this.newMeeting.repeatWeeklyUntil) return 'Podaj, do kiedy powtarzać.';
+    if (this.seriesCount < 2) return 'Data końca musi być co najmniej tydzień po pierwszym spotkaniu.';
+    if (this.seriesCount > 53) return 'Seria może trwać najwyżej rok.';
+    return null;
+  }
+
+  onRepeatWeeklyChange(checked: boolean): void {
+    this.repeatWeekly.set(checked);
+    if (!checked) this.newMeeting.repeatWeeklyUntil = undefined;
+  }
+
   openAddForm(): void {
     this.editingId.set(null);
     this.newMeeting = { groupLabel: '', meetingDate: '', startTime: DEFAULT_START, endTime: DEFAULT_END };
     this.useAttendees.set(false);
+    this.repeatWeekly.set(false);
     this.attendeeSelection.set({});
     this.isFormOpen.set(true);
   }
 
   openEditForm(meeting: Meeting): void {
     this.editingId.set(meeting.id);
+    this.repeatWeekly.set(false);
     this.newMeeting = {
       dokCaseId: meeting.dokCaseId ?? undefined,
       groupLabel: meeting.groupLabel ?? undefined,
@@ -165,15 +187,17 @@ export class MeetingsListComponent implements OnInit {
       ...this.newMeeting,
       startTime: this.newMeeting.startTime || undefined,
       endTime: this.newMeeting.endTime || undefined,
+      repeatWeeklyUntil: !id && this.repeatWeekly() ? this.newMeeting.repeatWeeklyUntil : undefined,
       attendees: this.useAttendees()
         ? Object.entries(this.attendeeSelection()).map(([dokCaseId, isAttended]) => ({ dokCaseId, isAttended: isAttended ?? undefined }))
         : undefined
     };
+    const count = value.repeatWeeklyUntil ? this.seriesCount : 1;
     const request$ = id ? this.meetingsService.update(id, value) : this.meetingsService.create(value);
     request$.subscribe({
       next: () => {
         this.isFormOpen.set(false);
-        this.toast.success(id ? 'Zapisano zmiany.' : 'Dodano spotkanie.');
+        this.toast.success(id ? 'Zapisano zmiany.' : count > 1 ? `Dodano ${count} spotkań (co tydzień).` : 'Dodano spotkanie.');
         this.load();
       },
       error: () => this.toast.error(id ? 'Nie udało się zapisać zmian.' : 'Nie udało się dodać spotkania.')
@@ -216,9 +240,13 @@ export class MeetingsListComponent implements OnInit {
 
   deleteMeeting(meeting: Meeting): void {
     if (!confirm(`Usunąć spotkanie „${meeting.caseLabel ?? meeting.groupLabel}” z dnia ${meeting.meetingDate}?`)) return;
-    this.meetingsService.delete(meeting.id).subscribe({
+    const following = meeting.seriesId
+      ? this.meetings().filter(m => m.seriesId === meeting.seriesId && m.meetingDate > meeting.meetingDate).length
+      : 0;
+    const withFollowing = following > 0 && confirm(`To spotkanie należy do serii. Usunąć też ${following} kolejnych spotkań z tej serii?`);
+    this.meetingsService.delete(meeting.id, withFollowing).subscribe({
       next: () => {
-        this.toast.success('Spotkanie usunięte.');
+        this.toast.success(withFollowing ? `Usunięto ${following + 1} spotkań z serii.` : 'Spotkanie usunięte.');
         this.load();
       },
       error: () => this.toast.error('Nie udało się usunąć spotkania.')

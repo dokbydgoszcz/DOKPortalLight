@@ -314,14 +314,15 @@ describe('DashboardComponent', () => {
     it('lists the meetings of the next 7 days, each leading to the schedule', () => {
       const el = render({
         upcomingMeetingsCount: 12,
-        upcomingMeetings: [meeting('m1', '2026-10-08', 'Jan Kowalski'), meeting('m2', '2026-10-09', 'Grupa wtorkowa')]
+        upcomingMeetings: [{ ...meeting('m1', '2026-10-08', 'Jan Kowalski'), startTime: '18:00:00', endTime: '20:00:00' }, meeting('m2', '2026-10-09', 'Grupa wtorkowa')]
       });
 
       const card = el.querySelector('.meetings') as HTMLElement;
       const rows = Array.from(card.querySelectorAll<HTMLElement>('.list-row'));
       expect(card.textContent).toContain('Spotkania w najbliższych 7 dniach (12)');
       expect(rows.map(r => r.querySelector('.list-title')!.textContent!.trim())).toEqual(['Jan Kowalski', 'Grupa wtorkowa']);
-      expect(rows[0].querySelector('.list-sub')!.textContent).toContain('08.10.2026');
+      expect(rows[0].querySelector('.list-sub')!.textContent).toContain('08.10.2026, 18:00–20:00');
+      expect(rows[1].querySelector('.list-sub')!.textContent!.trim()).toBe('09.10.2026');
       expect(rows.every(r => r.getAttribute('href') === '/meetings')).toBe(true);
       expect(card.textContent).toContain('…i 10 więcej');
     });

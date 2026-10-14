@@ -49,6 +49,8 @@ public class DashboardListsTests
         db.DokCases.Add(dokCase);
         var later = NewMeeting(new DateOnly(2026, 10, 12), dokCase);
         var today = NewMeeting(new DateOnly(2026, 10, 7), group: "Grupa wtorkowa");
+        today.StartTime = new TimeOnly(18, 0);
+        today.EndTime = new TimeOnly(20, 0);
         db.Meetings.AddRange(
             later, today,
             NewMeeting(new DateOnly(2026, 10, 6), group: "Wczoraj"),
@@ -62,6 +64,9 @@ public class DashboardListsTests
         Assert.Equal(new[] { "Grupa wtorkowa", "Jan Kowalski" }, summary.UpcomingMeetings.Select(m => m.Label));
         Assert.Equal(new[] { new DateOnly(2026, 10, 7), new DateOnly(2026, 10, 12) }, summary.UpcomingMeetings.Select(m => m.MeetingDate));
         Assert.Equal(new[] { today.Id, later.Id }, summary.UpcomingMeetings.Select(m => m.MeetingId));
+        Assert.Equal(new TimeOnly(18, 0), summary.UpcomingMeetings[0].StartTime);
+        Assert.Equal(new TimeOnly(20, 0), summary.UpcomingMeetings[0].EndTime);
+        Assert.Null(summary.UpcomingMeetings[1].StartTime);
     }
 
     [Fact]

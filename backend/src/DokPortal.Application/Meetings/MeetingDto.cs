@@ -11,5 +11,6 @@ public class MeetingDto
     public TimeOnly? EndTime { get; init; }
     public bool? IsAttended { get; init; }
     public string? Notes { get; init; }
+    public Guid? SeriesId { get; init; }
     public IReadOnlyList<MeetingAttendeeDto> Attendees { get; init; } = Array.Empty<MeetingAttendeeDto>();
 }

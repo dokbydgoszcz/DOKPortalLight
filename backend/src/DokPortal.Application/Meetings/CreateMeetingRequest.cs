@@ -11,4 +11,6 @@ public class CreateMeetingRequest
     public string? Notes { get; init; }
     /// <summary>Uczestnicy zajęć grupowych (wyklucza się z DokCaseId).</summary>
     public IReadOnlyList<AttendeeRequest>? Attendees { get; init; }
+    /// <summary>Tylko przy tworzeniu: zakłada serię spotkań co tydzień do tej daty włącznie.</summary>
+    public DateOnly? RepeatWeeklyUntil { get; init; }
 }

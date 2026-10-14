@@ -29,7 +29,8 @@ export class MeetingsService {
     return this.http.put<Meeting>(`${this.baseUrl}/${id}/attendees/${dokCaseId}`, { isAttended });
   }
 
-  delete(id: string) {
-    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  /** `withFollowing` – usuwa też kolejne spotkania z tej samej serii. */
+  delete(id: string, withFollowing = false) {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`, withFollowing ? { params: { withFollowing: 'true' } } : {});
   }
 }

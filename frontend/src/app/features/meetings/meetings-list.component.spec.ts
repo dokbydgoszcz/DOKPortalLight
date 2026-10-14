@@ -127,6 +127,47 @@ describe('MeetingsListComponent', () => {
       expect(textOf(ctx.el)).not.toContain('Uzupełnij pola oznaczone *');
     });
 
+    it('adds a weekly series up to the chosen day and says how many meetings it makes', async () => {
+      const ctx = await openForm();
+      setInput(ctx.el, 'input[name="meetingDate"]', '2026-10-15');
+      const repeat = ctx.el.querySelector<HTMLInputElement>('input[name="repeatWeekly"]')!;
+      repeat.checked = true;
+      repeat.dispatchEvent(new Event('change'));
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+
+      expect(textOf(ctx.el)).toContain('Podaj, do kiedy powtarzać.');
+      expect(saveButton(ctx.el).disabled).toBe(true);
+
+      setInput(ctx.el, 'input[name="repeatWeeklyUntil"]', '2026-10-20');
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('co najmniej tydzień');
+
+      setInput(ctx.el, 'input[name="repeatWeeklyUntil"]', '2026-11-12');
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Zostanie dodanych 5 spotkań');
+      saveButton(ctx.el).click();
+
+      const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === url);
+      expect(req.request.body.repeatWeeklyUntil).toBe('2026-11-12');
+      req.flush(groupMeeting);
+      expect(toastMessages()).toContain('Dodano 5 spotkań (co tydzień).');
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([groupMeeting]);
+    });
+
+    it('rejects a series longer than a year and drops the end date when repeating is switched off', async () => {
+      const ctx = await openForm();
+      const component = ctx.fixture.componentInstance;
+      component.newMeeting.meetingDate = '2026-10-15';
+      component.onRepeatWeeklyChange(true);
+      component.newMeeting.repeatWeeklyUntil = '2027-12-01';
+      expect(component.repeatProblem).toBe('Seria może trwać najwyżej rok.');
+
+      component.onRepeatWeeklyChange(false);
+      expect(component.newMeeting.repeatWeeklyUntil).toBeUndefined();
+      expect(component.repeatProblem).toBeNull();
+    });
+
     it('shows a toast when adding fails and closes the form on cancel', async () => {
       const ctx = await openForm();
       setInput(ctx.el, 'input[name="meetingDate"]', '2026-10-10');
@@ -188,6 +229,33 @@ describe('MeetingsListComponent', () => {
 
       expect(toastMessages()).toContain('Spotkanie usunięte.');
       ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([caseMeeting]);
+    });
+
+    it('offers to delete the following meetings of a weekly series', () => {
+      const series = (id: string, date: string): Meeting => ({ ...groupMeeting, id, meetingDate: date, seriesId: 's1' });
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const ctx = boot([series('a', '2026-10-01'), series('b', '2026-10-08'), series('c', '2026-10-15')]);
+
+      ctx.fixture.componentInstance.deleteMeeting(ctx.fixture.componentInstance.meetings()[1]);
+
+      expect(confirmSpy).toHaveBeenLastCalledWith('To spotkanie należy do serii. Usunąć też 1 kolejnych spotkań z tej serii?');
+      const req = ctx.http.expectOne(r => r.method === 'DELETE' && r.url === `${url}/b`);
+      expect(req.request.params.get('withFollowing')).toBe('true');
+      req.flush(null);
+      expect(toastMessages()).toContain('Usunięto 2 spotkań z serii.');
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([]);
+    });
+
+    it('deletes only the one meeting when the series question is declined', () => {
+      const series = (id: string, date: string): Meeting => ({ ...groupMeeting, id, meetingDate: date, seriesId: 's1' });
+      vi.spyOn(window, 'confirm').mockReturnValueOnce(true).mockReturnValueOnce(false);
+      const ctx = boot([series('a', '2026-10-01'), series('b', '2026-10-08')]);
+      expect(textOf(ctx.el)).toContain('co tydzień');
+
+      ctx.fixture.componentInstance.deleteMeeting(ctx.fixture.componentInstance.meetings()[0]);
+
+      const req = ctx.http.expectOne(r => r.method === 'DELETE' && r.url === `${url}/a`);
+      expect(req.request.params.has('withFollowing')).toBe(false);
     });
 
     it('does nothing when the confirmation is cancelled', () => {

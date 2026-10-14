@@ -155,6 +155,19 @@ public class ReminderService : IReminderService
             select new UpcomingMeetingRow(meeting.Id, meeting.MeetingDate, meeting.StartTime, person.FirstName, person.LastName, catechist.Email)
         ).ToListAsync(ct);
 
+        // Zajęcia grupowe: przypomnienie dostaje prowadzący (właściciel zajęć).
+        var groupRows = await (
+            from meeting in _db.Meetings
+            where meeting.DokCaseId == null && meeting.CatechistPersonId != null
+                && meeting.MeetingDate >= today && meeting.MeetingDate <= tomorrow && meeting.ReminderSentAtUtc == null
+            join leader in _db.People on meeting.CatechistPersonId equals leader.Id
+            select new
+            {
+                meeting.Id, meeting.MeetingDate, meeting.StartTime, meeting.GroupLabel, leader.Email,
+                Attendees = meeting.Attendees.Count
+            }
+        ).ToListAsync(ct);
+
         var emailsSentToCatechists = 0;
         var failedSends = 0;
         var meetingIdsToStamp = new List<Guid>();
@@ -183,6 +196,30 @@ public class ReminderService : IReminderService
             }
         }
 
+        foreach (var row in groupRows)
+        {
+            if (string.IsNullOrWhiteSpace(row.Email))
+            {
+                continue;
+            }
+
+            var when = row.MeetingDate == today ? "dziś" : "jutro";
+            var hour = row.StartTime is { } t ? $" o {t:HH\\:mm}" : "";
+            var label = string.IsNullOrWhiteSpace(row.GroupLabel) ? "zajęcia grupowe" : $"zajęcia grupowe „{row.GroupLabel}”";
+            var body = $"Przypomnienie: {when} ({row.MeetingDate:yyyy-MM-dd}){hour} prowadzisz {label} – {row.Attendees} uczestników na liście.";
+            try
+            {
+                await _emailSender.SendAsync(row.Email!, "Nadchodzące zajęcia grupowe — przypomnienie", body, ct);
+                emailsSentToCatechists++;
+                meetingIdsToStamp.Add(row.Id);
+            }
+            catch (Exception ex)
+            {
+                failedSends++;
+                _logger.LogWarning(ex, "Nie udało się wysłać przypomnienia o zajęciach grupowych {MeetingId}", row.Id);
+            }
+        }
+
         if (meetingIdsToStamp.Count > 0)
         {
             var now = DateTime.UtcNow;
@@ -198,7 +235,7 @@ public class ReminderService : IReminderService
 
         return new UpcomingMeetingsReminderResultDto
         {
-            MeetingsProcessed = rows.Count,
+            MeetingsProcessed = rows.Count + groupRows.Count,
             EmailsSentToCatechists = emailsSentToCatechists,
             FailedSends = failedSends
         };

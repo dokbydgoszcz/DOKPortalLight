@@ -107,7 +107,7 @@
         <a class="list-row" [class.linked]="can(perm.MeetingsView)" [routerLink]="can(perm.MeetingsView) ? '/meetings' : null">
           <div class="list-main">
             <div class="list-title">{{ meeting.label }}</div>
-            <div class="list-sub">{{ meeting.meetingDate | date: 'dd.MM.yyyy' }}</div>
+            <div class="list-sub">{{ meeting.meetingDate | date: 'dd.MM.yyyy' }}@if (timeRange(meeting)) {, {{ timeRange(meeting) }}}</div>
           </div>
         </a>
       }

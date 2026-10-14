@@ -30,7 +30,7 @@
       <tbody>
         @for (meeting of meetings(); track meeting.id) {
           <tr>
-            <td>{{ meeting.meetingDate }}@if (timeRange(meeting)) { <div class="small-muted">{{ timeRange(meeting) }}</div> }</td>
+            <td>{{ meeting.meetingDate }}@if (timeRange(meeting)) { <div class="small-muted">{{ timeRange(meeting) }}</div> }@if (meeting.seriesId) { <div class="small-muted" title="Spotkanie z serii co tydzień">↻ co tydzień</div> }</td>
             <td>
               {{ meeting.caseLabel ?? meeting.groupLabel }}
               @if (meeting.attendees.length > 0) {
@@ -110,6 +110,20 @@
             </div>
             @if (timeProblem) { <span class="form-hint" style="color:var(--danger)">{{ timeProblem }}</span> }
           </div>
+          @if (!editingId()) {
+            <div class="field">
+              <label class="checkbox-label"><input type="checkbox" name="repeatWeekly" [checked]="repeatWeekly()" (change)="onRepeatWeeklyChange($any($event.target).checked)" /> Powtarzaj co tydzień</label>
+              @if (repeatWeekly()) {
+                <label for="repeatUntil">do dnia (włącznie)</label>
+                <input id="repeatUntil" type="date" [(ngModel)]="newMeeting.repeatWeeklyUntil" name="repeatWeeklyUntil" [min]="newMeeting.meetingDate" />
+                @if (repeatProblem) {
+                  <span class="form-hint" style="color:var(--danger)">{{ repeatProblem }}</span>
+                } @else {
+                  <span class="form-hint">Zostanie dodanych {{ seriesCount }} spotkań – każde można potem zmienić osobno.</span>
+                }
+              }
+            </div>
+          }
           <div class="field"><label>Grupa / opis</label><input [(ngModel)]="newMeeting.groupLabel" name="groupLabel" /></div>
           <div class="field">
             <label class="checkbox-label"><input type="checkbox" name="useAttendees" [checked]="useAttendees()" (change)="onUseAttendeesChange($any($event.target).checked)" /> Zajęcia z listą uczestników</label>
@@ -141,11 +155,11 @@
         </div>
       </div>
       <div class="modal-foot">
-        @if (!newMeeting.meetingDate || timeProblem) {
+        @if (!newMeeting.meetingDate || timeProblem || repeatProblem) {
           <span class="form-hint">Uzupełnij pola oznaczone *</span>
         }
         <button class="btn ghost" (click)="cancel()">Anuluj</button>
-        <button class="btn primary" [disabled]="!newMeeting.meetingDate || !!timeProblem" (click)="createMeeting()">Zapisz</button>
+        <button class="btn primary" [disabled]="!newMeeting.meetingDate || !!timeProblem || !!repeatProblem" (click)="createMeeting()">Zapisz</button>
       </div>
     </div>
   </div>

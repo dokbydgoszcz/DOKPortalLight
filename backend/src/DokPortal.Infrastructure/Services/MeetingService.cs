@@ -93,28 +93,44 @@ public class MeetingService : IMeetingService
         var scope = await _scope.GetAsync(ct);
         await ValidateAsync(request, scope, ct);
 
-        var meeting = new Meeting
+        var dates = new List<DateOnly> { request.MeetingDate };
+        if (request.RepeatWeeklyUntil is { } until)
+        {
+            if (until <= request.MeetingDate)
+                throw new InvalidOperationException("Data końca serii musi być późniejsza niż data pierwszego spotkania.");
+            if (until > request.MeetingDate.AddYears(1))
+                throw new InvalidOperationException("Seria spotkań może trwać najwyżej rok.");
+            for (var d = request.MeetingDate.AddDays(7); d <= until; d = d.AddDays(7)) dates.Add(d);
+        }
+        Guid? seriesId = dates.Count > 1 ? Guid.NewGuid() : null;
+
+        var meetings = dates.Select(date => NewMeeting(request, scope, date, seriesId)).ToList();
+        _db.Meetings.AddRange(meetings);
+        await _db.SaveChangesAsync(ct);
+
+        var saved = await WithDetails(_db.Meetings).AsNoTracking().FirstAsync(m => m.Id == meetings[0].Id, ct);
+        return ToDto(saved);
+    }
+
+    private static Meeting NewMeeting(CreateMeetingRequest request, CaseScope scope, DateOnly date, Guid? seriesId) =>
+        new()
         {
             Id = Guid.NewGuid(),
+            SeriesId = seriesId,
             DokCaseId = request.DokCaseId,
             GroupLabel = request.GroupLabel,
             CatechistPersonId = request.DokCaseId is null ? scope.PersonId : null,
-            MeetingDate = request.MeetingDate,
+            MeetingDate = date,
             StartTime = request.StartTime,
             EndTime = request.EndTime,
-            IsAttended = request.IsAttended,
+            // Obecność wpisana w formularzu dotyczy tylko pierwszego spotkania serii.
+            IsAttended = date == request.MeetingDate ? request.IsAttended : null,
             Notes = request.Notes,
             CreatedAtUtc = DateTime.UtcNow,
             Attendees = (request.Attendees ?? Array.Empty<AttendeeRequest>())
-                .Select(a => new MeetingAttendee { Id = Guid.NewGuid(), DokCaseId = a.DokCaseId, IsAttended = a.IsAttended })
+                .Select(a => new MeetingAttendee { Id = Guid.NewGuid(), DokCaseId = a.DokCaseId, IsAttended = date == request.MeetingDate ? a.IsAttended : null })
                 .ToList()
         };
-        _db.Meetings.Add(meeting);
-        await _db.SaveChangesAsync(ct);
-
-        var saved = await WithDetails(_db.Meetings).AsNoTracking().FirstAsync(m => m.Id == meeting.Id, ct);
-        return ToDto(saved);
-    }
 
     public async Task<MeetingDto?> UpdateAsync(Guid id, CreateMeetingRequest request, CancellationToken ct)
     {
@@ -186,14 +202,26 @@ public class MeetingService : IMeetingService
         return await GetByIdAsync(meetingId, ct);
     }
 
-    public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct)
+    public async Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct, bool withFollowing = false)
     {
-        var meeting = await (await VisibleAsync(ct)).FirstOrDefaultAsync(m => m.Id == id, ct);
+        var visible = await VisibleAsync(ct);
+        var meeting = await visible.FirstOrDefaultAsync(m => m.Id == id, ct);
         if (meeting is null) return false;
         await EnsureCanManageAsync(meeting, ct);
 
-        meeting.DeletedAtUtc = DateTime.UtcNow;
-        meeting.DeletedBy = deletedBy;
+        var toDelete = new List<Meeting> { meeting };
+        if (withFollowing && meeting.SeriesId is { } seriesId)
+        {
+            toDelete.AddRange(await visible
+                .Where(m => m.SeriesId == seriesId && m.Id != meeting.Id && m.MeetingDate > meeting.MeetingDate)
+                .ToListAsync(ct));
+        }
+        var now = DateTime.UtcNow;
+        foreach (var m in toDelete)
+        {
+            m.DeletedAtUtc = now;
+            m.DeletedBy = deletedBy;
+        }
         await _db.SaveChangesAsync(ct);
         return true;
     }
@@ -209,6 +237,7 @@ public class MeetingService : IMeetingService
         EndTime = m.EndTime,
         IsAttended = m.IsAttended,
         Notes = m.Notes,
+        SeriesId = m.SeriesId,
         Attendees = m.Attendees
             .Select(a => new MeetingAttendeeDto
             {
