@@ -85,7 +85,8 @@ Nadal otwarte (z przeglądu, nie zrobione): asynchroniczna wysyłka kampanii (C4
 - Azure (zmiany za zgodą właściciela): poczta przełączona na Gmail (`smtp.gmail.com:587`, `dokbydgoszcz@gmail.com`; hasło aplikacji wpisał właściciel), App Service **HTTPS Only włączone**, Blob `dokportalfiles`: minimalny TLS 1.2, soft-delete plików i kontenerów 14 dni.
 - Sprawdzone: `Jwt__Key` 48 znaków, `Reminders__ApiKey` 20, `SeedAdmin__Password` nie testowe, PITR bazy 7 dni, TLS 1.2 na App Service i SQL, SQL wpuszcza tylko usługi Azure.
 - Konta: w produkcji są tylko dwa konta administratorów (`admin@dokportal.local`, `szymon.luczak@gmial.com` – literówka w domenie); katechistów zakłada się w ekranie Użytkownicy od razu z osobą.
-- Do zrobienia: test poczty (Mailing → „Wyślij wiadomość testową”), wzory pism, pozostałości przeglądu (sekcja 8).
+- Poczta: wysyłka przez Gmail potwierdzona przez właściciela 2026-10-14 (wiadomość testowa dochodzi).
+- Do zrobienia: wzory pism, pozostałości przeglądu (sekcja 8 i 10).
 
 ## 10. Domknięcie procesów (2026-10-13)
 
