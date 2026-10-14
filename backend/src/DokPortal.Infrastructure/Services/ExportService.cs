@@ -65,7 +65,13 @@ public class ExportService : IExportService
             .Include(c => c.Retreats)
             .OrderBy(c => c.Person!.LastName).ThenBy(c => c.Person!.FirstName).ThenBy(c => c.IsFormationCompleted).ThenBy(c => c.FormationYear)
             .ToListAsync(ct);
-        var today = _time.Today();
+        var classStats = await _db.SkspClassAttendees.Where(a => a.IsPresent != null)
+            .GroupBy(a => a.CandidateId)
+            .Select(g => new { g.Key, Attended = g.Count(a => a.IsPresent == true), Recorded = g.Count() })
+            .ToDictionaryAsync(g => g.Key, ct);
+        int? Attendance(DokPortal.Domain.Entities.Candidate c) => classStats.TryGetValue(c.Id, out var s)
+            ? DokPortal.Application.Candidates.CandidateCompletion.EffectiveAttendance(c.AttendancePercentage, s.Attended, s.Recorded)
+            : c.AttendancePercentage;
 
         return BuildWorkbook(
             "Kandydaci SKŚP",
@@ -74,7 +80,7 @@ public class ExportService : IExportService
             {
                 c.Person?.FullName, c.FormationYear,
                 CandidateStatusLabels[c.IsFormationStopped ? CandidateFormationStatus.Stopped : c.IsFormationCompleted ? CandidateFormationStatus.Completed : CandidateFormationStatus.InFormation],
-                c.AttendancePercentage, c.OpinionsCollected, c.OpinionsRequired, CompletedRetreatYears(c)
+                Attendance(c), c.OpinionsCollected, c.OpinionsRequired, CompletedRetreatYears(c)
             }));
     }
 

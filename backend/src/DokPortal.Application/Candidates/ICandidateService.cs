@@ -10,6 +10,6 @@ public interface ICandidateService
     Task<CandidateDto?> UpdateAsync(Guid id, UpdateCandidateRequest request, CancellationToken ct, CandidateActor? actor = null);
     /// <summary>Przenosi zaznaczonych kandydatów o rok dalej (z III roku: kończy formację). Zatrzymanych i ukończonych pomija z powodem.</summary>
     /// <exception cref="InvalidOperationException">Pusta lista albo więcej niż 500 kandydatów.</exception>
-    Task<AdvanceCandidatesResultDto> AdvanceAsync(IReadOnlyCollection<Guid> candidateIds, CandidateActor actor, CancellationToken ct);
+    Task<AdvanceCandidatesResultDto> AdvanceAsync(IReadOnlyCollection<Guid> candidateIds, CandidateActor actor, CancellationToken ct, bool confirmIncomplete = false);
     Task<bool> DeleteAsync(Guid id, string deletedBy, CancellationToken ct);
 }

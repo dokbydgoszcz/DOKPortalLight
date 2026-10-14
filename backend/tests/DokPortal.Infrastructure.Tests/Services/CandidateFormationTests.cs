@@ -27,12 +27,12 @@ public class CandidateFormationTests
 
     private static CreateCandidateRequest Request(Guid personId, int year = 1, bool stopped = false, string? note = null, bool completed = false) => new()
     {
-        PersonId = personId, Year = year, OpinionsCollected = 0, IsFormationStopped = stopped, FormationStopNote = note, IsFormationCompleted = completed
+        PersonId = personId, Year = year, OpinionsCollected = 0, IsFormationStopped = stopped, FormationStopNote = note, IsFormationCompleted = completed, ConfirmIncomplete = true
     };
 
     private static UpdateCandidateRequest Update(Guid personId, int year, bool stopped = false, string? note = null, bool completed = false) => new()
     {
-        PersonId = personId, Year = year, OpinionsCollected = 0, IsFormationStopped = stopped, FormationStopNote = note, IsFormationCompleted = completed
+        PersonId = personId, Year = year, OpinionsCollected = 0, IsFormationStopped = stopped, FormationStopNote = note, IsFormationCompleted = completed, ConfirmIncomplete = true
     };
 
     [Fact]

@@ -1,6 +1,7 @@
 <div class="page-heading">
   <div><h2>Kandydaci SKŚP</h2><p>Osoby zapisane do Szkoły Katechistów.</p></div>
   <div style="display:flex;gap:8px;align-items:center">
+    <a class="btn ghost" routerLink="/sksp-classes">Zajęcia i obecność</a>
     <app-export-button list="candidates" />
     <button *appHasPermission="'Candidates.Manage'" class="btn ghost" [disabled]="selectedIds().size === 0" (click)="advanceSelected()">Przenieś zaznaczonych do następnego roku ({{ selectedIds().size }})</button>
     <button *appHasPermission="'Candidates.Manage'" class="btn primary" (click)="openAddForm()">＋ Nowy kandydat</button>
@@ -32,6 +33,9 @@
               @if (candidate.isFormationStopped && candidate.formationStopNote) {
                 <div class="list-sub">{{ candidate.formationStopNote }}</div>
               }
+              @if (candidate.status === 'InFormation' && candidate.year === 3 && candidate.completionGaps?.length) {
+                <div class="list-sub gaps" title="Warunki ukończenia formacji">⚠ braki: {{ candidate.completionGaps!.join('; ') }}</div>
+              }
             </td>
             <td>
               @switch (candidate.status) {
@@ -42,7 +46,10 @@
               <div class="list-sub">od {{ candidate.yearSinceUtc | date: 'dd.MM.yyyy' }}</div>
             </td>
             <td>{{ candidate.parishName }}</td>
-            <td>{{ candidate.attendancePercentage }}%</td>
+            <td>
+              @if (candidate.attendancePercentage !== null) { {{ candidate.attendancePercentage }}% } @else { — }
+              @if (candidate.attendanceFromClasses) { <div class="list-sub">z zajęć ({{ candidate.classesAttended }}/{{ candidate.classesRecorded }})</div> }
+            </td>
             <td>{{ candidate.opinionsCollected }} / {{ candidate.opinionsRequired }}</td>
             <td>
               @for (retreat of candidate.retreats; track retreat.year) {
@@ -77,6 +84,8 @@
   [editing]="editingId() !== null"
   [events]="formEvents()"
   [value]="formValue"
+  [wasCompleted]="formWasCompleted()"
+  [classAttendance]="formClassAttendance()"
   (save)="onSave($event)"
   (cancel)="onCancel()">
 </app-candidate-form>

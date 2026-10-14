@@ -1,0 +1,114 @@
+<div class="page-heading">
+  <div>
+    <h2>Zajęcia SKŚP</h2>
+    <p>Lista obecności na zajęciach – z niej liczy się frekwencja kandydatów.</p>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <select aria-label="Rok formacji" [ngModel]="yearFilter()" (ngModelChange)="onYearFilter($event)" name="yearFilter">
+      <option [ngValue]="0">Wszystkie lata</option>
+      <option [ngValue]="1">I rok</option>
+      <option [ngValue]="2">II rok</option>
+      <option [ngValue]="3">III rok</option>
+    </select>
+    @if (canManage) {
+      <button class="btn primary" (click)="openAddForm()">＋ Dodaj zajęcia</button>
+    }
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Data</th><th>Rok</th><th>Temat</th><th>Obecność</th><th></th></tr></thead>
+      <tbody>
+        @for (c of classes(); track c.id) {
+          <tr>
+            <td>{{ c.classDate | date: 'dd.MM.yyyy' }}@if (timeRange(c)) { <div class="small-muted">{{ timeRange(c) }}</div> }</td>
+            <td><span class="pill blue">{{ romanYear(c.year) }} rok</span></td>
+            <td><b>{{ c.topic }}</b>@if (c.notes) { <div class="list-sub">{{ c.notes }}</div> }</td>
+            <td><span class="link" (click)="toggle(c)">{{ presenceSummary(c) }} {{ expandedId() === c.id ? '▴' : '▾' }}</span></td>
+            <td>
+              @if (canManage) {
+                <span class="link" (click)="openEditForm(c)">Edytuj</span>
+                &nbsp;·&nbsp;
+                <span class="link" style="color:var(--danger)" (click)="remove(c)">Usuń</span>
+              }
+            </td>
+          </tr>
+          @if (expandedId() === c.id) {
+            <tr class="attendance-panel">
+              <td colspan="5">
+                @if (canManage) {
+                  <div class="attendance-actions">
+                    <button type="button" class="btn small ghost" (click)="markRestPresent(c)">Pozostali obecni</button>
+                    <button type="button" class="btn small ghost" (click)="refresh(c)">Dopisz nowych kandydatów {{ romanYear(c.year) }} roku</button>
+                  </div>
+                }
+                <ul class="attendees">
+                  @for (a of c.attendees; track a.candidateId) {
+                    <li>
+                      <span>{{ a.personFullName }}</span>
+                      @if (canManage) {
+                        <span class="attendance-toggle">
+                          <button type="button" class="btn ghost small" [class.active]="a.isPresent === true" (click)="mark(c, a, true)">Obecny</button>
+                          <button type="button" class="btn ghost small" [class.active]="a.isPresent === false" (click)="mark(c, a, false)">Nieobecny</button>
+                        </span>
+                      } @else {
+                        @if (a.isPresent === true) { <span class="pill green">obecny</span> }
+                        @else if (a.isPresent === false) { <span class="pill red">nieobecny</span> }
+                      }
+                    </li>
+                  } @empty {
+                    <li class="small-muted">Na liście nie ma kandydatów (nikt nie jest teraz na tym roku formacji).</li>
+                  }
+                </ul>
+              </td>
+            </tr>
+          }
+        } @empty {
+          <tr><td colspan="5" class="empty">Brak zajęć. Dodaj zajęcia – lista obecności wypełni się kandydatami z wybranego roku.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (isFormOpen()) {
+  <div class="overlay show">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>{{ editingId() ? 'Edytuj zajęcia' : 'Nowe zajęcia SKŚP' }}</h3>
+        <button class="close" (click)="isFormOpen.set(false)">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>Rok formacji</label>
+            <select [(ngModel)]="formValue.year" name="year" [disabled]="!!editingId()">
+              <option [ngValue]="1">I rok</option>
+              <option [ngValue]="2">II rok</option>
+              <option [ngValue]="3">III rok</option>
+            </select>
+            @if (!editingId()) { <span class="form-hint">Na listę obecności trafią kandydaci, którzy są teraz na tym roku.</span> }
+          </div>
+          <div class="field"><label>Data <span class="required">*</span></label><input type="date" [(ngModel)]="formValue.classDate" name="classDate" /></div>
+          <div class="field">
+            <label>Godziny</label>
+            <div class="time-range">
+              <input type="time" step="300" [(ngModel)]="formValue.startTime" name="startTime" aria-label="Od" />
+              <span>–</span>
+              <input type="time" step="300" [(ngModel)]="formValue.endTime" name="endTime" aria-label="Do" />
+            </div>
+          </div>
+          <div class="field"><label>Temat <span class="required">*</span></label><input [(ngModel)]="formValue.topic" name="topic" /></div>
+          <div class="field full"><label>Notatki</label><textarea [(ngModel)]="formValue.notes" name="notes"></textarea></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        @if (!canSave) { <span class="form-hint">Uzupełnij pola oznaczone * (i sprawdź godziny)</span> }
+        <button class="btn ghost" (click)="isFormOpen.set(false)">Anuluj</button>
+        <button class="btn primary" [disabled]="!canSave" (click)="save()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}

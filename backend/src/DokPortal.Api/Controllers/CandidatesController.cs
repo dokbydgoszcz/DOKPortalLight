@@ -70,7 +70,7 @@ public class CandidatesController : ControllerBase
     public async Task<ActionResult<AdvanceCandidatesResultDto>> Advance(AdvanceCandidatesRequest request, CancellationToken ct)
     {
         var actor = CurrentActor();
-        var result = await _candidateService.AdvanceAsync(request.CandidateIds, actor, ct);
+        var result = await _candidateService.AdvanceAsync(request.CandidateIds, actor, ct, request.ConfirmIncomplete);
         await _auditLogService.LogAsync(
             actor.UserId, actor.Email, "AdvanceCandidates",
             $"przeniesiono: {result.Advanced}, ukończyło formację: {result.Completed}, pominięto: {result.Skipped.Count}",

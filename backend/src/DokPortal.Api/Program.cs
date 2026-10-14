@@ -134,6 +134,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IExportService, ExportService>();
 builder.Services.AddScoped<ICandidateService, CandidateService>();
+builder.Services.AddScoped<DokPortal.Application.SkspClasses.ISkspClassService, SkspClassService>();
 builder.Services.AddScoped<IMissionService, MissionService>();
 builder.Services.AddScoped<IResourceService, ResourceService>();
 builder.Services.AddScoped<IFormatorService, FormatorService>();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CandidateFormationEvent, eventText, nextYearLabel } from './candidate.model';
+import { CandidateFormationEvent, completionGaps, eventText, nextYearLabel } from './candidate.model';
 
 const event = (over: Partial<CandidateFormationEvent>): CandidateFormationEvent => ({
   kind: 'Advanced', fromYear: 1, toYear: 2, atUtc: '2026-10-07T10:00:00Z', performedBy: 'dyrektor@example.org', ...over
@@ -11,6 +11,9 @@ describe('eventText', () => {
     expect(eventText(event({}))).toBe('Przeniesiony z I do II roku · dyrektor@example.org');
     expect(eventText(event({ kind: 'Completed', fromYear: 3, toYear: null }))).toBe('Ukończył formację · dyrektor@example.org');
     expect(eventText(event({ kind: 'Changed', fromYear: 1, toYear: 3 }))).toBe('Zmiana roku z I na III · dyrektor@example.org');
+    expect(eventText(event({ kind: 'Stopped', note: 'wyjazd' }))).toBe('Formacja zatrzymana: wyjazd · dyrektor@example.org');
+    expect(eventText(event({ kind: 'Stopped', note: null }))).toBe('Formacja zatrzymana · dyrektor@example.org');
+    expect(eventText(event({ kind: 'Resumed' }))).toBe('Formacja wznowiona · dyrektor@example.org');
   });
 
   it('leaves out the author when it is unknown', () => {
@@ -23,5 +26,16 @@ describe('nextYearLabel', () => {
     expect(nextYearLabel(1)).toBe('Przenieś do II roku');
     expect(nextYearLabel(2)).toBe('Przenieś do III roku');
     expect(nextYearLabel(3)).toBe('Ukończył formację');
+  });
+});
+
+describe('completionGaps', () => {
+  it('lists what is missing to finish the formation', () => {
+    const all = [1, 2, 3].map(year => ({ year, isCompleted: true }));
+    expect(completionGaps([{ year: 2, isCompleted: true }], 1, 2, 79)).toEqual([
+      'rekolekcje niezaliczone: rok I, III', 'opinie: 1 z 2', 'frekwencja 79% (wymagane 80%)'
+    ]);
+    expect(completionGaps(all, 2, 2, undefined)).toEqual(['brak frekwencji']);
+    expect(completionGaps(all, 2, 2, 80)).toEqual([]);
   });
 });

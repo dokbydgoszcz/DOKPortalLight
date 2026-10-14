@@ -27,8 +27,8 @@ export class CandidatesService {
   }
 
   /** Przenosi kandydatów o rok dalej (z III roku: kończy formację). */
-  advance(candidateIds: string[]) {
-    return this.http.post<AdvanceResult>(`${this.baseUrl}/advance`, { candidateIds });
+  advance(candidateIds: string[], confirmIncomplete = false) {
+    return this.http.post<AdvanceResult>(`${this.baseUrl}/advance`, confirmIncomplete ? { candidateIds, confirmIncomplete } : { candidateIds });
   }
 
   delete(id: string) {

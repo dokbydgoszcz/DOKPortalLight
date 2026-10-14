@@ -27,7 +27,7 @@ public class SmallProcessFixesTests
 
     private static CreateCandidateRequest Candidate(Guid personId, bool completed = false) => new()
     {
-        PersonId = personId, Year = 3, IsFormationCompleted = completed, OpinionsCollected = 0
+        PersonId = personId, Year = 3, IsFormationCompleted = completed, OpinionsCollected = 0, ConfirmIncomplete = true
     };
 
     [Fact]

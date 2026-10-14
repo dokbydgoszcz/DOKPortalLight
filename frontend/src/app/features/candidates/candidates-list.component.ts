@@ -5,7 +5,8 @@ import { DatePipe } from '@angular/common';
 import { CandidatesService } from './candidates.service';
 import { Candidate, CandidateFormValue, CandidateFormationEvent, nextYearLabel, romanYear } from './candidate.model';
 import { serverMessage } from '../../shared/http-error';
-import { CandidateFormComponent } from './candidate-form.component';
+import { CandidateFormComponent, ClassAttendance } from './candidate-form.component';
+import { RouterLink } from '@angular/router';
 import { ToastService } from '../../core/notifications/toast.service';
 import { PaginationComponent } from '../../shared/pagination.component';
 
@@ -14,7 +15,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-candidates-list',
   standalone: true,
-  imports: [HasPermissionDirective, ExportButtonComponent, CandidateFormComponent, PaginationComponent, DatePipe],
+  imports: [HasPermissionDirective, ExportButtonComponent, CandidateFormComponent, PaginationComponent, DatePipe, RouterLink],
   templateUrl: './candidates-list.component.html',
   styleUrl: './candidates-list.component.scss'
 })
@@ -29,6 +30,10 @@ export class CandidatesListComponent implements OnInit {
   readonly nextYearLabel = nextYearLabel;
   /** Historia roku edytowanego kandydata (pusta przy dodawaniu). */
   readonly formEvents = signal<CandidateFormationEvent[]>([]);
+  /** Edytowany kandydat już ukończył formację. */
+  readonly formWasCompleted = signal(false);
+  /** Frekwencja edytowanego kandydata z list obecności zajęć (null = wpisywana ręcznie). */
+  readonly formClassAttendance = signal<ClassAttendance | null>(null);
   /** Zaznaczeni do przeniesienia kandydaci. */
   readonly selectedIds = signal<ReadonlySet<string>>(new Set());
   /** Zaznaczać można tylko tych, którzy są w trakcie formacji. */
@@ -82,6 +87,8 @@ export class CandidatesListComponent implements OnInit {
   openAddForm(): void {
     this.editingId.set(null);
     this.formEvents.set([]);
+    this.formWasCompleted.set(false);
+    this.formClassAttendance.set(null);
     this.formValue = { personId: '', year: 1, opinionsCollected: 0, retreats: [] };
     this.isFormOpen.set(true);
   }
@@ -89,6 +96,10 @@ export class CandidatesListComponent implements OnInit {
   openEditForm(candidate: Candidate): void {
     this.editingId.set(candidate.id);
     this.formEvents.set(candidate.events);
+    this.formWasCompleted.set(candidate.isFormationCompleted);
+    this.formClassAttendance.set(candidate.attendanceFromClasses
+      ? { percentage: candidate.attendancePercentage ?? 0, attended: candidate.classesAttended ?? 0, recorded: candidate.classesRecorded ?? 0 }
+      : null);
     this.formValue = {
       personId: candidate.personId,
       year: candidate.year,
@@ -143,13 +154,22 @@ export class CandidatesListComponent implements OnInit {
     this.advance(ids);
   }
 
-  private advance(ids: string[]): void {
-    this.candidatesService.advance(ids).subscribe({
+  private advance(ids: string[], confirmIncomplete = false): void {
+    this.candidatesService.advance(ids, confirmIncomplete).subscribe({
       next: result => {
         if (result.advanced > 0) this.toast.success(`Przeniesiono do następnego roku: ${result.advanced}.`);
         if (result.completed > 0) this.toast.success(`Ukończyło formację: ${result.completed}.`);
-        result.skipped.forEach(s => this.toast.error(`${s.personFullName ?? 'Kandydat'}: ${s.reason}`));
+        const withGaps = result.skipped.filter(s => s.reason.startsWith('Braki do ukończenia'));
+        result.skipped.filter(s => !withGaps.includes(s)).forEach(s => this.toast.error(`${s.personFullName ?? 'Kandydat'}: ${s.reason}`));
         this.selectedIds.set(new Set());
+        if (withGaps.length > 0) {
+          const list = withGaps.map(s => `• ${s.personFullName ?? 'Kandydat'} – ${s.reason.replace('Braki do ukończenia: ', '')}`).join('\n');
+          if (confirm(`Nie zakończono formacji – kandydaci mają braki:\n${list}\n\nMimo to zakończyć ich formację?`)) {
+            this.advance(withGaps.map(s => s.candidateId), true);
+            return;
+          }
+          withGaps.forEach(s => this.toast.error(`${s.personFullName ?? 'Kandydat'}: ${s.reason}`));
+        }
         this.load();
         this.loadStats();
       },

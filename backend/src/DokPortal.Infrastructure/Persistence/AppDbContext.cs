@@ -32,6 +32,8 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<PastoralNote> PastoralNotes => Set<PastoralNote>();
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<MeetingAttendee> MeetingAttendees => Set<MeetingAttendee>();
+    public DbSet<SkspClass> SkspClasses => Set<SkspClass>();
+    public DbSet<SkspClassAttendee> SkspClassAttendees => Set<SkspClassAttendee>();
     public DbSet<Supervision> Supervisions => Set<Supervision>();
     public DbSet<SupervisionAttendee> SupervisionAttendees => Set<SupervisionAttendee>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
@@ -196,6 +198,21 @@ public class AppDbContext : IdentityDbContext<AppUser>
             entity.HasOne(a => a.DokCase).WithMany().HasForeignKey(a => a.DokCaseId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(a => new { a.MeetingId, a.DokCaseId }).IsUnique();
             entity.HasQueryFilter(a => a.Meeting!.DeletedAtUtc == null && a.DokCase!.DeletedAtUtc == null);
+        });
+
+        builder.Entity<SkspClass>(entity =>
+        {
+            entity.Property(c => c.Topic).IsRequired().HasMaxLength(300);
+            entity.Property(c => c.Notes).HasMaxLength(2000);
+            entity.HasIndex(c => c.ClassDate);
+        });
+
+        builder.Entity<SkspClassAttendee>(entity =>
+        {
+            entity.HasOne(a => a.SkspClass).WithMany(c => c.Attendees).HasForeignKey(a => a.SkspClassId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(a => a.Candidate).WithMany().HasForeignKey(a => a.CandidateId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(a => new { a.SkspClassId, a.CandidateId }).IsUnique();
+            entity.HasQueryFilter(a => a.SkspClass!.DeletedAtUtc == null && a.Candidate!.DeletedAtUtc == null);
         });
 
         builder.Entity<Supervision>(entity =>

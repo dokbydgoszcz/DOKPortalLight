@@ -19,7 +19,14 @@
               <option [ngValue]="3">III ROK</option>
             </select>
           </div>
-          <div class="field"><label>Frekwencja (%)</label><input type="number" [(ngModel)]="value.attendancePercentage" name="attendancePercentage" /></div>
+          @if (classAttendance) {
+            <div class="field">
+              <label>Frekwencja</label>
+              <div class="readonly-value">{{ classAttendance.percentage }}% <span class="small-muted">z list obecności ({{ classAttendance.attended }} z {{ classAttendance.recorded }} zajęć)</span></div>
+            </div>
+          } @else {
+            <div class="field"><label>Frekwencja (%)</label><input type="number" [(ngModel)]="value.attendancePercentage" name="attendancePercentage" /><span class="form-hint">Gdy w „Zajęcia SKŚP” zaznaczysz obecność, frekwencja policzy się sama.</span></div>
+          }
           <div class="field"><label>Liczba opinii</label><input type="number" [(ngModel)]="value.opinionsCollected" name="opinionsCollected" /></div>
           @for (year of years; track year) {
             <div class="field">
@@ -34,6 +41,15 @@
           <div class="field full">
             <label class="checkbox-label"><input type="checkbox" [ngModel]="value.isFormationCompleted" (ngModelChange)="onCompletedChange($event)" name="isFormationCompleted" /> Ukończył formację (III rok zakończony)</label>
           </div>
+          @if (gaps.length > 0) {
+            <div class="field full completion-gaps" role="alert">
+              <b>Kandydat nie spełnia warunków ukończenia formacji:</b>
+              <ul>
+                @for (gap of gaps; track gap) { <li>{{ gap }}</li> }
+              </ul>
+              <label class="checkbox-label"><input type="checkbox" [(ngModel)]="value.confirmIncomplete" name="confirmIncomplete" /> Potwierdzam ukończenie mimo braków</label>
+            </div>
+          }
           <div class="field full">
             <label class="checkbox-label"><input type="checkbox" [(ngModel)]="value.isFormationStopped" name="isFormationStopped" /> Formacja zatrzymana (rezygnacja, nieukończona formacja)</label>
           </div>
@@ -45,7 +61,7 @@
           }
           @if (events.length > 0) {
             <div class="field full">
-              <label>Historia roku formacji</label>
+              <label>Historia formacji</label>
               <ul class="history">
                 @for (event of events; track $index) {
                   <li>{{ event.atUtc | date: 'dd.MM.yyyy' }} — {{ eventText(event) }}</li>

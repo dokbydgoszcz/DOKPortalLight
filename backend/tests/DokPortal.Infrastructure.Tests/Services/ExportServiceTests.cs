@@ -115,6 +115,19 @@ public class ExportServiceTests
             new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationYear = 3, IsFormationStopped = true, FormationStopNote = "x" },
             new Candidate { Id = Guid.NewGuid(), PersonId = person.Id, FormationYear = 1, DeletedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
+        // Frekwencja z list obecności zajęć zastępuje ręczny wpis (zatrzymany: 1 z 2 = 50%).
+        var stopped = db.Candidates.Local.Single(c => c.IsFormationStopped);
+        db.SkspClasses.Add(new SkspClass
+        {
+            Id = Guid.NewGuid(), Year = 3, ClassDate = new DateOnly(2026, 9, 1), Topic = "t", CreatedAtUtc = DateTime.UtcNow,
+            Attendees = { new SkspClassAttendee { Id = Guid.NewGuid(), CandidateId = stopped.Id, IsPresent = true } }
+        });
+        db.SkspClasses.Add(new SkspClass
+        {
+            Id = Guid.NewGuid(), Year = 3, ClassDate = new DateOnly(2026, 9, 8), Topic = "t", CreatedAtUtc = DateTime.UtcNow,
+            Attendees = { new SkspClassAttendee { Id = Guid.NewGuid(), CandidateId = stopped.Id, IsPresent = false } }
+        });
+        await db.SaveChangesAsync();
 
         var sheet = OpenSheet(await new ExportService(db, null, new FixedTimeProvider(2026, 10, 3)).ExportCandidatesAsync(default));
 
@@ -122,7 +135,7 @@ public class ExportServiceTests
             new[] { "Osoba", "Rok", "Status", "Frekwencja (%)", "Opinie zebrane", "Opinie wymagane", "Rekolekcje" },
             Row(sheet, 1, 7));
         Assert.Equal(new[] { "Jan Kowalski", "2", "W formacji", "85", "1", "2", "I, II" }, Row(sheet, 2, 7));
-        Assert.Equal(new[] { "Jan Kowalski", "3", "Formacja zatrzymana", "", "0", "2", "—" }, Row(sheet, 3, 7));
+        Assert.Equal(new[] { "Jan Kowalski", "3", "Formacja zatrzymana", "50", "0", "2", "—" }, Row(sheet, 3, 7));
         Assert.Equal(new[] { "Jan Kowalski", "3", "Ukończył formację", "", "0", "2", "—" }, Row(sheet, 4, 7));
         Assert.Equal(4, sheet.LastRowUsed()!.RowNumber());
     }

@@ -3,6 +3,8 @@ namespace DokPortal.Application.Candidates;
 public class AdvanceCandidatesRequest
 {
     public required IReadOnlyList<Guid> CandidateIds { get; init; }
+    /// <summary>Kończy formację kandydatów z III roku także wtedy, gdy mają braki.</summary>
+    public bool ConfirmIncomplete { get; init; }
 }
 
 public class SkippedCandidateDto
@@ -28,4 +30,6 @@ public class CandidateFormationEventDto
     public int? ToYear { get; init; }
     public required DateTime AtUtc { get; init; }
     public string? PerformedBy { get; init; }
+    /// <summary>Powód zatrzymania (dla zdarzenia Stopped).</summary>
+    public string? Note { get; init; }
 }

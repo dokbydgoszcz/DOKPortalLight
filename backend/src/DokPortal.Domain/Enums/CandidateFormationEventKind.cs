@@ -9,5 +9,9 @@ public enum CandidateFormationEventKind
     /// <summary>Ukończenie formacji (po III roku).</summary>
     Completed,
     /// <summary>Zmiana roku lub cofnięcie ukończenia w edycji kandydata.</summary>
-    Changed
+    Changed,
+    /// <summary>Zatrzymanie formacji (z powodem).</summary>
+    Stopped,
+    /// <summary>Wznowienie zatrzymanej formacji.</summary>
+    Resumed
 }

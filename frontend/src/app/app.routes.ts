@@ -62,6 +62,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/candidates/candidates-list.component').then(m => m.CandidatesListComponent)
       },
       {
+        path: 'sksp-classes',
+        canActivate: [permissionGuard(Permissions.CandidatesView)],
+        loadComponent: () => import('./features/sksp-classes/sksp-classes.component').then(m => m.SkspClassesComponent)
+      },
+      {
         path: 'missions',
         canActivate: [permissionGuard(Permissions.MissionsView)],
         loadComponent: () => import('./features/missions/missions-list.component').then(m => m.MissionsListComponent)

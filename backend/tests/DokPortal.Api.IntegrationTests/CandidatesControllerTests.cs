@@ -175,7 +175,7 @@ public class CandidateAdvanceEndpointTests : IntegrationTestBase
     {
         var (admin, first, third) = await SeedAsync();
 
-        var response = await admin.PostAsJsonAsync("/api/candidates/advance", new { CandidateIds = new[] { first.Id, third.Id } });
+        var response = await admin.PostAsJsonAsync("/api/candidates/advance", new { CandidateIds = new[] { first.Id, third.Id }, ConfirmIncomplete = true });
         var result = await response.Content.ReadFromJsonAsync<AdvanceCandidatesResultDto>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

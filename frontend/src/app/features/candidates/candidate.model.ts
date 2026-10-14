@@ -8,11 +8,13 @@ export interface CandidateRetreat {
 export const romanYear = (year: number): string => ['', 'I', 'II', 'III'][year] ?? String(year);
 
 export interface CandidateFormationEvent {
-  kind: 'Enrolled' | 'Advanced' | 'Completed' | 'Changed';
+  kind: 'Enrolled' | 'Advanced' | 'Completed' | 'Changed' | 'Stopped' | 'Resumed';
   fromYear: number | null;
   toYear: number | null;
   atUtc: string;
   performedBy: string | null;
+  /** Powód zatrzymania formacji. */
+  note?: string | null;
 }
 
 export interface AdvanceResult {
@@ -36,6 +38,12 @@ export function eventText(event: CandidateFormationEvent): string {
       break;
     case 'Completed':
       text = 'Ukończył formację';
+      break;
+    case 'Stopped':
+      text = event.note ? `Formacja zatrzymana: ${event.note}` : 'Formacja zatrzymana';
+      break;
+    case 'Resumed':
+      text = 'Formacja wznowiona';
       break;
     default:
       text = `Zmiana roku z ${romanYear(event.fromYear ?? 0)} na ${romanYear(event.toYear ?? 0)}`;
@@ -62,6 +70,12 @@ export interface Candidate {
   isFormationStopped: boolean;
   formationStopNote: string | null;
   retreats: CandidateRetreat[];
+  /** Frekwencja liczona z list obecności zajęć SKŚP (zamiast ręcznego wpisu). */
+  attendanceFromClasses?: boolean;
+  classesAttended?: number;
+  classesRecorded?: number;
+  /** Czego brakuje do ukończenia formacji. */
+  completionGaps?: string[];
 }
 
 export interface CandidateFormValue {
@@ -74,4 +88,21 @@ export interface CandidateFormValue {
   isFormationCompleted?: boolean;
   isFormationStopped?: boolean;
   formationStopNote?: string;
+  /** Ukończenie formacji mimo braków (rekolekcje, opinie, frekwencja). */
+  confirmIncomplete?: boolean;
+}
+
+/** Minimalna frekwencja do ukończenia formacji (tak samo liczy serwer). */
+export const MIN_ATTENDANCE = 80;
+
+/** Braki do ukończenia formacji – ta sama reguła co na serwerze (CandidateCompletion). */
+export function completionGaps(retreats: CandidateRetreat[], opinionsCollected: number, opinionsRequired: number, attendance: number | null | undefined): string[] {
+  const gaps: string[] = [];
+  const done = new Set(retreats.filter(r => r.isCompleted).map(r => r.year));
+  const missing = [1, 2, 3].filter(y => !done.has(y));
+  if (missing.length) gaps.push(`rekolekcje niezaliczone: rok ${missing.map(romanYear).join(', ')}`);
+  if (opinionsCollected < opinionsRequired) gaps.push(`opinie: ${opinionsCollected} z ${opinionsRequired}`);
+  if (attendance === null || attendance === undefined) gaps.push('brak frekwencji');
+  else if (attendance < MIN_ATTENDANCE) gaps.push(`frekwencja ${attendance}% (wymagane ${MIN_ATTENDANCE}%)`);
+  return gaps;
 }

@@ -218,6 +218,9 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Property<int>("Kind")
                         .HasColumnType("int");
 
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("PerformedByEmail")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -973,6 +976,74 @@ namespace DokPortal.Infrastructure.Migrations
                     b.ToTable("RolePermissions");
                 });
 
+            modelBuilder.Entity("DokPortal.Domain.Entities.SkspClass", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("ClassDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<TimeOnly?>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<TimeOnly?>("StartTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("Topic")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassDate");
+
+                    b.ToTable("SkspClasses");
+                });
+
+            modelBuilder.Entity("DokPortal.Domain.Entities.SkspClassAttendee", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool?>("IsPresent")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("SkspClassId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId");
+
+                    b.HasIndex("SkspClassId", "CandidateId")
+                        .IsUnique();
+
+                    b.ToTable("SkspClassAttendees");
+                });
+
             modelBuilder.Entity("DokPortal.Domain.Entities.Supervision", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1509,6 +1580,25 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Navigation("Person");
                 });
 
+            modelBuilder.Entity("DokPortal.Domain.Entities.SkspClassAttendee", b =>
+                {
+                    b.HasOne("DokPortal.Domain.Entities.Candidate", "Candidate")
+                        .WithMany()
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DokPortal.Domain.Entities.SkspClass", "SkspClass")
+                        .WithMany("Attendees")
+                        .HasForeignKey("SkspClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+
+                    b.Navigation("SkspClass");
+                });
+
             modelBuilder.Entity("DokPortal.Domain.Entities.SupervisionAttendee", b =>
                 {
                     b.HasOne("DokPortal.Domain.Entities.Person", "Person")
@@ -1604,6 +1694,11 @@ namespace DokPortal.Infrastructure.Migrations
             modelBuilder.Entity("DokPortal.Domain.Entities.Person", b =>
                 {
                     b.Navigation("Functions");
+                });
+
+            modelBuilder.Entity("DokPortal.Domain.Entities.SkspClass", b =>
+                {
+                    b.Navigation("Attendees");
                 });
 
             modelBuilder.Entity("DokPortal.Domain.Entities.Supervision", b =>

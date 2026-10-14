@@ -160,6 +160,41 @@ describe('CandidatesListComponent', () => {
     });
   });
 
+  describe('attendance and completion conditions', () => {
+    it('shows attendance from the classes, a dash when unknown, and the gaps of third-year candidates', () => {
+      const fromClasses: Candidate = { ...lewandowska, attendancePercentage: 67, attendanceFromClasses: true, classesAttended: 2, classesRecorded: 3, completionGaps: ['rekolekcje niezaliczone: rok III', 'frekwencja 67% (wymagane 80%)'] };
+      const unknown: Candidate = { ...nowak, attendancePercentage: null, completionGaps: ['brak frekwencji'] };
+      const ctx = boot([fromClasses, unknown]);
+
+      const text = textOf(ctx.el);
+      expect(text).toContain('67%');
+      expect(text).toContain('z zajęć (2/3)');
+      expect(text).toContain('⚠ braki: rekolekcje niezaliczone: rok III; frekwencja 67% (wymagane 80%)');
+      expect(text).not.toContain('braki: brak frekwencji');
+      expect(ctx.el.querySelector('a[href="/sksp-classes"]')).not.toBeNull();
+    });
+
+    it('passes the class attendance and the completed state to the edit form', () => {
+      const ctx = boot([{ ...lewandowska, attendancePercentage: 67, attendanceFromClasses: true, classesAttended: 2, classesRecorded: 3 }, finished]);
+      const component = ctx.fixture.componentInstance;
+
+      component.openEditForm(component.candidates()[0]);
+      expect(component.formClassAttendance()).toEqual({ percentage: 67, attended: 2, recorded: 3 });
+      expect(component.formWasCompleted()).toBe(false);
+
+      component.openEditForm({ ...finished, attendanceFromClasses: true });
+      expect(component.formClassAttendance()).toEqual({ percentage: 99, attended: 0, recorded: 0 });
+      component.openEditForm({ ...finished, attendancePercentage: null, attendanceFromClasses: true });
+      expect(component.formClassAttendance()!.percentage).toBe(0);
+      component.openEditForm(finished);
+      expect(component.formClassAttendance()).toBeNull();
+      expect(component.formWasCompleted()).toBe(true);
+
+      component.openAddForm();
+      expect(component.formWasCompleted()).toBe(false);
+    });
+  });
+
   describe('retreats column', () => {
     it('shows the status of each year that has a retreat, and a dash when there is none', () => {
       const { el } = boot();
@@ -450,6 +485,33 @@ describe('CandidatesListComponent', () => {
       });
 
       expect(toastMessages()).toContain('Karolina Nowak: Formacja zatrzymana.');
+    });
+
+    it('offers to finish the formation despite gaps, and sends the confirmation', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const ctx = boot([lewandowska]);
+      clickByText(rowOf(ctx.el, 'Agnieszka'), 'Ukończył formację', '.link');
+
+      ctx.http.expectOne(r => r.url === advanceUrl && !r.body.confirmIncomplete).flush({
+        advanced: 0, completed: 0, skipped: [{ candidateId: '1', personFullName: 'Agnieszka Lewandowska', reason: 'Braki do ukończenia: rekolekcje niezaliczone: rok III.' }]
+      });
+      expect(confirmSpy).toHaveBeenLastCalledWith(expect.stringContaining('• Agnieszka Lewandowska – rekolekcje niezaliczone: rok III.'));
+      const forced = ctx.http.expectOne(r => r.url === advanceUrl && r.body.confirmIncomplete === true);
+      expect(forced.request.body.candidateIds).toEqual(['1']);
+      forced.flush({ advanced: 0, completed: 1, skipped: [] });
+      expect(toastMessages()).toContain('Ukończyło formację: 1.');
+    });
+
+    it('keeps the candidate in formation when finishing despite gaps is declined', () => {
+      vi.spyOn(window, 'confirm').mockReturnValueOnce(true).mockReturnValueOnce(false);
+      const ctx = boot([lewandowska]);
+      clickByText(rowOf(ctx.el, 'Agnieszka'), 'Ukończył formację', '.link');
+
+      ctx.http.expectOne(r => r.url === advanceUrl).flush({
+        advanced: 0, completed: 0, skipped: [{ candidateId: '1', personFullName: null, reason: 'Braki do ukończenia: opinie: 1 z 2.' }]
+      });
+      ctx.http.expectNone(r => r.url === advanceUrl);
+      expect(toastMessages()).toContain('Kandydat: Braki do ukończenia: opinie: 1 z 2.');
     });
 
     it('shows the server message, or a generic one, when the move fails', () => {

@@ -17,4 +17,6 @@ public class CandidateFormationEvent
     public DateTime AtUtc { get; set; }
     public string? PerformedByUserId { get; set; }
     public string? PerformedByEmail { get; set; }
+    /// <summary>Powód zatrzymania formacji.</summary>
+    public string? Note { get; set; }
 }

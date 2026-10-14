@@ -15,6 +15,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Zasoby dla katechistów', icon: '❖', path: '/resources', permission: Permissions.ResourcesView },
   { label: 'Mailing', icon: '✉', path: '/mailing', permission: Permissions.MailingView },
   { label: 'Kandydaci SKŚP', icon: '◉', path: '/candidates', permission: Permissions.CandidatesView },
+  { label: 'Zajęcia SKŚP', icon: '▣', path: '/sksp-classes', permission: Permissions.CandidatesView },
   { label: 'Katechiści', icon: '✦', path: '/missions', permission: Permissions.MissionsView },
   { label: 'Formatorzy', icon: '♙', path: '/formators', permission: Permissions.FormatorsView },
   { label: 'Parafie i giełda', icon: '⌂', path: '/parish-board', permission: Permissions.ParishNeedsView },

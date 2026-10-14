@@ -148,10 +148,47 @@ describe('CandidateFormComponent', () => {
 
       (el.querySelector('input[name="isFormationCompleted"]') as HTMLInputElement).click();
       fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Nowy kandydat bez rekolekcji, opinii i frekwencji – trzeba potwierdzić ukończenie mimo braków.
+      const gapsBox = el.querySelector('.completion-gaps') as HTMLElement;
+      expect(Array.from(gapsBox.querySelectorAll('li')).map(li => li.textContent!.trim())).toEqual([
+        'rekolekcje niezaliczone: rok I, II, III', 'opinie: 0 z 2', 'brak frekwencji'
+      ]);
+      expect(saveButton(el).disabled).toBe(true);
+      (el.querySelector('input[name="confirmIncomplete"]') as HTMLInputElement).click();
+      fixture.detectChanges();
       saveButton(el).click();
 
       expect(saved[0].isFormationCompleted).toBe(true);
       expect(saved[0].year).toBe(3);
+      expect(saved[0].confirmIncomplete).toBe(true);
+    });
+
+    it('asks for no confirmation when the conditions are met or the formation was already completed', async () => {
+      const ctx = setup(CandidateFormComponent);
+      const component = ctx.fixture.componentInstance;
+      ctx.fixture.componentRef.setInput('open', true);
+      ctx.fixture.componentRef.setInput('value', {
+        personId: 'p1', year: 3, opinionsCollected: 2, attendancePercentage: 50, isFormationCompleted: true, confirmIncomplete: true,
+        retreats: [1, 2, 3].map(year => ({ year, isCompleted: true }))
+      } satisfies CandidateFormValue);
+      ctx.fixture.componentRef.setInput('classAttendance', { percentage: 90, attended: 9, recorded: 10 });
+      ctx.fixture.detectChanges();
+
+      expect(component.gaps).toEqual([]);
+      expect(ctx.el.textContent).toContain('90% z list obecności (9 z 10 zajęć)');
+      expect(ctx.el.querySelector('input[name="attendancePercentage"]')).toBeNull();
+      const saved: CandidateFormValue[] = [];
+      component.save.subscribe(v => saved.push(v));
+      component.submit();
+      expect(saved[0].confirmIncomplete).toBeUndefined();
+
+      ctx.fixture.componentRef.setInput('classAttendance', null);
+      expect(component.gaps).toEqual(['frekwencja 50% (wymagane 80%)']);
+      ctx.fixture.componentRef.setInput('wasCompleted', true);
+      expect(component.gaps).toEqual([]);
     });
 
     it('shows the history of year changes with dates and authors, newest first', async () => {

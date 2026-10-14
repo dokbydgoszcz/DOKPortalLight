@@ -20,4 +20,11 @@ public class CandidateDto
     public required int OpinionsCollected { get; init; }
     public required int OpinionsRequired { get; init; }
     public required IReadOnlyList<CandidateRetreatDto> Retreats { get; init; }
+    /// <summary>Frekwencja liczona z list obecności zajęć SKŚP (wtedy AttendancePercentage pochodzi z zajęć, a nie z ręcznego wpisu).</summary>
+    public bool AttendanceFromClasses { get; init; }
+    /// <summary>Zajęcia z zaznaczoną obecnością: obecny / wszystkie.</summary>
+    public int ClassesAttended { get; init; }
+    public int ClassesRecorded { get; init; }
+    /// <summary>Czego brakuje do ukończenia formacji (pusta lista = warunki spełnione).</summary>
+    public IReadOnlyList<string> CompletionGaps { get; init; } = Array.Empty<string>();
 }

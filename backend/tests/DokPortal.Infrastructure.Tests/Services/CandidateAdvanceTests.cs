@@ -59,7 +59,7 @@ public class CandidateAdvanceTests
         await db.SaveChangesAsync();
         var service = new CandidateService(db, new FixedTimeProvider(2027, 9, 1));
 
-        var result = await service.AdvanceAsync(new[] { third.Id }, Director, default);
+        var result = await service.AdvanceAsync(new[] { third.Id }, Director, default, confirmIncomplete: true);
 
         Assert.Equal((0, 1), (result.Advanced, result.Completed));
         var dto = (await service.GetByIdAsync(third.Id, default))!;
@@ -124,7 +124,7 @@ public class CandidateAdvanceTests
         var third = Add(db, "Trzeci", 3);
         await db.SaveChangesAsync();
         var time = new FixedTimeProvider(2027, 9, 1);
-        await new CandidateService(db, time).AdvanceAsync(new[] { third.Id }, Director, default);
+        await new CandidateService(db, time).AdvanceAsync(new[] { third.Id }, Director, default, confirmIncomplete: true);
 
         var pending = await new MissionService(db, time).GetPendingAsync(default);
 

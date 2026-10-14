@@ -37,9 +37,10 @@ public class CandidateService : ICandidateService
             .Take(pageSize)
             .ToListAsync(ct);
 
+        var stats = await ClassStatsAsync(entities.Select(c => c.Id).ToList(), ct);
         return new PagedResult<CandidateDto>
         {
-            Items = entities.Select(ToDto).ToList(),
+            Items = entities.Select(c => ToDto(c, stats.GetValueOrDefault(c.Id))).ToList(),
             TotalCount = total,
             Page = page,
             PageSize = pageSize
@@ -52,7 +53,34 @@ public class CandidateService : ICandidateService
     public async Task<CandidateDto?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         var candidate = await WithDetails().AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, ct);
-        return candidate is null ? null : ToDto(candidate);
+        if (candidate is null) return null;
+        var stats = await ClassStatsAsync(new[] { id }, ct);
+        return ToDto(candidate, stats.GetValueOrDefault(id));
+    }
+
+    /// <summary>Obecność z list zajęć SKŚP: (obecny, zaznaczone) na kandydata; zajęcia bez zaznaczonej obecności się nie liczą.</summary>
+    private async Task<Dictionary<Guid, (int Attended, int Recorded)>> ClassStatsAsync(IReadOnlyCollection<Guid> candidateIds, CancellationToken ct)
+    {
+        var rows = await _db.SkspClassAttendees
+            .Where(a => candidateIds.Contains(a.CandidateId) && a.IsPresent != null)
+            .GroupBy(a => a.CandidateId)
+            .Select(g => new { g.Key, Attended = g.Count(a => a.IsPresent == true), Recorded = g.Count() })
+            .ToListAsync(ct);
+        return rows.ToDictionary(r => r.Key, r => (r.Attended, r.Recorded));
+    }
+
+    /// <summary>Frekwencja: z list obecności zajęć, a gdy ich nie ma – wpisana ręcznie.</summary>
+    private static int? EffectiveAttendance(int? manual, (int Attended, int Recorded) stats) =>
+        CandidateCompletion.EffectiveAttendance(manual, stats.Attended, stats.Recorded);
+
+    /// <summary>Ukończenie formacji z brakami wymaga wyraźnego potwierdzenia.</summary>
+    private async Task EnsureCanCompleteAsync(Guid? candidateId, CreateCandidateRequest request, CancellationToken ct)
+    {
+        if (request.ConfirmIncomplete) return;
+        var stats = candidateId is { } id ? (await ClassStatsAsync(new[] { id }, ct)).GetValueOrDefault(id) : default;
+        var gaps = CandidateCompletion.Gaps(request.Retreats, request.OpinionsCollected, 2, EffectiveAttendance(request.AttendancePercentage, stats));
+        if (gaps.Count > 0)
+            throw new InvalidOperationException($"Kandydat nie spełnia warunków ukończenia formacji: {CandidateCompletion.Describe(gaps)}. Zaznacz „Potwierdzam ukończenie mimo braków”, jeśli mimo to formacja jest ukończona.");
     }
 
     /// <summary>Jedna osoba = jedna kandydatura (duplikaty zawyżały liczniki i listę oczekujących na posłanie).</summary>
@@ -66,6 +94,7 @@ public class CandidateService : ICandidateService
     {
         EnsureRequestIsValid(request);
         await EnsureSingleCandidacyAsync(request.PersonId, null, ct);
+        if (request.IsFormationCompleted) await EnsureCanCompleteAsync(null, request, ct);
         var now = _time.GetUtcNow().UtcDateTime;
         var candidate = new Candidate
         {
@@ -101,6 +130,7 @@ public class CandidateService : ICandidateService
         if (candidate.IsFormationCompleted && !request.IsFormationCompleted
             && await _db.CanonicalMissions.AnyAsync(m => m.PersonId == candidate.PersonId, ct))
             throw new InvalidOperationException("Tej osobie udzielono już posłania (ma misję) – nie można cofnąć ukończenia formacji.");
+        if (request.IsFormationCompleted && !candidate.IsFormationCompleted) await EnsureCanCompleteAsync(id, request, ct);
 
         candidate.PersonId = request.PersonId;
         var newYear = request.IsFormationCompleted ? FormationYears : request.Year;
@@ -114,6 +144,13 @@ public class CandidateService : ICandidateService
             candidate.IsFormationCompleted = request.IsFormationCompleted;
             candidate.FormationYearSinceUtc = now;
         }
+        if (request.IsFormationStopped != candidate.IsFormationStopped)
+        {
+            // Zatrzymanie i wznowienie zostają w historii kandydata (z powodem zatrzymania).
+            Record(candidate, request.IsFormationStopped ? CandidateFormationEventKind.Stopped : CandidateFormationEventKind.Resumed,
+                candidate.FormationYear, candidate.FormationYear, _time.GetUtcNow().UtcDateTime, actor,
+                request.IsFormationStopped ? request.FormationStopNote!.Trim() : null);
+        }
         candidate.IsFormationStopped = request.IsFormationStopped;
         candidate.FormationStopNote = request.IsFormationStopped ? request.FormationStopNote!.Trim() : null;
         candidate.AttendancePercentage = request.AttendancePercentage;
@@ -125,14 +162,15 @@ public class CandidateService : ICandidateService
         return await GetByIdAsync(id, ct);
     }
 
-    public async Task<AdvanceCandidatesResultDto> AdvanceAsync(IReadOnlyCollection<Guid> candidateIds, CandidateActor actor, CancellationToken ct)
+    public async Task<AdvanceCandidatesResultDto> AdvanceAsync(IReadOnlyCollection<Guid> candidateIds, CandidateActor actor, CancellationToken ct, bool confirmIncomplete = false)
     {
         var ids = candidateIds.Distinct().ToList();
         if (ids.Count == 0) throw new InvalidOperationException("Zaznacz co najmniej jednego kandydata.");
         if (ids.Count > MaxAdvanceBatch) throw new InvalidOperationException($"Naraz można przenieść co najwyżej {MaxAdvanceBatch} kandydatów.");
 
-        var candidates = await _db.Candidates.Include(c => c.Person).Include(c => c.Events)
+        var candidates = await _db.Candidates.Include(c => c.Person).Include(c => c.Events).Include(c => c.Retreats)
             .Where(c => ids.Contains(c.Id)).ToDictionaryAsync(c => c.Id, ct);
+        var stats = await ClassStatsAsync(ids, ct);
         var now = _time.GetUtcNow().UtcDateTime;
         var advanced = 0;
         var completed = 0;
@@ -164,6 +202,15 @@ public class CandidateService : ICandidateService
             }
             else
             {
+                var gaps = CandidateCompletion.Gaps(
+                    candidate.Retreats.Select(r => new CandidateRetreatDto { Year = r.Year, IsCompleted = r.IsCompleted }),
+                    candidate.OpinionsCollected, candidate.OpinionsRequired,
+                    EffectiveAttendance(candidate.AttendancePercentage, stats.GetValueOrDefault(candidate.Id)));
+                if (gaps.Count > 0 && !confirmIncomplete)
+                {
+                    skipped.Add(new SkippedCandidateDto { CandidateId = id, PersonFullName = candidate.Person!.FullName, Reason = $"Braki do ukończenia: {CandidateCompletion.Describe(gaps)}." });
+                    continue;
+                }
                 Record(candidate, CandidateFormationEventKind.Completed, candidate.FormationYear, null, now, actor);
                 candidate.IsFormationCompleted = true;
                 completed++;
@@ -177,7 +224,7 @@ public class CandidateService : ICandidateService
     }
 
     /// <summary>Dodaje zdarzenie jawnie przez DbSet: element z kluczem nadanym po stronie klienta, dodany do śledzonej kolekcji, EF uznałby za istniejący.</summary>
-    private void Record(Candidate candidate, CandidateFormationEventKind kind, int? from, int? to, DateTime at, CandidateActor? actor)
+    private void Record(Candidate candidate, CandidateFormationEventKind kind, int? from, int? to, DateTime at, CandidateActor? actor, string? note = null)
     {
         _db.CandidateFormationEvents.Add(new CandidateFormationEvent
         {
@@ -189,7 +236,8 @@ public class CandidateService : ICandidateService
             ToYear = to,
             AtUtc = at,
             PerformedByUserId = actor?.UserId,
-            PerformedByEmail = actor?.Email
+            PerformedByEmail = actor?.Email,
+            Note = note
         });
     }
 
@@ -251,7 +299,11 @@ public class CandidateService : ICandidateService
         }
     }
 
-    private static CandidateDto ToDto(Candidate c) => new()
+    private static CandidateDto ToDto(Candidate c, (int Attended, int Recorded) stats)
+    {
+        var retreats = c.Retreats.OrderBy(r => r.Year).Select(r => new CandidateRetreatDto { Year = r.Year, IsCompleted = r.IsCompleted }).ToList();
+        var attendance = EffectiveAttendance(c.AttendancePercentage, stats);
+        return new CandidateDto
     {
         Id = c.Id,
         PersonId = c.PersonId,
@@ -263,13 +315,18 @@ public class CandidateService : ICandidateService
         YearSinceUtc = c.FormationYearSinceUtc,
         IsFormationStopped = c.IsFormationStopped,
         FormationStopNote = c.FormationStopNote,
-        AttendancePercentage = c.AttendancePercentage,
+        AttendancePercentage = attendance,
+        AttendanceFromClasses = stats.Recorded > 0,
+        ClassesAttended = stats.Attended,
+        ClassesRecorded = stats.Recorded,
+        CompletionGaps = CandidateCompletion.Gaps(retreats, c.OpinionsCollected, c.OpinionsRequired, attendance),
         OpinionsCollected = c.OpinionsCollected,
         OpinionsRequired = c.OpinionsRequired,
-        Retreats = c.Retreats.OrderBy(r => r.Year).Select(r => new CandidateRetreatDto { Year = r.Year, IsCompleted = r.IsCompleted }).ToList(),
+        Retreats = retreats,
         Events = c.Events.OrderByDescending(e => e.Sequence).Select(e => new CandidateFormationEventDto
         {
-            Kind = e.Kind.ToString(), FromYear = e.FromYear, ToYear = e.ToYear, AtUtc = e.AtUtc, PerformedBy = e.PerformedByEmail
+            Kind = e.Kind.ToString(), FromYear = e.FromYear, ToYear = e.ToYear, AtUtc = e.AtUtc, PerformedBy = e.PerformedByEmail, Note = e.Note
         }).ToList()
     };
+    }
 }
