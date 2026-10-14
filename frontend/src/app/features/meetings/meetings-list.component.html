@@ -6,6 +6,11 @@
   </div>
 </div>
 
+<details class="phone-howto">
+  <summary>📱 Spotkania w Kalendarzu Google w telefonie – jak to włączyć?</summary>
+  <app-calendar-howto [linkToAccount]="true" />
+</details>
+
 <div class="view-switch" role="tablist" aria-label="Widok harmonogramu">
   <button type="button" role="tab" class="btn small" [class.primary]="view() === 'list'" [class.ghost]="view() !== 'list'" [attr.aria-selected]="view() === 'list'" (click)="setView('list')">Lista</button>
   <button type="button" role="tab" class="btn small" [class.primary]="view() === 'calendar'" [class.ghost]="view() !== 'calendar'" [attr.aria-selected]="view() === 'calendar'" (click)="setView('calendar')">Kalendarz</button>

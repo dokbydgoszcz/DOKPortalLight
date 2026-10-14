@@ -574,4 +574,9 @@ describe('MeetingsListComponent', () => {
       expect(component.newMeeting).toMatchObject({ startTime: '22:30', endTime: '23:59' });
     });
   });
+  it('explains how to get the meetings into Google Calendar on the phone', () => {
+    const { el } = boot();
+    expect(el.querySelector('details.phone-howto summary')?.textContent).toContain('Kalendarzu Google');
+    expect(el.querySelector('details.phone-howto')?.textContent).toContain('Z adresu URL');
+  });
 });

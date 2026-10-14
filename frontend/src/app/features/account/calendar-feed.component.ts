@@ -4,11 +4,13 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
+import { CalendarHowtoComponent } from '../../shared/calendar-howto/calendar-howto.component';
 
 /** Prywatny adres kalendarza (iCal): spotkania z harmonogramu w Google Calendar / Outlooku / iPhonie. */
 @Component({
   selector: 'app-calendar-feed',
   standalone: true,
+  imports: [CalendarHowtoComponent],
   template: `
     <section class="card">
       <div class="card-head">
@@ -22,17 +24,6 @@ import { serverMessage } from '../../shared/http-error';
             <input readonly [value]="address" aria-label="Prywatny adres kalendarza" (focus)="$any($event.target).select()" />
             <button class="btn primary small" type="button" (click)="copy(address)">Kopiuj</button>
           </div>
-          <details>
-            <summary>Jak dodać do Kalendarza Google?</summary>
-            <ol>
-              <li>Na komputerze otwórz <b>calendar.google.com</b> (w aplikacji na telefonie tej opcji nie ma).</li>
-              <li>Po lewej przy „Inne kalendarze” kliknij <b>＋</b> → <b>Z adresu URL</b>.</li>
-              <li>Wklej skopiowany adres i kliknij <b>Dodaj kalendarz</b>.</li>
-              <li>Kalendarz „DOK Portal – spotkania” pojawi się też w aplikacji na telefonie (jeśli go nie widać: w aplikacji Ustawienia → wybierz kalendarz → Synchronizacja).</li>
-            </ol>
-            <p class="small-muted">Google odświeża takie kalendarze samo, zwykle co kilka godzin – nowe spotkanie może pojawić się z opóźnieniem.
-              Na iPhonie: Ustawienia → Kalendarz → Konta → Dodaj konto → Inne → Dodaj subskrybowany kalendarz.</p>
-          </details>
           <p class="small-muted">Adres działa jak hasło: kto go zna, widzi Twoje spotkania (imiona i nazwiska podopiecznych). Nie przesyłaj go dalej.
             Gdy wycieknie – utwórz nowy, a stary przestanie działać.</p>
           <div class="row">
@@ -42,6 +33,10 @@ import { serverMessage } from '../../shared/http-error';
         } @else {
           <button class="btn primary" type="button" [disabled]="busy() || !loaded()" (click)="create()">Utwórz adres kalendarza</button>
         }
+        <div class="howto">
+          <h4>Jak dodać do Kalendarza Google w telefonie?</h4>
+          <app-calendar-howto />
+        </div>
       </div>
     </section>
   `,
@@ -52,8 +47,8 @@ import { serverMessage } from '../../shared/http-error';
     p { margin: 0; color: var(--muted); }
     .address { display: flex; gap: 8px; }
     .address input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 12px; background: #f7faf8; }
-    details summary { cursor: pointer; font-weight: 700; }
-    ol { margin: 8px 0; padding-left: 18px; display: grid; gap: 4px; }
+    .howto { border-top: 1px solid var(--line); padding-top: 12px; }
+    .howto h4 { margin: 0 0 8px; font-size: 13px; }
     .row { display: flex; gap: 8px; flex-wrap: wrap; }
     .danger { color: var(--danger); }
     button { justify-self: start; }

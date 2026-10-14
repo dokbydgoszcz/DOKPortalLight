@@ -2,6 +2,7 @@ import { HasPermissionDirective } from '../../shared/permissions/has-permission.
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { MeetingsCalendarComponent } from './meetings-calendar.component';
+import { CalendarHowtoComponent } from '../../shared/calendar-howto/calendar-howto.component';
 import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
 import { FormsModule } from '@angular/forms';
@@ -24,7 +25,7 @@ function readView(): 'list' | 'calendar' {
 @Component({
   selector: 'app-meetings-list',
   standalone: true,
-  imports: [HasPermissionDirective, ExportButtonComponent, FormsModule, MeetingsCalendarComponent],
+  imports: [HasPermissionDirective, ExportButtonComponent, FormsModule, MeetingsCalendarComponent, CalendarHowtoComponent],
   templateUrl: './meetings-list.component.html',
   styleUrl: './meetings-list.component.scss'
 })
