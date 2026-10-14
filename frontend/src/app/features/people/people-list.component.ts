@@ -92,6 +92,7 @@ export class PeopleListComponent implements OnInit {
       notes: person.notes ?? undefined,
       nameDayMonth: person.nameDayMonth ?? undefined,
       nameDayDay: person.nameDayDay ?? undefined,
+      mailingOptOut: person.mailingOptOutAtUtc ? true : undefined,
       functions: person.functions.map(f => ({
         type: f.type,
         parishId: f.parishId ?? undefined,

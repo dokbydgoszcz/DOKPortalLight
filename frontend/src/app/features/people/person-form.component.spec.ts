@@ -123,4 +123,15 @@ describe('PersonFormComponent', () => {
       expect(saved[0].functions!.map(f => f.type)).toEqual(['Catechist', 'Acolyte']);
     });
   });
+
+  it('remembers that the person does not want mailing, and can undo it', async () => {
+    const { fixture, el, saved } = render(true, { firstName: 'Anna', lastName: 'Maj', mailingOptOut: true });
+    await fixture.whenStable();
+    const box = el.querySelector('input[name="mailingOptOut"]') as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    box.checked = false;
+    box.dispatchEvent(new Event('change'));
+    clickByText(el, 'Zapisz', '.modal-foot button');
+    expect(saved).toEqual([{ firstName: 'Anna', lastName: 'Maj', mailingOptOut: false }]);
+  });
 });

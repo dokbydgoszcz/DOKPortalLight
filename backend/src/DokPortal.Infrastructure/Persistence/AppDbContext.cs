@@ -40,6 +40,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<GeneratedDocument> GeneratedDocuments => Set<GeneratedDocument>();
     public DbSet<MailingCampaign> MailingCampaigns => Set<MailingCampaign>();
     public DbSet<MailingCampaignRecipient> MailingCampaignRecipients => Set<MailingCampaignRecipient>();
+    public DbSet<MailingDelivery> MailingDeliveries => Set<MailingDelivery>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
@@ -65,6 +66,8 @@ public class AppDbContext : IdentityDbContext<AppUser>
             entity.Property(p => p.LastName).IsRequired().HasMaxLength(100);
             entity.Property(p => p.Email).HasMaxLength(256);
             entity.Property(p => p.Phone).HasMaxLength(50);
+            entity.Property(p => p.MailingUnsubscribeToken).HasMaxLength(64);
+            entity.HasIndex(p => p.MailingUnsubscribeToken).IsUnique().HasFilter("[MailingUnsubscribeToken] IS NOT NULL");
 
             entity.HasOne(p => p.Parish)
                 .WithMany()
@@ -247,6 +250,15 @@ public class AppDbContext : IdentityDbContext<AppUser>
             entity.Property(m => m.Subject).IsRequired().HasMaxLength(200);
             entity.Property(m => m.Body).IsRequired();
             entity.HasMany(m => m.Recipients).WithOne(r => r.Campaign!).HasForeignKey(r => r.CampaignId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<MailingDelivery>(entity =>
+        {
+            entity.Property(d => d.Email).IsRequired().HasMaxLength(256);
+            entity.Property(d => d.LastError).HasMaxLength(500);
+            entity.HasOne(d => d.Campaign).WithMany().HasForeignKey(d => d.CampaignId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(d => new { d.Status, d.Position });
+            entity.HasIndex(d => d.AttemptedAtUtc);
         });
 
         builder.Entity<MailingCampaignRecipient>(entity =>

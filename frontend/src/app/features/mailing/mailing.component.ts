@@ -36,7 +36,7 @@ export class MailingComponent implements OnInit {
 
   /** Podgląd adresatów (w formularzu albo dla zapisanej kampanii). */
   readonly preview = signal<{ title: string; recipients: MailingRecipient[] } | null>(null);
-  readonly previewWithEmail = computed(() => this.preview()?.recipients.filter(r => r.email).length ?? 0);
+  readonly previewWithEmail = computed(() => this.preview()?.recipients.filter(r => r.email && !r.optedOut).length ?? 0);
 
   readonly attachmentsCampaign = signal<MailingCampaign | null>(null);
 
@@ -192,7 +192,10 @@ export class MailingComponent implements OnInit {
     this.mailingService.send(campaign.id).subscribe({
       next: result => {
         this.sendingId.set(null);
-        if (result.failedCount) {
+        if (result.status === 'Sending') {
+          this.toast.success(`Wysyłka ruszyła: wysłano ${result.recipientCount}, w kolejce ${result.pendingCount ?? 0}. ` +
+            'Reszta wychodzi w tle – przy dużej liście partiami, najwyżej ok. 400 wiadomości na dobę (limit Gmaila). Postęp widać na liście kampanii.');
+        } else if (result.failedCount) {
           this.toast.error(`Wysłano do ${result.recipientCount} odbiorców. Nie udało się wysłać do ${result.failedCount} adresów – sprawdź ich poprawność.`);
         } else {
           this.toast.success('Kampania wysłana.');

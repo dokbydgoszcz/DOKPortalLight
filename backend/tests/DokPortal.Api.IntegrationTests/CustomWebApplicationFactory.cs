@@ -31,6 +31,13 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 services.Remove(descriptor);
             }
 
+            // Kolejka mailingu w testach działa od razu, w ramach żądania (bez wątków w tle).
+            foreach (var queue in services.Where(d => d.ServiceType == typeof(DokPortal.Application.Mailing.IMailingQueue)).ToList())
+            {
+                services.Remove(queue);
+            }
+            services.AddSingleton<DokPortal.Application.Mailing.IMailingQueue, InlineMailingQueue>();
+
             _connection = new SqliteConnection("DataSource=:memory:");
             _connection.Open();
 

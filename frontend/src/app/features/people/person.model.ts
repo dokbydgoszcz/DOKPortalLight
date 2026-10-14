@@ -46,6 +46,8 @@ export interface Person {
   functions: PersonFunction[];
   /** Kiedy wgrano zdjęcie profilowe; brak = bez zdjęcia. */
   photoUpdatedAtUtc?: string | null;
+  /** Osoba wypisała się z mailingu (link w stopce albo na prośbę). */
+  mailingOptOutAtUtc?: string | null;
 }
 
 export interface PagedResult<T> {
@@ -67,4 +69,6 @@ export interface PersonFormValue {
   nameDayDay?: number;
   functions?: PersonFunctionInput[];
   confirmDuplicate?: boolean;
+  /** Nie wysyłaj kampanii mailingu (brak = bez zmian). */
+  mailingOptOut?: boolean;
 }

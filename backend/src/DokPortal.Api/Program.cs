@@ -151,6 +151,14 @@ builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 builder.Services.AddScoped<INameDayService, NameDayService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IMailingService, MailingService>();
+builder.Services.AddSingleton(new MailingOptions
+{
+    DailyLimit = builder.Configuration.GetValue("Mailing:DailyLimit", 400),
+    DelayBetweenMessages = TimeSpan.FromSeconds(builder.Configuration.GetValue("Mailing:DelaySeconds", 1.0))
+});
+builder.Services.AddSingleton<DokPortal.Api.Mailing.MailingQueueRunner>();
+builder.Services.AddSingleton<IMailingQueue>(sp => sp.GetRequiredService<DokPortal.Api.Mailing.MailingQueueRunner>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<DokPortal.Api.Mailing.MailingQueueRunner>());
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddMemoryCache();

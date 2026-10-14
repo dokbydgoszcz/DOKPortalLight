@@ -24,4 +24,8 @@ public class Person : ISoftDeletable
     public string? PhotoBlobPath { get; set; }
     public string? PhotoContentType { get; set; }
     public DateTime? PhotoUpdatedAtUtc { get; set; }
+    /// <summary>Osoba wypisała się z mailingu (link w stopce albo na prośbę) – nie dostaje kampanii.</summary>
+    public DateTime? MailingOptOutAtUtc { get; set; }
+    /// <summary>Tajny klucz linku „wypisz się” w stopce kampanii (tworzony przy pierwszej wysyłce).</summary>
+    public string? MailingUnsubscribeToken { get; set; }
 }

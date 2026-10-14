@@ -21,7 +21,7 @@ describe('routes', () => {
   });
 
   it('lazy-loads a component class for every feature route and the login page', async () => {
-    const lazy = [routes.find(r => r.path === 'login')!, routes.find(r => r.path === 'reset-hasla')!, ...children].filter(r => r.loadComponent);
+    const lazy = [routes.find(r => r.path === 'login')!, routes.find(r => r.path === 'reset-hasla')!, routes.find(r => r.path === 'wypisz/:token')!, ...children].filter(r => r.loadComponent);
 
     expect(lazy.length).toBeGreaterThan(15);
     for (const route of lazy) {
@@ -39,6 +39,7 @@ describe('routes', () => {
     expect(routes.find(r => r.path === '')!.canActivateChild?.length).toBe(1);
     expect(children.find(r => r.path === 'konto/haslo')).toBeDefined();
     expect(routes.find(r => r.path === 'reset-hasla')?.canActivate).toBeUndefined();
+    expect(routes.find(r => r.path === 'wypisz/:token')?.canActivate).toBeUndefined();
   });
 
   it('does not guard routes that are open to every authenticated user', () => {

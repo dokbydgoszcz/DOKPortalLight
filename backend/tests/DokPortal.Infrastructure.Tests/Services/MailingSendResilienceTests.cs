@@ -57,9 +57,12 @@ public class MailingSendResilienceTests
         var service = new MailingService(db, sender);
         var campaign = await NewCampaignAsync(service);
 
-        var sent = await service.SendAsync(campaign.Id, default);
+        var queued = await service.SendAsync(campaign.Id, default);
+        Assert.Equal((CampaignStatus.Sending, 2), (queued!.Status, queued.PendingCount));
+        await service.ProcessQueueAsync(default);
+        var sent = (await service.ListAsync(default)).Single();
 
-        Assert.Equal(CampaignStatus.Sent, sent!.Status);
+        Assert.Equal(CampaignStatus.Sent, sent.Status);
         Assert.Equal(2, sent.RecipientCount);
         Assert.Equal(1, sent.FailedCount);
         Assert.Equal(new[] { "a@example.org", "c@example.org" }, sender.Delivered.OrderBy(x => x));

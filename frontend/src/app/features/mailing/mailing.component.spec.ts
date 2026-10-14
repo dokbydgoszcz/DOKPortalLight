@@ -142,6 +142,21 @@ describe('MailingComponent', () => {
       ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([sent]);
     });
 
+    it('says the rest goes out in the background when the campaign is queued, and shows its progress', () => {
+      const ctx = boot();
+
+      clickByText(ctx.el, 'Wyślij');
+      ctx.http.expectOne(r => r.method === 'POST' && r.url === `${url}/c1/send`).flush({ ...draft, status: 'Sending', recipientCount: 1, pendingCount: 11 });
+
+      expect(toastMessages().join(' ')).toContain('w kolejce 11');
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([{ ...draft, status: 'Sending', recipientCount: 1, pendingCount: 11 }]);
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('W trakcie wysyłki');
+      expect(textOf(ctx.el)).toContain('czeka: 11');
+      clickByText(ctx.el, 'odśwież');
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([sent]);
+    });
+
     it('reports a partly failed send with the number of addresses that did not get the message', () => {
       const ctx = boot();
 
@@ -369,13 +384,15 @@ describe('MailingComponent', () => {
       clickByText(ctx.el, 'Pokaż odbiorców');
       ctx.http.expectOne(r => r.url === api('/api/mailing/recipients') && r.params.get('group') === 'Pastors').flush([
         { personId: 'p1', fullName: 'ks. Jan Nowak', email: 'jan@example.org' },
-        { personId: 'p2', fullName: 'ks. Adam Bez', email: null }
+        { personId: 'p2', fullName: 'ks. Adam Bez', email: null },
+        { personId: 'p3', fullName: 'ks. Piotr Wypisany', email: 'piotr@example.org', optedOut: true }
       ]);
       ctx.fixture.detectChanges();
 
       const text = textOf(ctx.el);
-      expect(text).toContain('Osób: 2, z adresem e-mail: 1');
+      expect(text).toContain('Osób: 3, dostanie wiadomość: 1');
       expect(text).toContain('brak e-maila');
+      expect(text).toContain('wypisał(a) się z mailingu');
     });
 
     it('opens the attachments of a campaign', () => {
@@ -431,7 +448,7 @@ describe('MailingComponent', () => {
       expect(textOf(ctx.el)).toContain('Osoby na liście (1)');
       ctx.fixture.componentInstance.previewForm();
       ctx.fixture.detectChanges();
-      expect(textOf(ctx.el)).toContain('Osób: 1, z adresem e-mail: 1');
+      expect(textOf(ctx.el)).toContain('Osób: 1, dostanie wiadomość: 1');
       ctx.http.expectNone(r => r.url === api('/api/mailing/recipients'));
 
       clickByText(ctx.el, 'Zapisz', '.modal-foot button');

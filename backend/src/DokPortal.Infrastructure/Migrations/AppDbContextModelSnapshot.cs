@@ -627,6 +627,50 @@ namespace DokPortal.Infrastructure.Migrations
                     b.ToTable("MailingCampaignRecipients");
                 });
 
+            modelBuilder.Entity("DokPortal.Domain.Entities.MailingDelivery", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("AttemptedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("CampaignId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("PersonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttemptedAtUtc");
+
+                    b.HasIndex("CampaignId");
+
+                    b.HasIndex("Status", "Position");
+
+                    b.ToTable("MailingDeliveries");
+                });
+
             modelBuilder.Entity("DokPortal.Domain.Entities.Meeting", b =>
                 {
                     b.Property<Guid>("Id")
@@ -896,6 +940,13 @@ namespace DokPortal.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<DateTime?>("MailingOptOutAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MailingUnsubscribeToken")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<int?>("NameDayDay")
                         .HasColumnType("int");
 
@@ -925,6 +976,10 @@ namespace DokPortal.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MailingUnsubscribeToken")
+                        .IsUnique()
+                        .HasFilter("[MailingUnsubscribeToken] IS NOT NULL");
 
                     b.HasIndex("ParishId");
 
@@ -1462,6 +1517,17 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Navigation("Campaign");
 
                     b.Navigation("Person");
+                });
+
+            modelBuilder.Entity("DokPortal.Domain.Entities.MailingDelivery", b =>
+                {
+                    b.HasOne("DokPortal.Domain.Entities.MailingCampaign", "Campaign")
+                        .WithMany()
+                        .HasForeignKey("CampaignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Campaign");
                 });
 
             modelBuilder.Entity("DokPortal.Domain.Entities.Meeting", b =>

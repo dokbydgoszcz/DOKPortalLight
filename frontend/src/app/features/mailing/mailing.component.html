@@ -25,6 +25,9 @@
             <td>
               @if (campaign.status === 'Sent') {
                 <span class="pill green">Wysłano</span>
+              } @else if (campaign.status === 'Sending') {
+                <span class="pill gold" title="Wiadomości wychodzą w tle, partiami w granicach dobowego limitu skrzynki">W trakcie wysyłki</span>
+                <div class="small-muted">czeka: {{ campaign.pendingCount ?? 0 }} · <span class="link" (click)="load()">odśwież</span></div>
               } @else {
                 <span class="pill">Szkic</span>
               }
@@ -123,14 +126,16 @@
       </div>
       <div class="modal-body">
         <p class="small-muted" style="margin:0 0 8px">
-          Osób: {{ p.recipients.length }}, z adresem e-mail: {{ previewWithEmail() }}. Osoby bez e-maila wiadomości nie dostaną (uzupełnij adres w „Osoby”).
+          Osób: {{ p.recipients.length }}, dostanie wiadomość: {{ previewWithEmail() }}. Osoby bez e-maila (uzupełnij adres w „Osoby”) i osoby wypisane z mailingu wiadomości nie dostaną.
         </p>
         <div class="list">
           @for (r of p.recipients; track r.personId) {
             <div class="list-row">
               <div class="list-main">
                 <div class="list-title">{{ r.fullName }}</div>
-                <div class="list-sub" [style.color]="r.email ? null : 'var(--danger)'">{{ r.email ?? 'brak e-maila' }}</div>
+                <div class="list-sub" [style.color]="r.email && !r.optedOut ? null : 'var(--danger)'">
+                  {{ r.email ?? 'brak e-maila' }}@if (r.optedOut) { · wypisał(a) się z mailingu }
+                </div>
               </div>
             </div>
           } @empty {

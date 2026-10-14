@@ -20,9 +20,11 @@ public class MailingController : ControllerBase
     private readonly IMailingService _mailingService;
     private readonly IAuditLogService _auditLogService;
     private readonly IAttachmentService _attachmentService;
+    private readonly IMailingQueue _queue;
 
-    public MailingController(IMailingService mailingService, IAuditLogService auditLogService, IAttachmentService attachmentService)
+    public MailingController(IMailingService mailingService, IAuditLogService auditLogService, IAttachmentService attachmentService, IMailingQueue queue)
     {
+        _queue = queue;
         _mailingService = mailingService;
         _auditLogService = auditLogService;
         _attachmentService = attachmentService;
@@ -123,7 +125,9 @@ public class MailingController : ControllerBase
     public async Task<ActionResult<MailingCampaignDto>> Send(Guid id, CancellationToken ct)
     {
         var sent = await _mailingService.SendAsync(id, ct);
-        return sent is null ? NotFound() : Ok(sent);
+        if (sent is null) return NotFound();
+        if (sent.Status == CampaignStatus.Sending) _queue.Kick();
+        return Ok(sent);
     }
 
     /// <summary>Wysyła wiadomość testową na adres zalogowanego użytkownika (sprawdzenie ustawień SMTP).</summary>

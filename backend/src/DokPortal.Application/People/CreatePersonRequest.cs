@@ -15,4 +15,6 @@ public class CreatePersonRequest
     public IReadOnlyList<PersonFunctionInput>? Functions { get; init; }
     /// <summary>Potwierdza zapis mimo ostrzeżenia o telefonie, który ma już inna osoba (nie dotyczy e-maila).</summary>
     public bool ConfirmDuplicate { get; init; }
+    /// <summary>Nie wysyłaj tej osobie kampanii mailingu (null = bez zmian).</summary>
+    public bool? MailingOptOut { get; init; }
 }

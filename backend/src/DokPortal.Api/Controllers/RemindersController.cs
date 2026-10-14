@@ -12,9 +12,11 @@ public class RemindersController : ControllerBase
 {
     private readonly IReminderService _reminderService;
     private readonly IConfiguration _configuration;
+    private readonly DokPortal.Application.Mailing.IMailingQueue? _mailingQueue;
 
-    public RemindersController(IReminderService reminderService, IConfiguration configuration)
+    public RemindersController(IReminderService reminderService, IConfiguration configuration, DokPortal.Application.Mailing.IMailingQueue? mailingQueue = null)
     {
+        _mailingQueue = mailingQueue;
         _reminderService = reminderService;
         _configuration = configuration;
     }
@@ -64,6 +66,19 @@ public class RemindersController : ControllerBase
         }
 
         return Ok(await _reminderService.RunExpiringMissionsReminderAsync(ct));
+    }
+
+    /// <summary>Codzienne wznowienie kolejki mailingu (po uśpieniu aplikacji); wysyłka idzie w tle.</summary>
+    [HttpPost("mailing-queue/run")]
+    public IActionResult RunMailingQueue()
+    {
+        if (!IsRequestAuthorized())
+        {
+            return Unauthorized();
+        }
+
+        _mailingQueue?.Kick();
+        return Accepted();
     }
 
     private bool IsRequestAuthorized()

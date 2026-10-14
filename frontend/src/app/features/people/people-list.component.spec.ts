@@ -168,6 +168,12 @@ describe('PeopleListComponent', () => {
       ctx.http.expectOne(r => r.method === 'GET' && r.url === peopleUrl).flush({ items: [anna], totalCount: 1, page: 1, pageSize: 20 });
     });
 
+    it('opens the form with the mailing opt-out ticked for someone who unsubscribed', () => {
+      const ctx = boot([{ ...anna, mailingOptOutAtUtc: '2026-10-14T10:00:00Z' }]);
+      clickByText(ctx.el, 'Edytuj');
+      expect(ctx.fixture.componentInstance.formValue.mailingOptOut).toBe(true);
+    });
+
     it('treats missing optional fields as undefined when opening the form', () => {
       const ctx = boot([{ ...anna, email: null, phone: null, notes: null, nameDayMonth: null, nameDayDay: null }]);
 

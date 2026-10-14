@@ -129,4 +129,49 @@ public class MailingWorkflowTests : IntegrationTestBase, IClassFixture<MailingFa
         Assert.Equal(HttpStatusCode.BadRequest, late.StatusCode);
         Assert.Contains("wysłanej", await late.Content.ReadAsStringAsync());
     }
+
+    [Fact]
+    public async Task SendingQueuesTheCampaign_TheRestGoesOutInTheBackground_AndTheFooterLetsPeopleUnsubscribe()
+    {
+        var admin = await AdminAsync();
+        var a = await AddPersonAsync("Kolejka1", $"k1-{Guid.NewGuid():N}@example.org");
+        var b = await AddPersonAsync("Kolejka2", $"k2-{Guid.NewGuid():N}@example.org");
+        var campaign = await CreateAsync(admin, new { Subject = "Kolejka", Body = "Treść kolejki", Group = "Custom", PersonIds = new[] { a.Id, b.Id } });
+
+        var sent = await (await admin.PostAsync($"/api/mailing/campaigns/{campaign.Id}/send", null)).Content.ReadFromJsonAsync<MailingCampaignDto>(EnumJsonOptions);
+        Assert.Equal(CampaignStatus.Sending, sent!.Status);
+        var listed = (await admin.GetFromJsonAsync<List<MailingCampaignDto>>("/api/mailing/campaigns", EnumJsonOptions))!.Single(c => c.Id == campaign.Id);
+        Assert.Equal((CampaignStatus.Sent, 2, 0), (listed.Status, listed.RecipientCount, listed.PendingCount));
+
+        var toA = _factory.Sender.Sent.Single(m => m.To == a.Email && m.Subject == "Kolejka");
+        Assert.StartsWith("Treść kolejki", toA.Body);
+        var token = toA.Body.Split("/wypisz/")[1].Trim();
+        var anonymous = Factory.CreateClient();
+        var state = await anonymous.GetFromJsonAsync<MailingSubscriptionDto>($"/api/mailing/subscription/{token}");
+        Assert.Equal(("Jan", false), (state!.FirstName, state.OptedOut));
+        var left = await (await anonymous.PostAsync($"/api/mailing/subscription/{token}/unsubscribe", null)).Content.ReadFromJsonAsync<MailingSubscriptionDto>();
+        Assert.True(left!.OptedOut);
+        Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync("/api/mailing/subscription/nieznany")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await anonymous.PostAsync("/api/mailing/subscription/nieznany/unsubscribe", null)).StatusCode);
+
+        var person = await admin.GetFromJsonAsync<System.Text.Json.JsonElement>($"/api/people/{a.Id}");
+        Assert.NotEqual(System.Text.Json.JsonValueKind.Null, person.GetProperty("mailingOptOutAtUtc").ValueKind);
+        var recipients = await admin.GetFromJsonAsync<List<MailingRecipientDto>>($"/api/mailing/campaigns/{campaign.Id}/recipients");
+        Assert.True(recipients!.Single(r => r.PersonId == a.Id).OptedOut);
+
+        var back = await (await anonymous.PostAsync($"/api/mailing/subscription/{token}/resubscribe", null)).Content.ReadFromJsonAsync<MailingSubscriptionDto>();
+        Assert.False(back!.OptedOut);
+        Assert.Equal(HttpStatusCode.NotFound, (await anonymous.PostAsync("/api/mailing/subscription/nieznany/resubscribe", null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task TheDailyWorkflow_KicksTheQueue_WithTheRemindersKey()
+    {
+        var anonymous = Factory.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PostAsync("/api/reminders/mailing-queue/run", null)).StatusCode);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/reminders/mailing-queue/run");
+        request.Headers.Add("X-Reminders-Key", "testing-only-reminders-key");
+        Assert.Equal(HttpStatusCode.Accepted, (await anonymous.SendAsync(request)).StatusCode);
+    }
 }

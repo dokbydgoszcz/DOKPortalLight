@@ -17,4 +17,6 @@ public class PersonDto
     public IReadOnlyList<PersonFunctionDto> Functions { get; init; } = Array.Empty<PersonFunctionDto>();
     /// <summary>Kiedy wgrano zdjęcie profilowe (null = brak); służy też do odświeżania podglądu.</summary>
     public DateTime? PhotoUpdatedAtUtc { get; init; }
+    /// <summary>Osoba wypisała się z mailingu (null = dostaje kampanie).</summary>
+    public DateTime? MailingOptOutAtUtc { get; init; }
 }

@@ -108,6 +108,7 @@ public class PersonService : IPersonService
             Notes = request.Notes,
             NameDayMonth = request.NameDayMonth,
             NameDayDay = request.NameDayDay,
+            MailingOptOutAtUtc = request.MailingOptOut == true ? DateTime.UtcNow : null,
             CreatedAtUtc = DateTime.UtcNow,
             UpdatedAtUtc = DateTime.UtcNow
         };
@@ -143,6 +144,8 @@ public class PersonService : IPersonService
         person.Notes = request.Notes;
         person.NameDayMonth = request.NameDayMonth;
         person.NameDayDay = request.NameDayDay;
+        if (request.MailingOptOut is { } optOut)
+            person.MailingOptOutAtUtc = optOut ? person.MailingOptOutAtUtc ?? DateTime.UtcNow : null;
         person.UpdatedAtUtc = DateTime.UtcNow;
 
         if (request.Functions is not null)
@@ -372,6 +375,7 @@ public class PersonService : IPersonService
         ParishName = p.Parish?.Name,
         Notes = p.Notes,
         PhotoUpdatedAtUtc = p.PhotoBlobPath == null ? null : p.PhotoUpdatedAtUtc,
+        MailingOptOutAtUtc = p.MailingOptOutAtUtc,
         NameDayMonth = p.NameDayMonth,
         NameDayDay = p.NameDayDay,
         Functions = p.Functions

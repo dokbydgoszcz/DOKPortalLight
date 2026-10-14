@@ -18,4 +18,6 @@ public class MailingRecipientDto
     public required Guid PersonId { get; init; }
     public required string FullName { get; init; }
     public string? Email { get; init; }
+    /// <summary>Osoba wypisała się z mailingu – wiadomości nie dostanie.</summary>
+    public bool OptedOut { get; init; }
 }

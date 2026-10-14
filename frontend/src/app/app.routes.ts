@@ -11,6 +11,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/account/reset-password.component').then(m => m.ResetPasswordComponent)
   },
   {
+    path: 'wypisz/:token',
+    title: 'Wypisanie z mailingu',
+    loadComponent: () => import('./features/mailing/unsubscribe.component').then(m => m.UnsubscribeComponent)
+  },
+  {
     path: '',
     title: 'DOK Portal',
     component: ShellComponent,

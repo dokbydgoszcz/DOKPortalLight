@@ -86,7 +86,7 @@ Działa od razu, bez udziału administratora Microsoft 365. Wymaga **hasła apli
 
 4. Po restarcie: Mailing → „Wyślij wiadomość testową”.
 
-Ograniczenia Gmaila: ok. 500 wiadomości na dobę dla zwykłego konta (Google Workspace: ok. 2000) – większa kampania zostanie ucięta przez Gmaila, a błędy pojedynczych adresów trafią do raportu wysyłki; nadawca zawsze będzie `dokbydgoszcz@gmail.com` (Gmail podmienia inny adres „Od”); odpowiedzi odbiorców lądują w tej skrzynce.
+Ograniczenia Gmaila: ok. 500 wiadomości na dobę dla zwykłego konta (Google Workspace: ok. 2000). Kampanie idą przez kolejkę (`MailingDeliveries`): po „Wyślij” pierwsza wiadomość wychodzi od razu (błąd ustawień poczty widać przy kliknięciu), reszta w tle, co sekundę, najwyżej `Mailing:DailyLimit` (domyślnie 400) wiadomości kampanii na 24 godziny – zapas na przypomnienia i hasła. Przerwaną wysyłkę (uśpienie F1, limit dobowy) wznawia start aplikacji i codzienny workflow `mailing-queue.yml` (6:30 UTC, `POST /api/reminders/mailing-queue/run`). Adres, który trzy razy z rzędu zwróci błąd, liczy się jako nieudany. Każda wiadomość kampanii ma stopkę z linkiem „wypisz się” (`/wypisz/<klucz>`; wypisanie wymaga kliknięcia przycisku), a osoby wypisane są pomijane – można to też zaznaczyć w formularzu osoby. Ustawienia: `Mailing__DailyLimit`, `Mailing__DelaySeconds` (Workspace: limit można podnieść do ok. 1800); nadawca zawsze będzie `dokbydgoszcz@gmail.com` (Gmail podmienia inny adres „Od”); odpowiedzi odbiorców lądują w tej skrzynce.
 
 ### Wariant B: `noreply@bydgoskateologia.pl` (Exchange Online / Microsoft 365)
 

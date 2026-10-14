@@ -9,7 +9,17 @@ public interface IMailingService
     /// <summary>Poprawia szkic (temat, treść, grupa, lista osób).</summary>
     /// <exception cref="InvalidOperationException">Kampania już wysłana albo nieznane osoby na liście.</exception>
     Task<MailingCampaignDto?> UpdateDraftAsync(Guid id, CreateMailingCampaignRequest request, CancellationToken ct);
+    /// <summary>
+    /// Wstawia kampanię do kolejki i od razu wysyła pierwszą wiadomość (żeby błąd ustawień poczty wyszedł od razu);
+    /// resztę wysyła <see cref="ProcessQueueAsync"/> w tle, w granicach dobowego limitu.
+    /// </summary>
     Task<MailingCampaignDto?> SendAsync(Guid id, CancellationToken ct);
+    /// <summary>Wysyła oczekujące wiadomości wszystkich kampanii, dopóki pozwala dobowy limit.</summary>
+    Task<MailingQueueResultDto> ProcessQueueAsync(CancellationToken ct);
+    /// <summary>Stan zapisu osoby z linku w stopce (null = nieznany link).</summary>
+    Task<MailingSubscriptionDto?> GetSubscriptionAsync(string token, CancellationToken ct);
+    /// <summary>Wypisuje (albo zapisuje ponownie) osobę z linku w stopce.</summary>
+    Task<MailingSubscriptionDto?> SetOptOutAsync(string token, bool optOut, CancellationToken ct);
     Task<bool> DeleteDraftAsync(Guid id, CancellationToken ct);
     /// <summary>Czy kampania istnieje i jest szkicem (null = nie istnieje).</summary>
     Task<bool?> IsDraftAsync(Guid id, CancellationToken ct);

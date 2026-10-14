@@ -11,6 +11,8 @@ public class MailingCampaignDto
     public MailingGroup Group { get; init; }
     public required int RecipientCount { get; init; }
     public int FailedCount { get; init; }
+    /// <summary>Wiadomości jeszcze w kolejce (kampania „w trakcie wysyłki”).</summary>
+    public int PendingCount { get; init; }
     public CampaignStatus Status { get; init; }
     public required DateTime CreatedAtUtc { get; init; }
     public DateTime? SentAtUtc { get; init; }
