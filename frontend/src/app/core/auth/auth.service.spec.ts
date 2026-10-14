@@ -62,6 +62,22 @@ describe('AuthService', () => {
     expect(localStorage.getItem('dokportal.mustChangePassword')).toBeNull();
   });
 
+  it('shows the MFA suggestion only when the server asks for it, until dismissed or logged out', async () => {
+    const token = createFakeJwt({ sub: 'u', exp: 9999999999 });
+    const login = service.login('a@b.pl', 'Haslo1!');
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/auth/login`).flush({ token, expiresAtUtc: '', roles: [], personId: null, suggestMfa: true });
+    await login;
+    expect(service.suggestMfa()).toBe(true);
+    service.dismissMfaSuggestion();
+    expect(service.suggestMfa()).toBe(false);
+
+    const again = service.login('a@b.pl', 'Haslo1!');
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/auth/login`).flush({ token, expiresAtUtc: '', roles: [], personId: null, suggestMfa: true });
+    await again;
+    service.logout();
+    expect(service.suggestMfa()).toBe(false);
+  });
+
   it('asks for a reset link and sets a new password with the code from the e-mail', async () => {
     const forgot = service.forgotPassword('a@b.pl');
     httpMock.expectOne(`${environment.apiBaseUrl}/api/auth/forgot-password`).flush({ message: 'Sprawdź skrzynkę.' });

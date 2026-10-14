@@ -11,7 +11,7 @@ import { serverMessage } from '../../shared/http-error';
   standalone: true,
   imports: [FormsModule],
   template: `
-    <section class="card">
+    <section class="card" id="mfa">
       <div class="card-head">
         <h3>Weryfikacja dwuetapowa (MFA)</h3>
         @if (status()?.enabled) { <span class="pill green">włączona</span> }

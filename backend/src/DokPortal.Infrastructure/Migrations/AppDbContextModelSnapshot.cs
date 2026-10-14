@@ -1140,6 +1140,9 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<int>("LoginsWithoutMfa")
+                        .HasColumnType("int");
+
                     b.Property<bool>("MustChangePassword")
                         .HasColumnType("bit");
 

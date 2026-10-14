@@ -10,7 +10,7 @@ describe('ShellComponent', () => {
   let logout: ReturnType<typeof vi.fn>;
   const idle = { start: vi.fn(), stop: vi.fn() };
 
-  function setup(permissions: string[], roles: string[] = []) {
+  function setup(permissions: string[], roles: string[] = [], extra: Record<string, unknown> = {}) {
     logout = vi.fn();
     idle.start.mockClear();
     idle.stop.mockClear();
@@ -24,7 +24,8 @@ describe('ShellComponent', () => {
           useValue: {
             roles: () => roles,
             hasPermission: (p: string) => permissions.includes(p),
-            logout
+            logout,
+            ...extra
           }
         }
       ]
@@ -154,5 +155,25 @@ describe('ShellComponent', () => {
 
       expect(sidebar().classList.contains('open')).toBe(false);
     });
+  });
+
+  it('suggests turning on MFA after login, with a link to the account page and a "later" button', async () => {
+    const { signal } = await import('@angular/core');
+    const suggestMfa = signal(true);
+    const dismissMfaSuggestion = vi.fn(() => suggestMfa.set(false));
+    setup([], [], { suggestMfa, mustChangePassword: () => false, dismissMfaSuggestion });
+
+    const nudge = el().querySelector('.mfa-nudge')!;
+    expect(nudge.textContent).toContain('Zabezpiecz swoje konto');
+    expect(nudge.querySelector('a')!.getAttribute('href')).toBe('/konto/haslo#mfa');
+    (Array.from(nudge.querySelectorAll('button')).find(b => b.textContent!.includes('Później')) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(dismissMfaSuggestion).toHaveBeenCalled();
+    expect(el().querySelector('.mfa-nudge')).toBeNull();
+  });
+
+  it('does not nag while the password must still be changed', () => {
+    setup([], [], { suggestMfa: () => true, mustChangePassword: () => true, dismissMfaSuggestion: vi.fn() });
+    expect(el().querySelector('.mfa-nudge')).toBeNull();
   });
 });

@@ -81,7 +81,15 @@ public class AuthController : ControllerBase
         }
 
         await _auditLogService.LogAsync(user.Id, user.Email!, "Login", "Zalogowano", AuditResult.Allowed, ct);
-        return Ok(await SessionForAsync(user, ct));
+        // Pierwsze logowanie bez MFA i potem co trzecie – zachęta do włączenia weryfikacji dwuetapowej.
+        user.LoginsWithoutMfa++;
+        await _userManager.UpdateAsync(user);
+        var session = await SessionForAsync(user, ct);
+        return Ok(new LoginResponse
+        {
+            Token = session.Token, ExpiresAtUtc = session.ExpiresAtUtc, Roles = session.Roles, PersonId = session.PersonId,
+            MustChangePassword = session.MustChangePassword, SuggestMfa = user.LoginsWithoutMfa % 3 == 1
+        });
     }
 
     /// <summary>Krok 2 logowania: kod z aplikacji uwierzytelniającej albo kod zapasowy.</summary>

@@ -179,4 +179,16 @@ public class MfaTests : IntegrationTestBase, IClassFixture<RecordingEmailFactory
         Assert.Equal(HttpStatusCode.Unauthorized, (await Client.PostAsync("/api/auth/mfa/setup", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await Client.GetAsync("/api/auth/mfa")).StatusCode);
     }
+
+    [Fact]
+    public async Task WithoutMfa_EveryThirdLoginSuggestsTurningItOn_AndWithMfaNever()
+    {
+        var email = $"zacheta-{Guid.NewGuid():N}@example.org";
+        await CreateUserAndGetTokenAsync(email, "Sekret123!", "DyrektorDOK");
+        var hints = new List<bool>();
+        for (var i = 0; i < 6; i++) hints.Add((await LoginAsync(email, "Sekret123!")).GetProperty("suggestMfa").GetBoolean());
+        Assert.Equal(2, hints.Count(h => h));
+        var first = hints.IndexOf(true);
+        Assert.True(hints[first + 3]);
+    }
 }

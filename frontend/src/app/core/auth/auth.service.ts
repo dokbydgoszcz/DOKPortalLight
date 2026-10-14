@@ -10,6 +10,8 @@ export interface LoginResponse {
   roles: string[];
   personId: string | null;
   mustChangePassword?: boolean;
+  /** Konto bez MFA – przy tym logowaniu zachęć do włączenia weryfikacji dwuetapowej. */
+  suggestMfa?: boolean;
 }
 
 /** Odpowiedź logowania, gdy konto ma MFA: trzeba jeszcze podać kod z aplikacji. */
@@ -63,6 +65,8 @@ export class AuthService {
   private readonly tokenSignal = signal<string | null>(readStoredToken());
   /** Hasło nadał administrator – przed pracą trzeba ustawić własne. */
   readonly mustChangePassword = signal(readMustChange());
+  /** Pokaż zachętę do włączenia MFA (serwer prosi o to przy co trzecim logowaniu bez MFA). */
+  readonly suggestMfa = signal(false);
 
   readonly isAuthenticated = computed(() => this.tokenSignal() !== null);
   readonly roles = computed(() => this.decodeClaimList(this.tokenSignal(), 'role'));
@@ -156,6 +160,7 @@ export class AuthService {
       localStorage.removeItem(MUST_CHANGE_KEY);
     }
     this.mustChangePassword.set(!!response.mustChangePassword);
+    this.suggestMfa.set(!!response.suggestMfa);
     this.tokenSignal.set(response.token);
   }
 
@@ -167,11 +172,16 @@ export class AuthService {
     localStorage.removeItem(PERMISSIONS_AWARE_KEY);
     localStorage.removeItem(MUST_CHANGE_KEY);
     this.mustChangePassword.set(false);
+    this.suggestMfa.set(false);
     this.tokenSignal.set(null);
     // Gdy przejście się nie uda (np. po aktualizacji aplikacji), strona logowania wczyta się od nowa.
     const fallback = () => this.hardNavigate('/login');
     Promise.resolve(this.router.navigateByUrl('/login', reason ? { state: { reason } } : undefined))
       .then(ok => { if (ok === false) fallback(); }, fallback);
+  }
+
+  dismissMfaSuggestion(): void {
+    this.suggestMfa.set(false);
   }
 
   hasRole(role: string): boolean {

@@ -32,6 +32,15 @@
       </div>
     </header>
     <div class="content">
+      @if (auth.suggestMfa?.() && !auth.mustChangePassword?.()) {
+        <div class="mfa-nudge" role="status">
+          <span>🔒 <strong>Zabezpiecz swoje konto.</strong> Włącz weryfikację dwuetapową (kod z aplikacji Microsoft Authenticator lub Google Authenticator) – portal zawiera dane osobowe.</span>
+          <span class="mfa-nudge-actions">
+            <a class="btn primary small" routerLink="/konto/haslo" fragment="mfa" (click)="auth.dismissMfaSuggestion()">Włącz teraz</a>
+            <button type="button" class="btn ghost small" (click)="auth.dismissMfaSuggestion()">Później</button>
+          </span>
+        </div>
+      }
       <router-outlet></router-outlet>
     </div>
     <app-footer />
