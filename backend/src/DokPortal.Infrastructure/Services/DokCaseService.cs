@@ -191,7 +191,37 @@ public class DokCaseService : IDokCaseService
         };
         _db.DokCases.Add(dokCase);
         await _db.SaveChangesAsync(ct);
-        return (await LoadAsync(_db.DokCases, dokCase.Id, ct))!;
+        var created = (await LoadAsync(_db.DokCases, dokCase.Id, ct))!;
+        await NotifyCaseCreatedAsync(created, ct);
+        return created;
+    }
+
+    /// <summary>Katechista prowadzący (i mentor) nowej sprawy dostają e-mail. Błąd poczty nie cofa założenia sprawy.</summary>
+    private async Task NotifyCaseCreatedAsync(DokCaseDto dokCase, CancellationToken ct)
+    {
+        if (_emailSender is null) return;
+        var what = $"podopiecznego {dokCase.PersonFullName} (ścieżka: {DokStages.Label(dokCase.Path)}, etap: {DokStages.Label(dokCase.Stage)})";
+        var recipients = new List<(Guid? PersonId, string Subject, string Body)>
+        {
+            (dokCase.CatechistPersonId, "Nowa sprawa DOK",
+                $"Szczęść Boże,\n\nw DOK Portal założono sprawę {what}, w której jesteś katechistą prowadzącym.\n\nSprawę znajdziesz w DOK Portal → Podopieczni DOK."),
+            (dokCase.MentorPersonId, "Nowa sprawa DOK – mentor",
+                $"Szczęść Boże,\n\nw DOK Portal założono sprawę {what}, w której jesteś mentorem.")
+        };
+        foreach (var (personId, subject, body) in recipients)
+        {
+            if (personId is null) continue;
+            var email = await _db.People.Where(p => p.Id == personId).Select(p => p.Email).FirstOrDefaultAsync(ct);
+            if (string.IsNullOrWhiteSpace(email)) continue;
+            try
+            {
+                await _emailSender.SendAsync(email, subject, body, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Nie udało się powiadomić o nowej sprawie {DokCaseId}", dokCase.Id);
+            }
+        }
     }
 
     public async Task<DokCaseDto?> UpdateAsync(Guid id, UpdateDokCaseRequest request, CancellationToken ct, DokCaseActor? actor = null)

@@ -4,6 +4,7 @@ using DokPortal.Domain.Entities;
 using DokPortal.Domain.Enums;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DokPortal.Infrastructure.Services;
 
@@ -11,11 +12,27 @@ public class PersonService : IPersonService
 {
     private readonly AppDbContext _db;
     private readonly TimeProvider _time;
+    private readonly IEmailSender? _emailSender;
+    private readonly ILogger<PersonService>? _logger;
 
-    public PersonService(AppDbContext db, TimeProvider? time = null)
+    public PersonService(AppDbContext db, TimeProvider? time = null, IEmailSender? emailSender = null, ILogger<PersonService>? logger = null)
     {
         _db = db;
         _time = time ?? TimeProvider.System;
+        _emailSender = emailSender;
+        _logger = logger;
+    }
+
+    /// <summary>Parafie, w których ta osoba jest teraz proboszczem.</summary>
+    private Task<List<Guid>> PastorParishesAsync(Guid personId, CancellationToken ct) =>
+        _db.PersonFunctions.Where(f => f.PersonId == personId && f.Type == FunctionType.Pastor && f.ParishId != null)
+            .Select(f => f.ParishId!.Value).ToListAsync(ct);
+
+    /// <summary>Nowo wskazany proboszcz parafii dostaje dane skierowanych tam katechistów (i odwrotnie).</summary>
+    private async Task NotifyNewPastorParishesAsync(Guid personId, IReadOnlyCollection<Guid> before, CancellationToken ct)
+    {
+        foreach (var parishId in (await PastorParishesAsync(personId, ct)).Except(before))
+            await PastorReferralNotifier.NotifyAsync(_db, _emailSender, _logger, parishId, personId, ct);
     }
 
     private IQueryable<Person> PeopleWithDetails() =>
@@ -100,6 +117,7 @@ public class PersonService : IPersonService
             _db.PersonFunctions.Add(NewFunction(person.Id, input));
         }
         await _db.SaveChangesAsync(ct);
+        await NotifyNewPastorParishesAsync(person.Id, Array.Empty<Guid>(), ct);
         return (await GetByIdAsync(person.Id, ct))!;
     }
 
@@ -115,6 +133,7 @@ public class PersonService : IPersonService
         }
 
         await SyncLoginAsync(id, person.Email, request.Email, ct);
+        var pastorParishesBefore = await PastorParishesAsync(id, ct);
         person.FirstName = request.FirstName;
         person.LastName = request.LastName;
         person.Email = request.Email;
@@ -132,6 +151,7 @@ public class PersonService : IPersonService
         }
 
         await _db.SaveChangesAsync(ct);
+        await NotifyNewPastorParishesAsync(id, pastorParishesBefore, ct);
         return await GetByIdAsync(id, ct);
     }
 

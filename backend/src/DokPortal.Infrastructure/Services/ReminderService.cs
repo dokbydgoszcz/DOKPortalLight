@@ -294,4 +294,77 @@ public class ReminderService : IReminderService
             FailedSends = failedSends
         };
     }
+
+    public async Task<ExpiringMissionsReminderResultDto> RunExpiringMissionsReminderAsync(CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var horizon = today.AddDays(30);
+        // Tylko ostatnia misja osoby (nieodnowiona) i tylko raz – zmiana daty końca zeruje znacznik.
+        var missions = await _db.CanonicalMissions.Include(m => m.Person)
+            .Where(m => m.MissionEndDate >= today && m.MissionEndDate <= horizon && m.ExpiryReminderSentAtUtc == null)
+            .Where(m => !_db.CanonicalMissions.Any(o => o.PersonId == m.PersonId && o.MissionEndDate > m.MissionEndDate))
+            .OrderBy(m => m.MissionEndDate)
+            .ToListAsync(ct);
+
+        var catechistsNotified = 0;
+        var failedSends = 0;
+        foreach (var mission in missions)
+        {
+            var email = mission.Person?.Email;
+            if (string.IsNullOrWhiteSpace(email)) continue;
+            var body = $"Szczęść Boże,\n\nTwoja misja kanoniczna ({mission.ServicePlace}) kończy się {mission.MissionEndDate:dd.MM.yyyy}.\n" +
+                       "Jeśli chcesz dalej posługiwać, skontaktuj się z Diecezjalnym Ośrodkiem Katechumenalnym w sprawie jej odnowienia.";
+            try
+            {
+                await _emailSender.SendAsync(email, "Misja kanoniczna wkrótce wygasa", body, ct);
+                catechistsNotified++;
+            }
+            catch (Exception ex)
+            {
+                failedSends++;
+                _logger.LogWarning(ex, "Nie udało się wysłać przypomnienia o wygasającej misji {MissionId}", mission.Id);
+            }
+        }
+
+        var managersNotified = 0;
+        if (missions.Count > 0)
+        {
+            var rolesWithMissions = _db.RolePermissions.Where(p => p.Permission == Permissions.MissionsManage).Select(p => p.RoleName);
+            var managerEmails = await (
+                from user in _db.Users
+                where user.Email != null && user.Email != "" && !user.IsDeactivated
+                join userRole in _db.UserRoles on user.Id equals userRole.UserId
+                join role in _db.Roles on userRole.RoleId equals role.Id
+                where role.Name == AppRoles.Administrator || rolesWithMissions.Contains(role.Name!)
+                select user.Email!
+            ).Distinct().ToListAsync(ct);
+            var lines = missions.Select(m => $"- {m.Person?.FullName} — {m.ServicePlace}, do {m.MissionEndDate:dd.MM.yyyy}");
+            var digest = "Misje kanoniczne kończące się w ciągu 30 dni (do odnowienia w DOK Portal → Katechiści → „Odnów”):\n" + string.Join("\n", lines);
+            foreach (var email in managerEmails)
+            {
+                try
+                {
+                    await _emailSender.SendAsync(email, "Misje kanoniczne do odnowienia", digest, ct);
+                    managersNotified++;
+                }
+                catch (Exception ex)
+                {
+                    failedSends++;
+                    _logger.LogWarning(ex, "Nie udało się wysłać zestawienia wygasających misji");
+                }
+            }
+
+            var now = DateTime.UtcNow;
+            foreach (var mission in missions) mission.ExpiryReminderSentAtUtc = now;
+            await _db.SaveChangesAsync(ct);
+        }
+
+        return new ExpiringMissionsReminderResultDto
+        {
+            MissionsFound = missions.Count,
+            CatechistsNotified = catechistsNotified,
+            ManagersNotified = managersNotified,
+            FailedSends = failedSends
+        };
+    }
 }

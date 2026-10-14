@@ -148,6 +148,7 @@ public class MissionService : IMissionService
         mission.PersonId = request.PersonId;
         mission.ServicePlace = request.ServicePlace;
         mission.MissionStartDate = request.MissionStartDate;
+        if (mission.MissionEndDate != request.MissionEndDate) mission.ExpiryReminderSentAtUtc = null;
         mission.MissionEndDate = request.MissionEndDate;
         mission.GrantedDate = request.GrantedDate;
         mission.SupervisionGroup = request.SupervisionGroup;

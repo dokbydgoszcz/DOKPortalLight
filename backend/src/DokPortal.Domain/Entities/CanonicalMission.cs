@@ -14,6 +14,8 @@ public class CanonicalMission : ISoftDeletable
     public string? SupervisionGroup { get; set; }
     /// <summary>Katechista posłany do pracy w DOK.</summary>
     public bool SentToDok { get; set; }
+    /// <summary>Kiedy wysłano przypomnienie, że misja wkrótce wygasa (zmiana daty końca je zeruje).</summary>
+    public DateTime? ExpiryReminderSentAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
     public DateTime? DeletedAtUtc { get; set; }

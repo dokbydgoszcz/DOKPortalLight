@@ -55,6 +55,17 @@ public class RemindersController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("expiring-missions/run")]
+    public async Task<ActionResult<ExpiringMissionsReminderResultDto>> RunExpiringMissionsReminder(CancellationToken ct)
+    {
+        if (!IsRequestAuthorized())
+        {
+            return Unauthorized();
+        }
+
+        return Ok(await _reminderService.RunExpiringMissionsReminderAsync(ct));
+    }
+
     private bool IsRequestAuthorized()
     {
         var configuredKey = _configuration["Reminders:ApiKey"];

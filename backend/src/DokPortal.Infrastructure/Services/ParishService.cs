@@ -2,15 +2,24 @@ using DokPortal.Application.Parishes;
 using DokPortal.Domain.Entities;
 using DokPortal.Domain.Enums;
 using DokPortal.Infrastructure.Persistence;
+using DokPortal.Application.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DokPortal.Infrastructure.Services;
 
 public class ParishService : IParishService
 {
     private readonly AppDbContext _db;
+    private readonly IEmailSender? _emailSender;
+    private readonly ILogger<ParishService>? _logger;
 
-    public ParishService(AppDbContext db) => _db = db;
+    public ParishService(AppDbContext db, IEmailSender? emailSender = null, ILogger<ParishService>? logger = null)
+    {
+        _db = db;
+        _emailSender = emailSender;
+        _logger = logger;
+    }
 
     public async Task<IReadOnlyList<ParishDto>> GetAllAsync(CancellationToken ct)
     {
@@ -45,12 +54,13 @@ public class ParishService : IParishService
     /// Ustawia proboszcza parafii: dotychczasowy traci przypisanie (zostaje Proboszczem „czekającym na przydział”),
     /// nowy dostaje funkcję Proboszcz z tą parafią (jego dotychczasowa funkcja przechodzi na tę parafię).
     /// </summary>
-    private async Task SetPastorAsync(Guid parishId, Guid? personId, CancellationToken ct)
+    /// <summary>Ustawia proboszcza parafii; zwraca id nowo wskazanego proboszcza (null, gdy nic się nie zmieniło albo go zdjęto).</summary>
+    private async Task<Guid?> SetPastorAsync(Guid parishId, Guid? personId, CancellationToken ct)
     {
         var current = await _db.PersonFunctions.Where(f => f.Type == FunctionType.Pastor && f.ParishId == parishId).ToListAsync(ct);
-        if (personId is not null && current.Any(f => f.PersonId == personId)) return;
+        if (personId is not null && current.Any(f => f.PersonId == personId)) return null;
         foreach (var function in current) function.ParishId = null;
-        if (personId is not { } newPastorId) return;
+        if (personId is not { } newPastorId) return null;
 
         if (!await _db.People.AnyAsync(p => p.Id == newPastorId, ct))
             throw new InvalidOperationException("Nie znaleziono osoby wskazanej jako proboszcz.");
@@ -66,6 +76,7 @@ public class ParishService : IParishService
         {
             _db.PersonFunctions.Add(new PersonFunction { Id = Guid.NewGuid(), PersonId = newPastorId, Type = FunctionType.Pastor, ParishId = parishId });
         }
+        return newPastorId;
     }
 
     public async Task<ParishDto> CreateAsync(CreateParishRequest request, CancellationToken ct)
@@ -74,6 +85,7 @@ public class ParishService : IParishService
         _db.Parishes.Add(parish);
         await SetPastorAsync(parish.Id, request.PastorPersonId, ct);
         await _db.SaveChangesAsync(ct);
+        // Nowa parafia nie ma jeszcze skierowań – nie ma o czym pisać.
         return await LoadAsync(parish, ct);
     }
 
@@ -90,8 +102,10 @@ public class ParishService : IParishService
         {
             mission.ServicePlace = request.Name;
         }
-        await SetPastorAsync(id, request.PastorPersonId, ct);
+        var newPastor = await SetPastorAsync(id, request.PastorPersonId, ct);
         await _db.SaveChangesAsync(ct);
+        if (newPastor is { } pastorId)
+            await PastorReferralNotifier.NotifyAsync(_db, _emailSender, _logger, id, pastorId, ct);
         return await LoadAsync(parish, ct);
     }
 

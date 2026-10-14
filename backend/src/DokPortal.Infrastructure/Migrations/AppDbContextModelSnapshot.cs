@@ -281,6 +281,9 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("ExpiryReminderSentAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateOnly?>("GrantedDate")
                         .HasColumnType("date");
 

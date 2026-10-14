@@ -106,4 +106,18 @@ public class RemindersControllerTests : IntegrationTestBase
         var result = await response.Content.ReadFromJsonAsync<UpcomingNameDaysReminderResultDto>();
         Assert.NotNull(result);
     }
+
+    [Fact]
+    public async Task RunExpiringMissions_RequiresTheKey_AndReturnsTheResult()
+    {
+        var anonymous = await Client.PostAsync("/api/reminders/expiring-missions/run", content: null);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/reminders/expiring-missions/run");
+        request.Headers.Add("X-Reminders-Key", "testing-only-reminders-key");
+        var response = await Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(await response.Content.ReadFromJsonAsync<ExpiringMissionsReminderResultDto>());
+    }
 }
