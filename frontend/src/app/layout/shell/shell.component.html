@@ -27,7 +27,7 @@
         @for (role of auth.roles(); track role) {
           <span class="pill blue">{{ role }}</span>
         }
-        <a class="btn ghost small" routerLink="/konto/haslo" title="Zmień swoje hasło">Zmień hasło</a>
+        <a class="btn ghost small" routerLink="/konto/haslo" title="Hasło i weryfikacja dwuetapowa">Moje konto</a>
         <button class="btn ghost small" (click)="logout()">Wyloguj</button>
       </div>
     </header>

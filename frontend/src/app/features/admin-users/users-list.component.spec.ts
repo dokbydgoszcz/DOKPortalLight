@@ -553,4 +553,65 @@ describe('UsersListComponent', () => {
       expect(el.querySelectorAll('.link-results button').length).toBe(0);
     });
   });
+  describe('login, MFA and the person card', () => {
+    const messages = () => toasts().map(t => t.message);
+
+    it('heads the column "Login" and corrects a login in place', async () => {
+      const ctx = boot([user, linkedUser]);
+      expect(ctx.el.querySelector('thead th')?.textContent).toBe('Login');
+      ctx.fixture.componentInstance.startLoginEdit(linkedUser as never);
+      ctx.fixture.detectChanges();
+      await ctx.fixture.whenStable();
+      setInput(ctx.el, 'input[name="loginValue"]', 'anna.maj@example.org');
+      ctx.fixture.detectChanges();
+      clickByText(ctx.el, 'Zapisz', '.login-edit button');
+
+      const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === api('/api/users/u2/login'));
+      expect(req.request.body).toEqual({ email: 'anna.maj@example.org' });
+      req.flush({ ...linkedUser, email: 'anna.maj@example.org' });
+      expect(messages()).toContain('Login zmieniony na anna.maj@example.org (e-mail osoby też).');
+    });
+
+    it('does nothing for an unchanged login and shows refusals', () => {
+      const ctx = boot([user]);
+      const component = ctx.fixture.componentInstance;
+      component.startLoginEdit(user as never);
+      component.saveLogin(user as never);
+      ctx.http.expectNone(r => r.url.endsWith('/login'));
+      expect(component.editingLoginId()).toBeNull();
+
+      component.startLoginEdit(user as never);
+      component.loginValue = 'zajety@example.org';
+      component.saveLogin(user as never);
+      ctx.http.expectOne(r => r.url === api('/api/users/u1/login')).flush({ title: 'Ten adres jest już loginem innego konta.' }, { status: 400, statusText: 'Bad Request' });
+      expect(messages()).toContain('Ten adres jest już loginem innego konta.');
+
+      component.loginValue = 'nowy@example.org';
+      component.saveLogin(user as never);
+      ctx.http.expectOne(r => r.url === api('/api/users/u1/login')).flush({ ...user, email: 'nowy@example.org' });
+      expect(messages()).toContain('Login zmieniony na nowy@example.org.');
+    });
+
+    it('turns MFA off for an account after confirmation', () => {
+      const ctx = boot([{ ...linkedUser, mfaEnabled: true }]);
+      expect(textOf(ctx.el)).toContain('MFA');
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
+      clickByText(ctx.el, 'Wyłącz MFA', 'button');
+      ctx.http.expectNone(r => r.url.endsWith('/mfa'));
+      clickByText(ctx.el, 'Wyłącz MFA', 'button');
+      ctx.http.expectOne(r => r.method === 'DELETE' && r.url === api('/api/users/u2/mfa')).flush({ ...linkedUser, mfaEnabled: false });
+      expect(messages()).toContain('Weryfikacja dwuetapowa wyłączona.');
+      clickByText(ctx.el, 'Wyłącz MFA', 'button');
+      ctx.http.expectOne(r => r.method === 'DELETE').flush({ title: 'Brak dostępu.' }, { status: 403, statusText: 'Forbidden' });
+      expect(messages()).toContain('Brak dostępu.');
+      confirm.mockRestore();
+    });
+
+    it('links the person name to the person card', () => {
+      const ctx = boot([linkedUser]);
+      const link = ctx.el.querySelector('a.person-link') as HTMLAnchorElement;
+      expect(link.textContent).toBe('Anna Maj');
+      expect(link.getAttribute('href')).toBe('/people/p9');
+    });
+  });
 });

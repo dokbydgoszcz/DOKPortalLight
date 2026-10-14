@@ -33,6 +33,16 @@ export class UsersService {
     return this.http.put<AppUserAccount>(`${this.baseUrl}/${id}/active`, { isActive });
   }
 
+  /** Poprawia login (e-mail) konta. */
+  changeLogin(id: string, email: string) {
+    return this.http.put<AppUserAccount>(`${this.baseUrl}/${id}/login`, { email });
+  }
+
+  /** Wyłącza MFA na koncie (np. zgubiony telefon). */
+  resetMfa(id: string) {
+    return this.http.delete<AppUserAccount>(`${this.baseUrl}/${id}/mfa`);
+  }
+
   resetPassword(id: string, newPassword: string) {
     return this.http.put<void>(`${this.baseUrl}/${id}/reset-password`, { newPassword });
   }

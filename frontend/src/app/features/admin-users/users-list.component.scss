@@ -17,3 +17,24 @@
   gap: 6px;
   white-space: nowrap;
 }
+
+.person-link {
+  color: inherit;
+  font-weight: 600;
+}
+
+.small-link {
+  margin-left: 6px;
+  font-size: 12px;
+}
+
+.login-edit {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.login-edit input {
+  min-width: 220px;
+}

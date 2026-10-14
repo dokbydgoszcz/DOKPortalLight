@@ -84,6 +84,26 @@ public class UsersController : ControllerBase
         return Ok(updated);
     }
 
+    /// <summary>Poprawia login (e-mail) konta, np. literówkę w domenie.</summary>
+    [HttpPut("{id}/login")]
+    public async Task<ActionResult<UserDto>> ChangeLogin(string id, ChangeLoginRequest request, CancellationToken ct)
+    {
+        var updated = await _userService.ChangeLoginAsync(id, request.Email, ct);
+        if (updated is null) return NotFound();
+        await _auditLogService.LogAsync(CurrentActor().UserId, CurrentEmail(), "ChangeUserLogin", updated.Email, DokPortal.Domain.Enums.AuditResult.Allowed, ct);
+        return Ok(updated);
+    }
+
+    /// <summary>Wyłącza MFA na koncie (np. użytkownik zgubił telefon).</summary>
+    [HttpDelete("{id}/mfa")]
+    public async Task<ActionResult<UserDto>> ResetMfa(string id, CancellationToken ct)
+    {
+        var updated = await _userService.ResetMfaAsync(id, ct);
+        if (updated is null) return NotFound();
+        await _auditLogService.LogAsync(CurrentActor().UserId, CurrentEmail(), "ResetUserMfa", updated.Email, DokPortal.Domain.Enums.AuditResult.Allowed, ct);
+        return Ok(updated);
+    }
+
     [HttpPut("{id}/reset-password")]
     public async Task<IActionResult> ResetPassword(string id, ResetPasswordRequest request, CancellationToken ct)
     {

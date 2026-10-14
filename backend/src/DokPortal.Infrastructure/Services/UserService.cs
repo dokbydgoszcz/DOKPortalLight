@@ -235,6 +235,43 @@ public class UserService : IUserService
         PersonId = user.PersonId,
         PersonFullName = personFullName,
         Roles = roles.ToList(),
-        IsActive = !user.IsDeactivated
+        IsActive = !user.IsDeactivated,
+        MfaEnabled = user.TwoFactorEnabled
     };
+
+    public async Task<UserDto?> ChangeLoginAsync(string userId, string email, CancellationToken ct)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return null;
+        var login = email.Trim();
+        var normalized = login.ToUpperInvariant();
+        if (await _db.Users.AnyAsync(u => u.Id != userId && (u.NormalizedEmail == normalized || u.NormalizedUserName == normalized), ct))
+            throw new InvalidOperationException("Ten adres jest już loginem innego konta.");
+
+        user.Email = login;
+        user.UserName = login;
+        user.NormalizedEmail = normalized;
+        user.NormalizedUserName = normalized;
+        user.EmailConfirmed = true;
+        if (user.PersonId is { } personId)
+        {
+            var person = await _db.People.FirstOrDefaultAsync(p => p.Id == personId, ct);
+            if (person is not null)
+            {
+                person.Email = login;
+                person.UpdatedAtUtc = DateTime.UtcNow;
+            }
+        }
+        await _db.SaveChangesAsync(ct);
+        return ToDto(user, await _userManager.GetRolesAsync(user), await PersonNameAsync(user.PersonId, ct));
+    }
+
+    public async Task<UserDto?> ResetMfaAsync(string userId, CancellationToken ct)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return null;
+        await AccountService.TurnOffMfaAsync(_userManager, user);
+        _sessions?.Invalidate(user.Id);
+        return ToDto(user, await _userManager.GetRolesAsync(user), await PersonNameAsync(user.PersonId, ct));
+    }
 }

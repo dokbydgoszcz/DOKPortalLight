@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { UsersService } from './users.service';
 import { AppUserAccount, CreateUserValue } from './user.model';
 import { PeopleService } from '../people/people.service';
@@ -13,7 +14,7 @@ import { ROLE_LABELS } from '../../shared/role-labels';
 @Component({
   selector: 'app-users-list',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './users-list.component.html',
   styleUrl: './users-list.component.scss'
 })
@@ -181,6 +182,44 @@ export class UsersListComponent implements OnInit {
   }
 
   /** Wyłączone konto nie zaloguje się, a jego otwarte sesje wygasają; można je włączyć z powrotem. */
+  /** Edycja loginu (e-maila) konta w wierszu tabeli. */
+  readonly editingLoginId = signal<string | null>(null);
+  loginValue = '';
+
+  startLoginEdit(user: AppUserAccount): void {
+    this.loginValue = user.email;
+    this.editingLoginId.set(user.id);
+  }
+
+  saveLogin(user: AppUserAccount): void {
+    const email = this.loginValue.trim();
+    if (!email || email === user.email) {
+      this.editingLoginId.set(null);
+      return;
+    }
+    this.usersService.changeLogin(user.id, email).subscribe({
+      next: () => {
+        this.editingLoginId.set(null);
+        this.toast.success(user.personId
+          ? `Login zmieniony na ${email} (e-mail osoby też).`
+          : `Login zmieniony na ${email}.`);
+        this.load();
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się zmienić loginu.'))
+    });
+  }
+
+  resetMfa(user: AppUserAccount): void {
+    if (!confirm(`Wyłączyć weryfikację dwuetapową dla ${user.email}? Użytkownik zaloguje się samym hasłem i może ją potem włączyć od nowa (np. na nowym telefonie).`)) return;
+    this.usersService.resetMfa(user.id).subscribe({
+      next: () => {
+        this.toast.success('Weryfikacja dwuetapowa wyłączona.');
+        this.load();
+      },
+      error: err => this.toast.error(serverMessage(err, 'Nie udało się wyłączyć weryfikacji dwuetapowej.'))
+    });
+  }
+
   setActive(user: AppUserAccount, isActive: boolean): void {
     if (!isActive && !confirm(`Wyłączyć konto ${user.email}? Osoba nie zaloguje się, a jej otwarte sesje wygasną.`)) return;
     this.usersService.setActive(user.id, isActive).subscribe({

@@ -12,5 +12,10 @@ public interface IUserService
     /// <summary>Wyłącza albo włącza konto; wyłączenie kończy otwarte sesje.</summary>
     /// <exception cref="InvalidOperationException">Własne konto albo ostatni aktywny administrator.</exception>
     Task<UserDto?> SetActiveAsync(string userId, bool isActive, UserActor actor, CancellationToken ct);
+    /// <summary>Wyłącza weryfikację dwuetapową (np. zgubiony telefon); użytkownik może ją potem włączyć od nowa.</summary>
+    /// <summary>Zmienia login (e-mail) konta; e-mail powiązanej osoby zmienia się razem z nim.</summary>
+    /// <exception cref="InvalidOperationException">Adres jest loginem innego konta.</exception>
+    Task<UserDto?> ChangeLoginAsync(string userId, string email, CancellationToken ct);
+    Task<UserDto?> ResetMfaAsync(string userId, CancellationToken ct);
     Task<bool> ResetPasswordAsync(string userId, string newPassword, CancellationToken ct);
 }

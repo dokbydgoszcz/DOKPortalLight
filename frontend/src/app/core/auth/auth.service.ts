@@ -12,6 +12,22 @@ export interface LoginResponse {
   mustChangePassword?: boolean;
 }
 
+/** Odpowiedź logowania, gdy konto ma MFA: trzeba jeszcze podać kod z aplikacji. */
+export interface MfaChallenge {
+  mfaRequired: true;
+  mfaToken: string;
+}
+
+export interface MfaStatus {
+  enabled: boolean;
+  recoveryCodesLeft: number;
+}
+
+export interface MfaSetup {
+  sharedKey: string;
+  otpAuthUri: string;
+}
+
 interface DecodedToken {
   sub?: string;
   email?: string;
@@ -68,9 +84,44 @@ export class AuthService {
     return this.tokenSignal();
   }
 
-  async login(email: string, password: string): Promise<void> {
+  /** Loguje hasłem; gdy konto ma MFA, zwraca bilet do drugiego kroku (kod z aplikacji). */
+  async login(email: string, password: string): Promise<{ mfaToken?: string }> {
     const response = await firstValueFrom(
-      this.http.post<LoginResponse>(`${environment.apiBaseUrl}/api/auth/login`, { email, password })
+      this.http.post<LoginResponse | MfaChallenge>(`${environment.apiBaseUrl}/api/auth/login`, { email, password })
+    );
+    if ('mfaRequired' in response && response.mfaRequired) return { mfaToken: response.mfaToken };
+    this.storeSession(response as LoginResponse);
+    return {};
+  }
+
+  /** Drugi krok logowania: kod z aplikacji uwierzytelniającej albo kod zapasowy. */
+  async verifyMfa(mfaToken: string, code: string): Promise<void> {
+    const response = await firstValueFrom(
+      this.http.post<LoginResponse>(`${environment.apiBaseUrl}/api/auth/mfa/verify`, { mfaToken, code })
+    );
+    this.storeSession(response);
+  }
+
+  mfaStatus(): Promise<MfaStatus> {
+    return firstValueFrom(this.http.get<MfaStatus>(`${environment.apiBaseUrl}/api/auth/mfa`));
+  }
+
+  setupMfa(): Promise<MfaSetup> {
+    return firstValueFrom(this.http.post<MfaSetup>(`${environment.apiBaseUrl}/api/auth/mfa/setup`, null));
+  }
+
+  /** Włącza MFA; serwer zwraca nową sesję i jednorazowe kody zapasowe. */
+  async enableMfa(code: string): Promise<string[]> {
+    const response = await firstValueFrom(
+      this.http.post<{ recoveryCodes: string[]; session: LoginResponse }>(`${environment.apiBaseUrl}/api/auth/mfa/enable`, { code })
+    );
+    this.storeSession(response.session);
+    return response.recoveryCodes;
+  }
+
+  async disableMfa(code: string): Promise<void> {
+    const response = await firstValueFrom(
+      this.http.post<LoginResponse>(`${environment.apiBaseUrl}/api/auth/mfa/disable`, { code })
     );
     this.storeSession(response);
   }

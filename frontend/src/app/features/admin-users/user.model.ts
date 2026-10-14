@@ -6,6 +6,8 @@ export interface AppUserAccount {
   roles: string[];
   /** Brak = konto aktywne (starsze odpowiedzi). */
   isActive?: boolean;
+  /** Weryfikacja dwuetapowa (aplikacja uwierzytelniająca) włączona. */
+  mfaEnabled?: boolean;
 }
 
 export interface CreateUserValue {

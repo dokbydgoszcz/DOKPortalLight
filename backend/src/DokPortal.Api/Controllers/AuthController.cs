@@ -74,7 +74,64 @@ public class AuthController : ControllerBase
             await _userManager.UpdateSecurityStampAsync(user);
         }
 
+        if (user.TwoFactorEnabled)
+        {
+            await _auditLogService.LogAsync(user.Id, user.Email!, "Login", "Hasło poprawne – czeka na kod z aplikacji", AuditResult.Allowed, ct);
+            return Ok(new MfaChallengeResponse(true, _accountService.CreateMfaChallenge(user.Id, user.SecurityStamp)));
+        }
+
         await _auditLogService.LogAsync(user.Id, user.Email!, "Login", "Zalogowano", AuditResult.Allowed, ct);
+        return Ok(await SessionForAsync(user, ct));
+    }
+
+    /// <summary>Krok 2 logowania: kod z aplikacji uwierzytelniającej albo kod zapasowy.</summary>
+    [HttpPost("mfa/verify")]
+    [AllowAnonymous]
+    [EnableRateLimiting("login")]
+    public async Task<ActionResult<LoginResponse>> VerifyMfa(MfaVerifyRequest request, CancellationToken ct)
+    {
+        var userId = await _accountService.VerifyMfaLoginAsync(request.MfaToken, request.Code, ct);
+        if (userId is null)
+        {
+            await _auditLogService.LogAsync(string.Empty, string.Empty, "LoginMfa", "Nieprawidłowy kod lub wygasły bilet", AuditResult.Blocked, ct);
+            return Unauthorized(new { message = "Nieprawidłowy kod albo minęło 5 minut od podania hasła – zaloguj się ponownie." });
+        }
+        var user = (await _userManager.FindByIdAsync(userId))!;
+        await _auditLogService.LogAsync(user.Id, user.Email!, "Login", "Zalogowano (z kodem MFA)", AuditResult.Allowed, ct);
+        return Ok(await SessionForAsync(user, ct));
+    }
+
+    private string CurrentUserId() => User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)!.Value;
+    private string CurrentEmail() => User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Email)?.Value ?? "";
+
+    [HttpGet("mfa")]
+    [Authorize]
+    public async Task<ActionResult<MfaStatusResponse>> MfaStatus(CancellationToken ct)
+        => Ok(await _accountService.GetMfaStatusAsync(CurrentUserId(), ct));
+
+    [HttpPost("mfa/setup")]
+    [Authorize]
+    public async Task<ActionResult<MfaSetupResponse>> SetupMfa(CancellationToken ct)
+        => Ok(await _accountService.SetupMfaAsync(CurrentUserId(), ct));
+
+    /// <summary>Włącza MFA (kod z aplikacji); zwraca kody zapasowe i nową sesję.</summary>
+    [HttpPost("mfa/enable")]
+    [Authorize]
+    public async Task<ActionResult<MfaEnabledResponse>> EnableMfa(MfaCodeRequest request, CancellationToken ct)
+    {
+        var codes = await _accountService.EnableMfaAsync(CurrentUserId(), request.Code, ct);
+        await _auditLogService.LogAsync(CurrentUserId(), CurrentEmail(), "EnableMfa", "Włączono weryfikację dwuetapową", AuditResult.Allowed, ct);
+        var user = (await _userManager.FindByIdAsync(CurrentUserId()))!;
+        return Ok(new MfaEnabledResponse(codes, await SessionForAsync(user, ct)));
+    }
+
+    [HttpPost("mfa/disable")]
+    [Authorize]
+    public async Task<ActionResult<LoginResponse>> DisableMfa(MfaCodeRequest request, CancellationToken ct)
+    {
+        await _accountService.DisableMfaAsync(CurrentUserId(), request.Code, ct);
+        await _auditLogService.LogAsync(CurrentUserId(), CurrentEmail(), "DisableMfa", "Wyłączono weryfikację dwuetapową", AuditResult.Allowed, ct);
+        var user = (await _userManager.FindByIdAsync(CurrentUserId()))!;
         return Ok(await SessionForAsync(user, ct));
     }
 

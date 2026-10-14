@@ -23,6 +23,9 @@ export class LoginComponent {
   /** „Nie pamiętam hasła”: formularz prośby o link zamiast logowania. */
   readonly isForgotMode = signal(false);
   readonly forgotMessage = signal<string | null>(null);
+  /** Drugi krok logowania (konto z MFA): bilet z pierwszego kroku i kod z aplikacji. */
+  readonly mfaToken = signal<string | null>(null);
+  mfaCode = '';
 
   private wakeUpTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -40,6 +43,28 @@ export class LoginComponent {
     } else if (reason === 'expired') {
       this.sessionExpiredMessage.set('Sesja wygasła lub konto zostało zmienione (np. role). Zaloguj się ponownie.');
     }
+  }
+
+  async submitMfa(): Promise<void> {
+    const token = this.mfaToken();
+    if (!token || this.isSubmitting() || !this.mfaCode.trim()) return;
+    this.errorMessage.set(null);
+    this.isSubmitting.set(true);
+    try {
+      await this.auth.verifyMfa(token, this.mfaCode.trim());
+      await this.router.navigateByUrl('/dashboard');
+    } catch (err) {
+      this.errorMessage.set(serverMessage(err, 'Nieprawidłowy kod.'));
+    } finally {
+      this.isSubmitting.set(false);
+    }
+  }
+
+  cancelMfa(): void {
+    this.mfaToken.set(null);
+    this.mfaCode = '';
+    this.password = '';
+    this.errorMessage.set(null);
   }
 
   showForgot(show: boolean): void {
@@ -74,7 +99,12 @@ export class LoginComponent {
     this.isWakingUp.set(false);
     this.wakeUpTimer = setTimeout(() => this.isWakingUp.set(true), 4000);
     try {
-      await this.auth.login(this.email, this.password);
+      const result = await this.auth.login(this.email, this.password);
+      if (result?.mfaToken) {
+        this.mfaCode = '';
+        this.mfaToken.set(result.mfaToken);
+        return;
+      }
       await this.router.navigateByUrl('/dashboard');
     } catch (err) {
       this.errorMessage.set(serverMessage(err, 'Nieprawidłowy e-mail lub hasło.'));

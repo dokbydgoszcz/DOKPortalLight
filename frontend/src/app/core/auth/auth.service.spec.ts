@@ -170,4 +170,39 @@ describe('AuthService', () => {
     expect(localStorage.getItem('dokportal.permissionsAware')).toBeNull();
     expect(service.permissions()).toEqual([]);
   });
+  it('returns the MFA ticket instead of a session, then logs in with the code', async () => {
+    const login = service.login('a@b.pl', 'Sekret123!');
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/auth/login`).flush({ mfaRequired: true, mfaToken: 'bilet' });
+    expect(await login).toEqual({ mfaToken: 'bilet' });
+    expect(service.isAuthenticated()).toBe(false);
+
+    const verify = service.verifyMfa('bilet', '123456');
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/auth/mfa/verify`);
+    expect(req.request.body).toEqual({ mfaToken: 'bilet', code: '123456' });
+    req.flush({ token: createFakeJwt({ sub: 'u', exp: 9999999999 }), expiresAtUtc: '', roles: [], personId: null });
+    await verify;
+    expect(service.isAuthenticated()).toBe(true);
+  });
+
+  it('manages MFA: status, setup, enable (new session + codes) and disable', async () => {
+    const status = service.mfaStatus();
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/auth/mfa`).flush({ enabled: false, recoveryCodesLeft: 0 });
+    expect((await status).enabled).toBe(false);
+
+    const setup = service.setupMfa();
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/auth/mfa/setup`).flush({ sharedKey: 'KEY', otpAuthUri: 'otpauth://x' });
+    expect((await setup).sharedKey).toBe('KEY');
+
+    const enable = service.enableMfa('123456');
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/auth/mfa/enable`)
+      .flush({ recoveryCodes: ['AAAAA-BBBBB'], session: { token: createFakeJwt({ sub: 'u', exp: 9999999999 }), expiresAtUtc: '', roles: [], personId: null } });
+    expect(await enable).toEqual(['AAAAA-BBBBB']);
+    expect(service.isAuthenticated()).toBe(true);
+
+    const disable = service.disableMfa('654321');
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/auth/mfa/disable`);
+    expect(req.request.body).toEqual({ code: '654321' });
+    req.flush({ token: createFakeJwt({ sub: 'u', exp: 9999999999 }), expiresAtUtc: '', roles: [], personId: null });
+    await disable;
+  });
 });

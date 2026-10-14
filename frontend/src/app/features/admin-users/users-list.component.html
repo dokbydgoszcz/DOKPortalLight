@@ -84,14 +84,26 @@
 <div class="card">
   <div class="table-wrap">
     <table>
-      <thead><tr><th>E-mail</th><th>Osoba</th>@for (role of allRoles(); track role) {<th class="role-col">{{ roleLabel(role) }}</th>}<th></th></tr></thead>
+      <thead><tr><th>Login</th><th>Osoba</th>@for (role of allRoles(); track role) {<th class="role-col">{{ roleLabel(role) }}</th>}<th></th></tr></thead>
       <tbody>
         @for (user of users(); track user.id) {
           <tr>
             <td>
-              {{ user.email }}
+              @if (editingLoginId() === user.id) {
+                <div class="login-edit">
+                  <input type="email" name="loginValue" [(ngModel)]="loginValue" aria-label="Nowy login" />
+                  <button class="btn primary small" type="button" (click)="saveLogin(user)">Zapisz</button>
+                  <button class="btn ghost small" type="button" (click)="editingLoginId.set(null)">Anuluj</button>
+                </div>
+              } @else {
+                {{ user.email }}
+                <span class="link small-link" title="Popraw login (np. literówkę)" (click)="startLoginEdit(user)">Zmień login</span>
+              }
               @if (user.isActive === false) {
                 <span class="pill">nieaktywne</span>
+              }
+              @if (user.mfaEnabled) {
+                <span class="pill green" title="Weryfikacja dwuetapowa włączona">MFA</span>
               }
             </td>
             <td>
@@ -112,7 +124,7 @@
                 </div>
               } @else if (user.personFullName) {
                 <div class="person-cell">
-                  <span>{{ user.personFullName }}</span>
+                  <a class="person-link" [routerLink]="['/people', user.personId]" title="Karta osoby">{{ user.personFullName }}</a>
                   <span class="link" (click)="startLinking(user.id)">Zmień</span>
                   <span class="link" style="color:var(--danger)" (click)="unlinkPerson(user)">Odepnij</span>
                 </div>
@@ -146,6 +158,9 @@
               } @else {
                 <div class="account-actions">
                 <button class="btn ghost small" type="button" (click)="startResetPassword(user.id)">Resetuj hasło</button>
+                @if (user.mfaEnabled) {
+                  <button class="btn ghost small" type="button" title="Konto ma weryfikację dwuetapową; wyłącz, gdy użytkownik zgubił telefon" (click)="resetMfa(user)">Wyłącz MFA</button>
+                }
                 @if (user.isActive === false) {
                   <button class="btn ghost small" type="button" (click)="setActive(user, true)">Włącz konto</button>
                 } @else {

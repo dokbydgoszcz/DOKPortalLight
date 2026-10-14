@@ -8,4 +8,6 @@ public class UserDto
     public string? PersonFullName { get; init; }
     public required IReadOnlyList<string> Roles { get; init; }
     public bool IsActive { get; init; } = true;
+    /// <summary>Konto ma włączoną weryfikację dwuetapową (aplikacja uwierzytelniająca).</summary>
+    public bool MfaEnabled { get; init; }
 }

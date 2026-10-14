@@ -4,17 +4,19 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
+import { MfaSettingsComponent } from './mfa-settings.component';
 
 /** Zmiana własnego hasła; obowiązkowa, gdy hasło nadał administrator. */
 @Component({
   selector: 'app-change-password',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, MfaSettingsComponent],
   template: `
     <div class="page-heading">
-      <div><h2>Zmiana hasła</h2><p>Konto: {{ auth.email() }}</p></div>
+      <div><h2>Moje konto</h2><p>Konto: {{ auth.email() }}</p></div>
     </div>
     <div class="card password-card">
+      <h3 style="margin:0">Zmiana hasła</h3>
       @if (auth.mustChangePassword()) {
         <p class="must-change" role="status">
           Hasło nadał administrator. Ustaw własne hasło, którego nikt poza Tobą nie zna – potem zobaczysz resztę portalu.
@@ -44,6 +46,9 @@ import { serverMessage } from '../../shared/http-error';
         </button>
       </form>
     </div>
+    @if (!auth.mustChangePassword()) {
+      <app-mfa-settings />
+    }
   `,
   styles: [`
     .password-card { max-width: 440px; display: grid; gap: 12px; }

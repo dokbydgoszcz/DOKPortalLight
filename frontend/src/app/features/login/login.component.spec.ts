@@ -7,10 +7,10 @@ import { click, clickByText, setInput } from '../../testing/test-helpers';
 
 describe('LoginComponent', () => {
   let fixture: ComponentFixture<LoginComponent>;
-  let authServiceMock: { login: ReturnType<typeof vi.fn>; forgotPassword: ReturnType<typeof vi.fn> };
+  let authServiceMock: { login: ReturnType<typeof vi.fn>; forgotPassword: ReturnType<typeof vi.fn>; verifyMfa: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    authServiceMock = { login: vi.fn(), forgotPassword: vi.fn() };
+    authServiceMock = { login: vi.fn(), forgotPassword: vi.fn(), verifyMfa: vi.fn() };
 
     TestBed.configureTestingModule({
       imports: [LoginComponent],
@@ -202,6 +202,35 @@ describe('LoginComponent', () => {
       clickByText(el, '← Wróć do logowania');
       fixture.detectChanges();
       expect(el.querySelector('#login-password')).not.toBeNull();
+    });
+    it('asks for the app code when the account has MFA, and logs in with it', async () => {
+      authServiceMock.login.mockResolvedValue({ mfaToken: 'bilet' });
+      authServiceMock.verifyMfa.mockRejectedValueOnce({ error: { message: 'Nieprawidłowy kod.' } }).mockResolvedValueOnce(undefined);
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      const el = render();
+      fixture.componentInstance.email = 'a@b.pl';
+      fixture.componentInstance.password = 'x';
+      await fixture.componentInstance.submit();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(el.querySelector('#mfa-code')).not.toBeNull();
+      expect(navigate).not.toHaveBeenCalled();
+
+      setInput(el, '#mfa-code', '000000');
+      fixture.detectChanges();
+      (el.querySelector('form.mfa-form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+      await fixture.whenStable();
+      expect(fixture.componentInstance.errorMessage()).toBe('Nieprawidłowy kod.');
+
+      fixture.componentInstance.mfaCode = '123456';
+      await fixture.componentInstance.submitMfa();
+      expect(authServiceMock.verifyMfa).toHaveBeenLastCalledWith('bilet', '123456');
+      expect(navigate).toHaveBeenCalledWith('/dashboard');
+
+      fixture.componentInstance.cancelMfa();
+      expect(fixture.componentInstance.mfaToken()).toBeNull();
+      await fixture.componentInstance.submitMfa();
+      expect(authServiceMock.verifyMfa).toHaveBeenCalledTimes(2);
     });
   });
 });

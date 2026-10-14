@@ -41,7 +41,23 @@
           <div class="session-note" role="status">{{ sessionExpiredMessage() }}</div>
         }
 
-        @if (isForgotMode()) {
+        @if (mfaToken()) {
+          <form class="mfa-form" (ngSubmit)="submitMfa()" novalidate>
+            <p class="form-sub">Podaj 6-cyfrowy kod z aplikacji uwierzytelniającej (np. Microsoft Authenticator). Zgubiony telefon? Wpisz jeden z kodów zapasowych.</p>
+            <div class="form-field">
+              <label for="mfa-code">Kod z aplikacji</label>
+              <input id="mfa-code" name="mfaCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="11" placeholder="123456"
+                [(ngModel)]="mfaCode" [disabled]="isSubmitting()" required />
+            </div>
+            @if (errorMessage()) {
+              <div class="form-error" role="alert">{{ errorMessage() }}</div>
+            }
+            <button class="submit-btn" type="submit" [disabled]="isSubmitting() || !mfaCode.trim()">
+              <span>{{ isSubmitting() ? 'Sprawdzanie…' : 'Zaloguj się' }}</span>
+            </button>
+            <button type="button" class="forgot-link" (click)="cancelMfa()">← Wróć do logowania</button>
+          </form>
+        } @else if (isForgotMode()) {
           <form class="forgot-form" (ngSubmit)="sendResetLink()" novalidate>
             <p class="form-sub">Podaj adres e-mail konta – wyślemy link do ustawienia nowego hasła.</p>
             <div class="form-field">
