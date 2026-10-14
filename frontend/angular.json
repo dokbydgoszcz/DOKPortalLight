@@ -30,7 +30,12 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.scss"]
+            "styles": [
+              "src/styles.scss"
+            ],
+            "allowedCommonJsDependencies": [
+              "qrcode"
+            ]
           },
           "configurations": {
             "production": {
@@ -85,7 +90,10 @@
               "src/environments/**",
               "src/app/testing/**"
             ],
-            "coverageReporters": ["text-summary", "html"],
+            "coverageReporters": [
+              "text-summary",
+              "html"
+            ],
             "coverageThresholds": {
               "statements": 97,
               "branches": 94,
