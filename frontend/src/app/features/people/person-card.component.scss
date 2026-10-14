@@ -1,49 +1,237 @@
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
-  align-items: start;
+/* Kartoteka: jedna karta jak w szufladzie archiwum – zakładka przy lewej krawędzi, zdjęcie legitymacyjne, wpisy jako wiersze. */
+:host {
+  display: block;
+  max-width: 860px;
 }
 
-.card-grid .card {
-  margin: 0;
-}
-
-.card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.kv-list {
-  display: grid;
-  gap: 8px;
-}
-
-.kv-list > div {
-  display: grid;
-  grid-template-columns: 130px 1fr;
-  gap: 8px;
+.back {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: var(--muted);
   font-size: 13px;
+  text-decoration: none;
 }
 
-.kv-list span {
+.back:hover,
+.back:focus-visible {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.sheet {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 8px solid var(--green);
+  border-radius: 4px 10px 10px 4px;
+  padding: 28px 32px 20px;
+}
+
+.record-head {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 28px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid var(--text);
+}
+
+.portrait {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.portrait img,
+.initials {
+  width: 132px;
+  height: 176px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  object-fit: cover;
+  background: var(--accent-soft);
+}
+
+.initials {
+  display: grid;
+  place-items: center;
+  font-size: 40px;
+  font-weight: 300;
+  color: var(--green);
+  letter-spacing: 2px;
+}
+
+.photo-actions {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.photo-actions label {
+  cursor: pointer;
+}
+
+.photo-actions .disabled {
+  opacity: .6;
+  cursor: progress;
+}
+
+.danger {
+  color: var(--danger);
+}
+
+.identity h2 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.15;
+  font-weight: 750;
+  letter-spacing: -.01em;
+  color: var(--green-dark);
+}
+
+.roles {
+  margin: 6px 0 0;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 6px 16px;
+  margin: 18px 0 0;
+  font-size: 14px;
+}
+
+.facts dt {
   color: var(--muted);
 }
 
-.kv-list b {
-  font-weight: 600;
+.facts dd {
+  margin: 0;
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 480px) {
-  .card-grid {
-    grid-template-columns: 1fr;
+.facts a {
+  color: inherit;
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.entry h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green);
+  line-height: 1.6;
+}
+
+.lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.lines li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+}
+
+span > .sub {
+  margin-left: .35em;
+}
+
+.lines li.sub,
+.sub {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.when {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.when.expired {
+  color: var(--danger);
+}
+
+.notes {
+  margin: 0;
+  white-space: pre-line;
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 62ch;
+}
+
+.none {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.record-foot {
+  padding-top: 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .sheet {
+    padding: 20px 16px 16px;
+    border-left-width: 6px;
   }
 
-  .kv-list > div {
+  .record-head {
+    grid-template-columns: 96px 1fr;
+    gap: 16px;
+  }
+
+  .portrait img,
+  .initials {
+    width: 96px;
+    height: 128px;
+  }
+
+  .identity h2 {
+    font-size: 22px;
+  }
+
+  .facts {
     grid-template-columns: 1fr;
-    gap: 2px;
+    gap: 0;
+  }
+
+  .facts dd {
+    margin-bottom: 6px;
+  }
+
+  .entry {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .lines li {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .when {
+    text-align: left;
   }
 }

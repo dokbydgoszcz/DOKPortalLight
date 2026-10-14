@@ -15,4 +15,6 @@ public class PersonDto
     public int? NameDayMonth { get; init; }
     public int? NameDayDay { get; init; }
     public IReadOnlyList<PersonFunctionDto> Functions { get; init; } = Array.Empty<PersonFunctionDto>();
+    /// <summary>Kiedy wgrano zdjęcie profilowe (null = brak); służy też do odświeżania podglądu.</summary>
+    public DateTime? PhotoUpdatedAtUtc { get; init; }
 }

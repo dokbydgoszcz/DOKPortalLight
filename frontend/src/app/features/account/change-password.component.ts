@@ -15,8 +15,10 @@ import { MfaSettingsComponent } from './mfa-settings.component';
     <div class="page-heading">
       <div><h2>Moje konto</h2><p>Konto: {{ auth.email() }}</p></div>
     </div>
-    <div class="card password-card">
-      <h3 style="margin:0">Zmiana hasła</h3>
+    <div class="account-grid">
+    <section class="card">
+      <div class="card-head"><h3>Zmiana hasła</h3></div>
+      <div class="card-body password-body">
       @if (auth.mustChangePassword()) {
         <p class="must-change" role="status">
           Hasło nadał administrator. Ustaw własne hasło, którego nikt poza Tobą nie zna – potem zobaczysz resztę portalu.
@@ -45,16 +47,20 @@ import { MfaSettingsComponent } from './mfa-settings.component';
           {{ isSaving() ? 'Zapisywanie…' : 'Zmień hasło' }}
         </button>
       </form>
-    </div>
+      </div>
+    </section>
     @if (!auth.mustChangePassword()) {
       <app-mfa-settings />
     }
+    </div>
   `,
   styles: [`
-    .password-card { max-width: 440px; display: grid; gap: 12px; }
-    form { display: grid; gap: 12px; }
-    .must-change { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--warn-bg, #fff6e0); }
-    .form-error { color: var(--danger); }
+    .account-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 420px)); gap: 16px; align-items: start; }
+    .account-grid .card { margin: 0; }
+    .password-body, form { display: grid; gap: 14px; }
+    .field .form-hint { display: block; margin-top: 6px; }
+    .must-change { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--warn-bg, #fff6e0); font-size: 13px; }
+    .form-error { color: var(--danger); font-size: 13px; }
     button { justify-self: start; }
   `]
 })

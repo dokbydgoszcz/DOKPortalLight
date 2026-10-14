@@ -25,6 +25,21 @@ export class PeopleService {
     return this.http.get<PersonOverview>(`${this.baseUrl}/${id}/overview`);
   }
 
+  /** Zdjęcie profilowe (z nagłówkiem autoryzacji, dlatego jako plik, nie adres obrazka). */
+  photo(id: string) {
+    return this.http.get(`${this.baseUrl}/${id}/photo`, { responseType: 'blob' });
+  }
+
+  uploadPhoto(id: string, file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.put<Person>(`${this.baseUrl}/${id}/photo`, form);
+  }
+
+  deletePhoto(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/${id}/photo`);
+  }
+
   create(value: PersonFormValue) {
     return this.http.post<Person>(this.baseUrl, value);
   }

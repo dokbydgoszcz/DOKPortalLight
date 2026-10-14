@@ -80,6 +80,7 @@ button{cursor:pointer}
 .btn{
   border:0;border-radius:11px;padding:10px 14px;font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:7px;
   transition:background-color .18s ease, color .18s ease;
+  text-decoration:none;
 }
 .btn.primary{background:var(--green);color:white}
 .btn.primary:hover{background:var(--green-hover)}

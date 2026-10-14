@@ -20,4 +20,8 @@ public class Person : ISoftDeletable
     public List<PersonFunction> Functions { get; set; } = new();
 
     public string FullName => $"{FirstName} {LastName}";
+    /// <summary>Zdjęcie profilowe w magazynie plików (karta osoby); puste = brak zdjęcia.</summary>
+    public string? PhotoBlobPath { get; set; }
+    public string? PhotoContentType { get; set; }
+    public DateTime? PhotoUpdatedAtUtc { get; set; }
 }

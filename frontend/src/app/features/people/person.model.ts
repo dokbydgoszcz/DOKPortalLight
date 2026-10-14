@@ -44,6 +44,8 @@ export interface Person {
   nameDayMonth: number | null;
   nameDayDay: number | null;
   functions: PersonFunction[];
+  /** Kiedy wgrano zdjęcie profilowe; brak = bez zdjęcia. */
+  photoUpdatedAtUtc?: string | null;
 }
 
 export interface PagedResult<T> {

@@ -1,150 +1,176 @@
-<div class="page-heading">
-  <div>
-    <a class="link small-muted" routerLink="/people">← Osoby</a>
-    <h2>{{ overview()?.person?.fullName ?? 'Karta osoby' }}</h2>
-    @if (overview(); as o) {
-      <p>{{ links(o) ? 'Powiązań: ' + links(o) : 'Brak powiązań – osobę można usunąć w „Osoby”.' }}</p>
-    }
-  </div>
-</div>
+<a class="back" routerLink="/people">← Wróć do listy osób</a>
 
 @if (error()) {
-  <div class="card"><div class="card-body empty">{{ error() }}</div></div>
+  <div class="sheet"><p class="none">{{ error() }}</p></div>
 }
 
 @if (overview(); as o) {
-  <div class="card-grid">
-    <section class="card">
-      <div class="card-head"><h3>Dane</h3></div>
-      <div class="card-body kv-list">
-        <div><span>E-mail</span><b>{{ o.person.email || '—' }}</b></div>
-        <div><span>Telefon</span><b>{{ o.person.phone || '—' }}</b></div>
-        <div><span>Data urodzenia</span><b>{{ o.person.birthDate ? (o.person.birthDate | date:'dd.MM.yyyy') : '—' }}</b></div>
-        <div><span>Parafia</span><b>{{ o.person.parishName || '—' }}</b></div>
-        <div><span>Funkcje</span><b>
-          @for (f of o.person.functions; track f.id; let last = $last) { {{ functionText(f) }}@if (!last) {, } } @empty { — }
-        </b></div>
-        @if (o.formatorFunctions?.length) {
-          <div><span>Formator</span><b>{{ o.formatorFunctions!.join(', ') }}</b></div>
+  <article class="sheet" [attr.aria-label]="'Kartoteka: ' + o.person.fullName">
+    <header class="record-head">
+      <figure class="portrait">
+        @if (photoUrl()) {
+          <img [src]="photoUrl()" [alt]="'Zdjęcie: ' + o.person.fullName" />
+        } @else {
+          <span class="initials" aria-hidden="true">{{ initials(o.person.fullName) }}</span>
         }
-        @if (o.person.notes) {
-          <div><span>Uwagi</span><b style="white-space:pre-line">{{ o.person.notes }}</b></div>
+        @if (canManage) {
+          <figcaption class="photo-actions">
+            <label class="link" [class.disabled]="uploading()">
+              {{ uploading() ? 'Zapisywanie…' : (photoUrl() ? 'Zmień zdjęcie' : 'Dodaj zdjęcie') }}
+              <input type="file" accept="image/jpeg,image/png,image/webp" (change)="onPhotoSelected($event)" [disabled]="uploading()" hidden />
+            </label>
+            @if (photoUrl()) {
+              <span class="link danger" (click)="removePhoto()">Usuń</span>
+            }
+          </figcaption>
         }
+      </figure>
+
+      <div class="identity">
+        <h2>{{ o.person.fullName }}</h2>
+        @if (o.person.functions.length || o.formatorFunctions?.length) {
+          <p class="roles">
+            @for (f of o.person.functions; track f.id; let last = $last) {<span>{{ functionText(f) }}</span>@if (!last || o.formatorFunctions?.length) {, }}
+            @for (f of o.formatorFunctions ?? []; track $index; let last = $last) {<span>formator ({{ f }})</span>@if (!last) {, }}
+          </p>
+        }
+        <dl class="facts">
+          <dt>Parafia</dt><dd>{{ o.person.parishName || '—' }}</dd>
+          <dt>E-mail</dt><dd>@if (o.person.email) { <a [href]="'mailto:' + o.person.email">{{ o.person.email }}</a> } @else { — }</dd>
+          <dt>Telefon</dt><dd>@if (o.person.phone) { <a [href]="'tel:' + o.person.phone">{{ o.person.phone }}</a> } @else { — }</dd>
+          <dt>Urodzony(a)</dt><dd>{{ o.person.birthDate ? (o.person.birthDate | date:'dd.MM.yyyy') : '—' }}</dd>
+          @if (o.person.nameDayMonth && o.person.nameDayDay) {
+            <dt>Imieniny</dt><dd>{{ o.person.nameDayDay }}.{{ o.person.nameDayMonth < 10 ? '0' : '' }}{{ o.person.nameDayMonth }}</dd>
+          }
+        </dl>
       </div>
-    </section>
+    </header>
+
+    @if (o.person.notes) {
+      <section class="entry">
+        <h3>Uwagi</h3>
+        <p class="notes">{{ o.person.notes }}</p>
+      </section>
+    }
 
     @if (o.accountVisible) {
-      <section class="card">
-        <div class="card-head"><h3>Konto w portalu</h3><a class="link" routerLink="/admin/users">Użytkownicy</a></div>
-        <div class="card-body kv-list">
-          @if (o.account; as a) {
-            <div><span>Login</span><b>{{ a.email }}</b></div>
-            <div><span>Role</span><b>@for (r of a.roles; track r; let last = $last) { {{ roleLabel(r) }}@if (!last) {, } } @empty { — }</b></div>
-            <div><span>Stan</span><b>{{ a.isActive ? 'aktywne' : 'wyłączone' }}</b></div>
-          } @else {
-            <div class="empty">Brak konta.</div>
-          }
-        </div>
+      <section class="entry">
+        <h3>Konto w portalu</h3>
+        @if (o.account; as a) {
+          <ul class="lines">
+            <li><span>{{ a.email }}</span><span class="when">{{ a.isActive ? 'aktywne' : 'wyłączone' }}</span></li>
+            <li class="sub">Role:
+              @for (r of a.roles; track r; let last = $last) { {{ roleLabel(r) }}@if (!last) {,} } @empty { brak }
+            </li>
+          </ul>
+        } @else {
+          <p class="none">Brak konta. Konto zakłada się w <a routerLink="/admin/users">Użytkownicy i role</a>.</p>
+        }
       </section>
     }
 
     @if (o.dokCases) {
-      <section class="card">
-        <div class="card-head"><h3>DOK – jako podopieczny</h3><a class="link" routerLink="/dok-cases">Podopieczni DOK</a></div>
-        <div class="card-body list">
+      <section class="entry">
+        <h3>Formacja w DOK</h3>
+        <ul class="lines">
           @for (c of o.dokCases; track c.id) {
-            <div class="list-row"><div class="list-main">
-              <div class="list-title">{{ c.path }} · {{ c.stage }}</div>
-              <div class="list-sub">katechista: {{ c.catechistFullName }}
-                @if (c.interruptedOn) { · <b>przerwana {{ c.interruptedOn | date:'dd.MM.yyyy' }}</b> }
-                @if (c.completedAtUtc) { · ukończona {{ c.completedAtUtc | date:'dd.MM.yyyy' }} }
-              </div>
-            </div></div>
-          } @empty { <div class="empty">Brak spraw.</div> }
-        </div>
+            <li>
+              <span>{{ c.path }}, etap: {{ c.stage }}<span class="sub">(katechista: {{ c.catechistFullName }})</span></span>
+              <span class="when">
+                @if (c.interruptedOn) { przerwana {{ c.interruptedOn | date:'dd.MM.yyyy' }} }
+                @else if (c.completedAtUtc) { ukończona {{ c.completedAtUtc | date:'dd.MM.yyyy' }} }
+                @else { w toku }
+              </span>
+            </li>
+          } @empty {
+            <li class="none">Nie jest podopiecznym DOK.</li>
+          }
+        </ul>
       </section>
     }
 
     @if (o.casesLed?.length) {
-      <section class="card">
-        <div class="card-head"><h3>DOK – prowadzi / jest mentorem</h3></div>
-        <div class="card-body list">
+      <section class="entry">
+        <h3>Prowadzi w DOK</h3>
+        <ul class="lines">
           @for (c of o.casesLed!; track c.id) {
-            <div class="list-row"><div class="list-main">
-              <div class="list-title">{{ c.personFullName }}</div>
-              <div class="list-sub">{{ c.role }} · {{ c.path }} · {{ c.stage }}@if (c.interruptedOn) { · przerwana }</div>
-            </div></div>
+            <li>
+              <span>{{ c.personFullName }}<span class="sub">({{ c.path }}, {{ c.stage }})</span></span>
+              <span class="when">{{ c.role }}@if (c.interruptedOn) {, przerwana}</span>
+            </li>
           }
-        </div>
+        </ul>
       </section>
     }
 
     @if (o.candidateVisible) {
-      <section class="card">
-        <div class="card-head"><h3>SKŚP – kandydatura</h3><a class="link" routerLink="/candidates">Kandydaci</a></div>
-        <div class="card-body kv-list">
-          @if (o.candidate; as c) {
-            <div><span>Status</span><b>{{ c.status }}</b></div>
-            <div><span>Rok formacji</span><b>{{ c.formationYear }}</b></div>
-            <div><span>Frekwencja</span><b>{{ c.attendancePercentage !== null ? c.attendancePercentage + '%' : '—' }}</b></div>
-            <div><span>Opinie</span><b>{{ c.opinionsCollected }}/{{ c.opinionsRequired }}</b></div>
-          } @else {
-            <div class="empty">Nie jest kandydatem.</div>
-          }
-        </div>
+      <section class="entry">
+        <h3>Szkoła katechistów (SKŚP)</h3>
+        @if (o.candidate; as c) {
+          <ul class="lines">
+            <li><span>{{ c.formationYear }}. rok formacji</span><span class="when">{{ c.status }}</span></li>
+            <li class="sub">Frekwencja: {{ c.attendancePercentage !== null ? c.attendancePercentage + '%' : '—' }}, opinie: {{ c.opinionsCollected }} z {{ c.opinionsRequired }}</li>
+          </ul>
+        } @else {
+          <p class="none">Nie jest kandydatem.</p>
+        }
       </section>
     }
 
     @if (o.missions) {
-      <section class="card">
-        <div class="card-head"><h3>Misje kanoniczne</h3><a class="link" routerLink="/missions">Katechiści</a></div>
-        <div class="card-body list">
+      <section class="entry">
+        <h3>Misje kanoniczne</h3>
+        <ul class="lines">
           @for (m of o.missions; track m.id) {
-            <div class="list-row"><div class="list-main">
-              <div class="list-title">{{ m.servicePlace || '—' }} <span class="pill" [class.green]="m.status === 'ważna'">{{ m.status }}</span></div>
-              <div class="list-sub">{{ m.missionStartDate | date:'dd.MM.yyyy' }} – {{ m.missionEndDate | date:'dd.MM.yyyy' }}@if (m.supervisionGroup) { · grupa: {{ m.supervisionGroup }} }</div>
-            </div></div>
-          } @empty { <div class="empty">Brak misji.</div> }
-        </div>
+            <li>
+              <span>{{ m.servicePlace || 'miejsce nieustalone' }}@if (m.supervisionGroup) { <span class="sub">(grupa superwizyjna: {{ m.supervisionGroup }})</span>}</span>
+              <span class="when" [class.expired]="m.status === 'wygasła'">{{ m.missionStartDate | date:'dd.MM.yyyy' }} – {{ m.missionEndDate | date:'dd.MM.yyyy' }}, {{ m.status }}</span>
+            </li>
+          } @empty {
+            <li class="none">Brak misji.</li>
+          }
+        </ul>
       </section>
     }
 
     @if (o.parishAssignments?.length) {
-      <section class="card">
-        <div class="card-head"><h3>Skierowania do parafii</h3><a class="link" routerLink="/parish-board">Giełda</a></div>
-        <div class="card-body list">
+      <section class="entry">
+        <h3>Skierowania do parafii</h3>
+        <ul class="lines">
           @for (a of o.parishAssignments!; track $index) {
-            <div class="list-row"><div class="list-main">
-              <div class="list-title">{{ a.parishName }}</div>
-              <div class="list-sub">{{ a.needDescription }} · {{ a.assignedAtUtc | date:'dd.MM.yyyy' }}</div>
-            </div></div>
+            <li><span>{{ a.parishName }}<span class="sub">({{ a.needDescription }})</span></span><span class="when">{{ a.assignedAtUtc | date:'dd.MM.yyyy' }}</span></li>
           }
-        </div>
+        </ul>
       </section>
     }
 
     @if (o.supervisions && o.supervisions.listed) {
-      <section class="card">
-        <div class="card-head"><h3>Superwizje</h3><a class="link" routerLink="/supervisions">Superwizje</a></div>
-        <div class="card-body kv-list">
-          <div><span>Obecność</span><b>{{ o.supervisions.present }}/{{ o.supervisions.listed }}</b></div>
-          <div><span>Ostatnio obecny(a)</span><b>{{ o.supervisions.lastPresentOn ? (o.supervisions.lastPresentOn | date:'dd.MM.yyyy') : '—' }}</b></div>
-        </div>
+      <section class="entry">
+        <h3>Superwizje</h3>
+        <ul class="lines">
+          <li>
+            <span>Obecny(a) na {{ o.supervisions.present }} z {{ o.supervisions.listed }}</span>
+            <span class="when">ostatnio: {{ o.supervisions.lastPresentOn ? (o.supervisions.lastPresentOn | date:'dd.MM.yyyy') : '—' }}</span>
+          </li>
+        </ul>
       </section>
     }
 
     @if (o.documents) {
-      <section class="card">
-        <div class="card-head"><h3>Pisma</h3><a class="link" routerLink="/documents">Dokumenty i pisma</a></div>
-        <div class="card-body list">
+      <section class="entry">
+        <h3>Pisma</h3>
+        <ul class="lines">
           @for (d of o.documents; track d.id) {
-            <div class="list-row"><div class="list-main">
-              <div class="list-title">{{ d.title }}</div>
-              <div class="list-sub">{{ d.createdAtUtc | date:'dd.MM.yyyy HH:mm' }}</div>
-            </div></div>
-          } @empty { <div class="empty">Brak pism.</div> }
-        </div>
+            <li><span>{{ d.title }}</span><span class="when">{{ d.createdAtUtc | date:'dd.MM.yyyy' }}</span></li>
+          } @empty {
+            <li class="none">Brak pism.</li>
+          }
+        </ul>
       </section>
     }
-  </div>
+
+    <footer class="record-foot">
+      {{ links(o) ? 'Powiązań w systemie: ' + links(o) + '. Osobę można usunąć dopiero, gdy ich nie ma.' : 'Brak powiązań – osobę można usunąć w „Osoby”.' }}
+    </footer>
+  </article>
 }

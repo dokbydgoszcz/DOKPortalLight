@@ -46,7 +46,7 @@ import { serverMessage } from '../../shared/http-error';
   `,
   styles: [`
     .reset-page { min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--bg, #f5f6f8); }
-    .reset-card { width: 100%; max-width: 420px; display: grid; gap: 12px; }
+    .reset-card { width: 100%; max-width: 420px; display: grid; gap: 14px; padding: 24px; font-size: 13px; }
     form { display: grid; gap: 12px; }
     .form-error { color: var(--danger); }
     h2 { margin: 0; }

@@ -351,6 +351,7 @@ public class PersonService : IPersonService
         ParishId = p.ParishId,
         ParishName = p.Parish?.Name,
         Notes = p.Notes,
+        PhotoUpdatedAtUtc = p.PhotoBlobPath == null ? null : p.PhotoUpdatedAtUtc,
         NameDayMonth = p.NameDayMonth,
         NameDayDay = p.NameDayDay,
         Functions = p.Functions

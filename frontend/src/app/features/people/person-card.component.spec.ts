@@ -1,8 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { ToastService } from '../../core/notifications/toast.service';
 import { PersonCardComponent } from './person-card.component';
-import { api, setup, textOf } from '../../testing/test-helpers';
+import { api, clickByText, setup, textOf } from '../../testing/test-helpers';
 
 const person = {
   id: 'p1', firstName: 'Ewa', lastName: 'Maj', fullName: 'Ewa Maj', email: 'ewa@example.org', phone: null, birthDate: null,
@@ -41,11 +42,11 @@ describe('PersonCardComponent', () => {
     expect(text).toContain('Katechista');
     expect(text).toContain('Jan Kowalski');
     expect(text).toContain('ukończył formację');
-    expect(text).toContain('grupa: Grupa A');
+    expect(text).toContain('grupa superwizyjna: Grupa A');
     expect(text).toContain('Wniosek o misję kanoniczną');
-    expect(text).toContain('3/4');
+    expect(text).toContain('Obecny(a) na 3 z 4');
     expect(text).toContain('Katechista prowadzący');
-    expect(text).toContain('Powiązań: 5');
+    expect(text).toContain('Powiązań w systemie: 5');
     expect(TestBed.inject(ActivatedRoute)).toBeTruthy();
   });
 
@@ -58,7 +59,7 @@ describe('PersonCardComponent', () => {
     const text = textOf(el);
     expect(text).not.toContain('Konto w portalu');
     expect(text).not.toContain('Misje kanoniczne');
-    expect(text).not.toContain('SKŚP – kandydatura');
+    expect(text).not.toContain('Szkoła katechistów');
     expect(text).toContain('Brak powiązań');
   });
 
@@ -105,6 +106,62 @@ describe('PersonCardComponent', () => {
       formatorFunctions: null, documents: null, supervisions: null, account: null, accountVisible: true
     });
     expect(textOf(el)).toContain('Brak konta.');
-    expect(textOf(el)).toContain('Brak spraw.');
+    expect(textOf(el)).toContain('Nie jest podopiecznym DOK.');
+  });
+  it('shows the initials without a photo, uploads one and removes it', () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:foto');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const ctx = boot({
+      person, dokCases: null, casesLed: null, candidate: null, candidateVisible: false, missions: null, parishAssignments: null,
+      formatorFunctions: null, documents: null, supervisions: null, account: null, accountVisible: false
+    });
+    expect(ctx.el.querySelector('.initials')?.textContent?.trim()).toBe('EM');
+
+    const input = ctx.el.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File([new Uint8Array([0x89, 0x50])], 'ja.png', { type: 'image/png' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    input.dispatchEvent(new Event('change'));
+    const req = ctx.http.expectOne(r => r.method === 'PUT' && r.url === api('/api/people/p1/photo'));
+    expect(req.request.body instanceof FormData).toBe(true);
+    req.flush({ ...person, photoUpdatedAtUtc: '2026-10-14T08:00:00Z' });
+    ctx.fixture.detectChanges();
+    expect(ctx.el.querySelector('.portrait img')?.getAttribute('src')).toBe('blob:foto');
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    clickByText(ctx.el, 'Usuń', '.photo-actions span');
+    ctx.http.expectOne(r => r.method === 'DELETE' && r.url === api('/api/people/p1/photo')).flush(null);
+    ctx.fixture.detectChanges();
+    expect(ctx.el.querySelector('.portrait img')).toBeNull();
+    expect(TestBed.inject(ToastService).toasts().map(t => t.message)).toContain('Usunięto zdjęcie.');
+  });
+
+  it('loads an existing photo, and refuses wrong files before sending', () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:foto');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const ctx = boot({
+      person: { ...person, photoUpdatedAtUtc: '2026-10-01T00:00:00Z' }, dokCases: null, casesLed: null, candidate: null, candidateVisible: false,
+      missions: null, parishAssignments: null, formatorFunctions: null, documents: null, supervisions: null, account: null, accountVisible: false
+    });
+    ctx.http.expectOne(api('/api/people/p1/photo')).flush(new Blob(['x']));
+    ctx.fixture.detectChanges();
+    expect(ctx.el.querySelector('.portrait img')).not.toBeNull();
+
+    const component = ctx.fixture.componentInstance;
+    const pick = (file: File) => component.onPhotoSelected({ target: { files: [file], value: '' } } as unknown as Event);
+    pick(new File(['%PDF'], 'skan.pdf', { type: 'application/pdf' }));
+    pick(new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'duze.jpg', { type: 'image/jpeg' }));
+    ctx.http.expectNone(r => r.method === 'PUT');
+    const messages = TestBed.inject(ToastService).toasts().map(t => t.message);
+    expect(messages).toContain('Zdjęcie musi być w formacie JPG, PNG lub WEBP.');
+    expect(messages).toContain('Zdjęcie jest za duże – maksymalnie 5 MB.');
+
+    pick(new File(['x'], 'ok.jpg', { type: 'image/jpeg' }));
+    ctx.http.expectOne(r => r.method === 'PUT').flush({ title: 'Zdjęcie musi być w formacie JPG, PNG lub WEBP.' }, { status: 400, statusText: 'Bad Request' });
+    expect(component.uploading()).toBe(false);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    component.removePhoto();
+    ctx.http.expectOne(r => r.method === 'DELETE').flush('x', { status: 500, statusText: 'Error' });
+    expect(TestBed.inject(ToastService).toasts().map(t => t.message)).toContain('Nie udało się usunąć zdjęcia.');
+    ctx.fixture.destroy();
   });
 });

@@ -11,8 +11,12 @@ import { serverMessage } from '../../shared/http-error';
   standalone: true,
   imports: [FormsModule],
   template: `
-    <div class="card mfa-card">
-      <h3>Weryfikacja dwuetapowa (MFA)</h3>
+    <section class="card">
+      <div class="card-head">
+        <h3>Weryfikacja dwuetapowa (MFA)</h3>
+        @if (status()?.enabled) { <span class="pill green">włączona</span> }
+      </div>
+      <div class="card-body mfa-body">
       @if (error()) {
         <div class="form-error" role="alert">{{ error() }}</div>
       }
@@ -60,12 +64,15 @@ import { serverMessage } from '../../shared/http-error';
           <button class="btn primary" type="button" [disabled]="busy()" (click)="start()">Włącz weryfikację dwuetapową</button>
         }
       }
-    </div>
+      </div>
+    </section>
   `,
   styles: [`
-    .mfa-card { max-width: 440px; display: grid; gap: 12px; margin-top: 16px; }
-    h3 { margin: 0; }
-    p { margin: 0; }
+    :host { display: block; }
+    .card { margin: 0; }
+    .mfa-body { display: grid; gap: 14px; font-size: 13px; line-height: 1.5; }
+    p { margin: 0; color: var(--muted); }
+    p b { color: var(--text); }
     .steps { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
     .qr { justify-self: start; border: 1px solid var(--line, #e5e7eb); border-radius: 8px; }
     .key { font-size: 13px; letter-spacing: 1px; overflow-wrap: anywhere; }

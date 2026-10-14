@@ -18,13 +18,42 @@ public class PeopleController : ControllerBase
     private readonly IPersonService _personService;
     private readonly IPersonOverviewService _overview;
     private readonly IAuthorizationService _authorization;
+    private readonly IPersonPhotoService _photos;
 
-    public PeopleController(IPersonService personService, IPersonOverviewService overview, IAuthorizationService authorization)
+    public PeopleController(IPersonService personService, IPersonOverviewService overview, IAuthorizationService authorization, IPersonPhotoService photos)
     {
+        _photos = photos;
         _personService = personService;
         _overview = overview;
         _authorization = authorization;
     }
+
+    [HttpGet("{id:guid}/photo")]
+    [HasPermission(Permissions.PeopleView)]
+    public async Task<IActionResult> Photo(Guid id, CancellationToken ct)
+    {
+        var photo = await _photos.GetAsync(id, ct);
+        if (photo is null) return NotFound();
+        Response.Headers.CacheControl = "private, max-age=300";
+        return File(photo.Content, photo.ContentType);
+    }
+
+    [HttpPut("{id:guid}/photo")]
+    [Audit("UploadPersonPhoto")]
+    [HasPermission(Permissions.PeopleManage)]
+    [RequestSizeLimit(IPersonPhotoService.MaxBytes + 1024 * 1024)]
+    public async Task<ActionResult<PersonDto>> UploadPhoto(Guid id, IFormFile file, CancellationToken ct)
+    {
+        await using var stream = file.OpenReadStream();
+        if (!await _photos.SaveAsync(id, stream, file.Length, ct)) return NotFound();
+        return Ok(await _personService.GetByIdAsync(id, ct));
+    }
+
+    [HttpDelete("{id:guid}/photo")]
+    [Audit("DeletePersonPhoto")]
+    [HasPermission(Permissions.PeopleManage)]
+    public async Task<IActionResult> DeletePhoto(Guid id, CancellationToken ct)
+        => await _photos.DeleteAsync(id, ct) ? NoContent() : NotFound();
 
     /// <summary>Karta osoby: sprawy, misje, kandydatura, pisma, superwizje, konto – każda sekcja tylko z dostępem do jej ekranu.</summary>
     [HttpGet("{id:guid}/overview")]
