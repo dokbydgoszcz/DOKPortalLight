@@ -14,8 +14,36 @@ namespace DokPortal.Api.Controllers;
 public class ParishesController : ControllerBase
 {
     private readonly IParishService _parishService;
+    private readonly IParishImportService? _import;
 
-    public ParishesController(IParishService parishService) => _parishService = parishService;
+    public ParishesController(IParishService parishService, IParishImportService? import = null)
+    {
+        _parishService = parishService;
+        _import = import;
+    }
+
+    /// <summary>Podgląd importu spisu parafii z proboszczami (nic nie zapisuje).</summary>
+    [HttpPost("import/preview")]
+    [HasPermission(Permissions.ParishesManage)]
+    [HasPermission(Permissions.PeopleManage)]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<ActionResult<ParishImportResultDto>> ImportPreview(IFormFile file, CancellationToken ct)
+    {
+        await using var stream = file.OpenReadStream();
+        return Ok(await _import!.RunAsync(stream, apply: false, ct));
+    }
+
+    /// <summary>Import spisu parafii z proboszczami: tworzy brakujące parafie i osoby, przypisuje proboszczów.</summary>
+    [HttpPost("import")]
+    [Audit("ImportParishes")]
+    [HasPermission(Permissions.ParishesManage)]
+    [HasPermission(Permissions.PeopleManage)]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<ActionResult<ParishImportResultDto>> Import(IFormFile file, CancellationToken ct)
+    {
+        await using var stream = file.OpenReadStream();
+        return Ok(await _import!.RunAsync(stream, apply: true, ct));
+    }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ParishDto>>> GetAll(CancellationToken ct)

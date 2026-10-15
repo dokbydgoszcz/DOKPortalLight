@@ -43,6 +43,11 @@ public class ParishService : IParishService
         Id = p.Id,
         Name = p.Name,
         City = p.City,
+        Deanery = p.Deanery,
+        Address = p.Address,
+        Phone = p.Phone,
+        Email = p.Email,
+        Website = p.Website,
         PastorPersonId = pastors.TryGetValue(p.Id, out var pastor) ? pastor.PersonId : null,
         PastorFullName = pastors.TryGetValue(p.Id, out var named) ? named.FullName : null
     };
@@ -79,9 +84,21 @@ public class ParishService : IParishService
         return newPastorId;
     }
 
+    private static void ApplyDetails(Parish parish, CreateParishRequest request)
+    {
+        parish.Deanery = Clean(request.Deanery);
+        parish.Address = Clean(request.Address);
+        parish.Phone = Clean(request.Phone);
+        parish.Email = Clean(request.Email);
+        parish.Website = Clean(request.Website);
+    }
+
+    private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     public async Task<ParishDto> CreateAsync(CreateParishRequest request, CancellationToken ct)
     {
         var parish = new Parish { Id = Guid.NewGuid(), Name = request.Name, City = request.City };
+        ApplyDetails(parish, request);
         _db.Parishes.Add(parish);
         await SetPastorAsync(parish.Id, request.PastorPersonId, ct);
         await _db.SaveChangesAsync(ct);
@@ -96,6 +113,7 @@ public class ParishService : IParishService
 
         parish.Name = request.Name;
         parish.City = request.City;
+        ApplyDetails(parish, request);
         // Misje skierowane do tej parafii pokazują jej nazwę jako miejsce posługi.
         var missions = await _db.CanonicalMissions.Where(m => m.ParishId == id).ToListAsync(ct);
         foreach (var mission in missions)

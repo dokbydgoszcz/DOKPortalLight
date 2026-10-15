@@ -131,6 +131,7 @@ builder.Services.AddScoped<IPersonPhotoService, PersonPhotoService>();
 builder.Services.AddScoped<IGdprService, GdprService>();
 builder.Services.AddScoped<ICalendarFeedService, CalendarFeedService>();
 builder.Services.AddScoped<IParishService, ParishService>();
+builder.Services.AddScoped<IParishImportService, ParishImportService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IExportService, ExportService>();

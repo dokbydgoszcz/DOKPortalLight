@@ -2,6 +2,9 @@
   <div><h2>Parafie</h2><p>Rejestr parafii Diecezji Bydgoskiej.</p></div>
   <div style="display:flex;gap:8px;align-items:center">
     <app-export-button list="parishes" />
+    <ng-container *appHasPermission="'People.Manage'">
+      <button *appHasPermission="'Parishes.Manage'" class="btn ghost" (click)="openImport()">Importuj proboszczów</button>
+    </ng-container>
     <button *appHasPermission="'Parishes.Manage'" class="btn primary" (click)="openAddForm()">＋ Dodaj parafię</button>
   </div>
 </div>
@@ -14,12 +17,22 @@
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Nazwa</th><th>Miejscowość</th><th>Proboszcz</th><th></th></tr></thead>
+      <thead><tr><th>Nazwa</th><th>Miejscowość</th><th>Dekanat</th><th>Proboszcz</th><th></th></tr></thead>
       <tbody>
         @for (parish of filteredParishes(); track parish.id) {
           <tr>
-            <td><b>{{ parish.name }}</b></td>
+            <td>
+              <b>{{ parish.name }}</b>
+              @if (parish.address || parish.phone || parish.email || parish.website) {
+                <div class="small-muted contact">
+                  {{ parish.address }}@if (parish.address && parish.phone) { · }@if (parish.phone) { <a [href]="'tel:' + parish.phone">{{ parish.phone }}</a> }
+                  @if (parish.email) { · <a [href]="'mailto:' + parish.email">{{ parish.email }}</a> }
+                  @if (parish.website) { · <a [href]="parish.website.startsWith('http') ? parish.website : 'https://' + parish.website" target="_blank" rel="noopener">www</a> }
+                </div>
+              }
+            </td>
             <td>{{ parish.city }}</td>
+            <td>{{ parish.deanery }}</td>
             <td>
               @if (parish.pastorPersonId) {
                 <a class="person-link" [routerLink]="['/people', parish.pastorPersonId]" [queryParams]="{ z: 'parafie' }">{{ parish.pastorFullName }}</a>
@@ -36,7 +49,7 @@
             </td>
           </tr>
         } @empty {
-          <tr><td colspan="4" class="empty">Brak parafii.</td></tr>
+          <tr><td colspan="5" class="empty">Brak parafii.</td></tr>
         }
       </tbody>
     </table>
@@ -53,7 +66,12 @@
       <div class="modal-body">
         <div class="form-grid">
           <div class="field full"><label>Nazwa (wezwanie)</label><input [(ngModel)]="newParish.name" name="name" placeholder="np. św. Antoniego z Padwy" /></div>
-          <div class="field full"><label>Miejscowość</label><input [(ngModel)]="newParish.city" name="city" placeholder="np. Bydgoszcz" /></div>
+          <div class="field"><label>Miejscowość</label><input [(ngModel)]="newParish.city" name="city" placeholder="np. Bydgoszcz" /></div>
+          <div class="field"><label>Dekanat</label><input [(ngModel)]="newParish.deanery" name="deanery" placeholder="np. Bydgoszcz II – Śródmieście" /></div>
+          <div class="field full"><label>Adres</label><input [(ngModel)]="newParish.address" name="address" /></div>
+          <div class="field"><label>Telefon</label><input [(ngModel)]="newParish.phone" name="phone" /></div>
+          <div class="field"><label>E-mail</label><input [(ngModel)]="newParish.email" name="email" /></div>
+          <div class="field full"><label>Strona www</label><input [(ngModel)]="newParish.website" name="website" /></div>
           <div class="field full">
             <label>Proboszcz</label>
             <select [(ngModel)]="newParish.pastorPersonId" name="pastorPersonId">
@@ -69,6 +87,65 @@
       <div class="modal-foot">
         <button class="btn ghost" (click)="cancel()">Anuluj</button>
         <button class="btn primary" (click)="saveParish()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (importOpen()) {
+  <div class="overlay show">
+    <div class="modal import-modal">
+      <div class="modal-head">
+        <h3>Import proboszczów</h3>
+        <button class="close" (click)="closeImport()">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="small-muted import-intro">
+          Wybierz arkusz Excel z kolumnami <b>Miejscowość, Parafia, Imię, Nazwisko</b> (opcjonalnie: Dekanat, Funkcja, Tytuły, Zgromadzenie,
+          Proboszcz od, Tel. proboszcza, E-mail proboszcza, Adres parafii, Tel. parafii, E-mail parafii, WWW) – np. spis ze strony diecezji.
+          Najpierw zobaczysz podgląd; nic się nie zapisze, dopóki nie klikniesz „Importuj”. Parafie są dopasowywane po miejscowości i wezwaniu,
+          osoby po imieniu i nazwisku; kontaktów istniejących osób import nie nadpisuje, a e-maili nie wysyła.
+        </p>
+        <label class="btn ghost" [class.disabled]="importBusy()">
+          {{ importFile() ? 'Wybierz inny plik' : 'Wybierz plik .xlsx' }}
+          <input type="file" accept=".xlsx" hidden (change)="onImportFile($event)" [disabled]="importBusy()" />
+        </label>
+        @if (importFile(); as f) { <span class="small-muted"> {{ f.name }}</span> }
+        @if (importBusy()) { <p class="small-muted">Sprawdzanie…</p> }
+        @if (importError()) { <div class="form-error" role="alert">{{ importError() }}</div> }
+        @if (importPreview(); as p) {
+          <div class="import-summary" role="status">
+            <span><b>{{ p.rows.length }}</b> parafii w pliku</span>
+            <span>nowe parafie: <b>{{ p.newParishes }}</b></span>
+            <span>dopasowane: <b>{{ p.matchedParishes }}</b></span>
+            <span>nowe osoby: <b>{{ p.newPeople }}</b></span>
+            <span>istniejące osoby: <b>{{ p.existingPeople }}</b></span>
+            <span>proboszcz przypisany: <b>{{ p.pastorsSet }}</b>, zmieniony: <b>{{ p.pastorsReplaced }}</b>, bez zmian: <b>{{ p.pastorsUnchanged }}</b></span>
+          </div>
+          <div class="table-wrap import-table">
+            <table>
+              <thead><tr><th>Parafia</th><th>Proboszcz</th><th>Zmiana</th></tr></thead>
+              <tbody>
+                @for (r of p.rows; track r.row) {
+                  <tr>
+                    <td>{{ r.city }} – {{ r.parishName }} @if (r.newParish) { <span class="pill blue">nowa</span> }
+                      @if (r.deanery) { <div class="small-muted">{{ r.deanery }}</div> }</td>
+                    <td>{{ r.pastorFullName }} @if (r.newPerson) { <span class="pill blue">nowa osoba</span> }</td>
+                    <td>
+                      <span class="pill" [class.gold]="r.pastorChange === 'replaced'" [class.green]="r.pastorChange === 'set'">{{ changeLabels[r.pastorChange] }}</span>
+                      @if (r.previousPastor) { <div class="small-muted">było: {{ r.previousPastor }}</div> }
+                      @for (w of r.warnings; track w) { <div class="warning">⚠ {{ w }}</div> }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" (click)="closeImport()">Anuluj</button>
+        <button class="btn primary" [disabled]="!importPreview() || importBusy()" (click)="runImport(true)">Importuj</button>
       </div>
     </div>
   </div>

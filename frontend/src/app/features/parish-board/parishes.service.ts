@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { Parish } from './parish-need.model';
+import { Parish, ParishImportResult } from './parish-need.model';
 
 @Injectable({ providedIn: 'root' })
 export class ParishesService {
@@ -19,6 +19,13 @@ export class ParishesService {
     return this.http.put<Parish>(`${environment.apiBaseUrl}/api/parishes/${id}`, value);
   }
 
+  /** Import spisu parafii z proboszczami z arkusza Excel; apply = false tylko pokazuje, co się stanie. */
+  importPastors(file: File, apply: boolean) {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<ParishImportResult>(`${environment.apiBaseUrl}/api/parishes/import${apply ? '' : '/preview'}`, form);
+  }
+
   delete(id: string) {
     return this.http.delete<void>(`${environment.apiBaseUrl}/api/parishes/${id}`);
   }
@@ -29,4 +36,9 @@ export interface ParishFormValue {
   name: string;
   city?: string;
   pastorPersonId: string | null;
+  deanery?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
 }

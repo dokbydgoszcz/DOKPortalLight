@@ -58,6 +58,11 @@ public class AppDbContext : IdentityDbContext<AppUser>
         {
             entity.Property(p => p.Name).IsRequired().HasMaxLength(200);
             entity.Property(p => p.City).HasMaxLength(200);
+            entity.Property(p => p.Deanery).HasMaxLength(100);
+            entity.Property(p => p.Address).HasMaxLength(300);
+            entity.Property(p => p.Phone).HasMaxLength(100);
+            entity.Property(p => p.Email).HasMaxLength(256);
+            entity.Property(p => p.Website).HasMaxLength(300);
         });
 
         builder.Entity<Person>(entity =>

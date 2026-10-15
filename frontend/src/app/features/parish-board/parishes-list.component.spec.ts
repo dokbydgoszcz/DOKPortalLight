@@ -273,4 +273,125 @@ describe('ParishesListComponent', () => {
       expect(ctx.fixture.componentInstance.pastors()).toEqual([]);
     });
   });
+
+  describe('importing pastors', () => {
+    const preview = {
+      applied: false, newParishes: 1, matchedParishes: 1, newPeople: 1, existingPeople: 1, pastorsSet: 1, pastorsUnchanged: 0, pastorsReplaced: 1,
+      rows: [
+        { row: 2, deanery: 'Bydgoszcz V – Fordon', city: 'Bydgoszcz', parishName: 'św. Mateusza', newParish: false, pastorFullName: 'Jan Nowak', newPerson: false, pastorChange: 'replaced', previousPastor: 'Stary Proboszcz', warnings: ['W bazie jest 2 osób o tym imieniu i nazwisku – wybrano jedną, sprawdź.'] },
+        { row: 3, deanery: null, city: 'Bądecz', parishName: 'św. Józefa', newParish: true, pastorFullName: 'Piotr Kot', newPerson: true, pastorChange: 'set', previousPastor: null, warnings: [] }
+      ]
+    };
+
+    function pick(ctx: ReturnType<typeof boot>) {
+      const input = ctx.el.querySelector('.import-modal input[type="file"]') as HTMLInputElement;
+      Object.defineProperty(input, 'files', { value: [new File(['x'], 'proboszczowie.xlsx')], configurable: true });
+      input.dispatchEvent(new Event('change'));
+    }
+
+    it('shows a preview first and imports only after confirmation', () => {
+      const ctx = boot();
+      clickByText(ctx.el, 'Importuj proboszczów');
+      ctx.fixture.detectChanges();
+      const importButton = () => Array.from(ctx.el.querySelectorAll('.modal-foot button')).find(b => b.textContent!.trim() === 'Importuj') as HTMLButtonElement;
+      expect(importButton().disabled).toBe(true);
+
+      pick(ctx);
+      const previewReq = ctx.http.expectOne(`${url}/import/preview`);
+      expect(previewReq.request.body instanceof FormData).toBe(true);
+      previewReq.flush(preview);
+      ctx.fixture.detectChanges();
+      const text = textOf(ctx.el);
+      expect(text).toContain('nowe parafie: 1');
+      expect(text).toContain('było: Stary Proboszcz');
+      expect(text).toContain('⚠ W bazie jest 2 osób');
+      expect(text).toContain('nowa osoba');
+
+      importButton().click();
+      ctx.http.expectOne(`${url}/import`).flush({ ...preview, applied: true });
+      expect(toastMessages()).toContain('Zaimportowano: 1 nowych parafii, 1 nowych osób, 2 przypisań proboszcza.');
+      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush(parishes);
+      ctx.fixture.detectChanges();
+      expect(ctx.el.querySelector('.import-modal')).toBeNull();
+    });
+
+    it('explains a file that cannot be read, and a failed import', () => {
+      const ctx = boot();
+      clickByText(ctx.el, 'Importuj proboszczów');
+      ctx.fixture.detectChanges();
+      pick(ctx);
+      ctx.http.expectOne(`${url}/import/preview`).flush({ title: 'To nie jest plik Excel (.xlsx).' }, { status: 400, statusText: 'Bad Request' });
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('To nie jest plik Excel');
+
+      pick(ctx);
+      ctx.http.expectOne(`${url}/import/preview`).flush(preview);
+      ctx.fixture.detectChanges();
+      ctx.fixture.componentInstance.runImport(true);
+      ctx.http.expectOne(`${url}/import`).flush('x', { status: 500, statusText: 'Error' });
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Import się nie udał.');
+      clickByText(ctx.el, 'Anuluj', '.modal-foot button');
+      ctx.fixture.detectChanges();
+      expect(ctx.el.querySelector('.import-modal')).toBeNull();
+    });
+  });
+
+  it('shows the deanery and contact, finds parishes by deanery and keeps them when editing', async () => {
+    const ctx = boot([{ id: 'pa3', name: 'św. Józefa', city: 'Bądecz', deanery: 'Wysoka', address: 'Bądecz 3', phone: '67 287 11 09', email: 'p@example.org', website: 'www.p.example.org', pastorPersonId: null } as never]);
+    expect(textOf(ctx.el)).toContain('Wysoka');
+    expect(ctx.el.querySelector('.contact a[href="https://www.p.example.org"]')).not.toBeNull();
+    const search = ctx.el.querySelector('.search input') as HTMLInputElement;
+    search.value = 'wysoka';
+    search.dispatchEvent(new Event('input'));
+    ctx.fixture.detectChanges();
+    expect(textOf(ctx.el)).toContain('św. Józefa');
+
+    clickByText(ctx.el, 'Edytuj');
+    ctx.fixture.detectChanges();
+    ctx.http.match(() => true).forEach(r => r.flush({ items: [], totalCount: 0, page: 1, pageSize: 200 }));
+    await ctx.fixture.whenStable();
+    clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+    const put = ctx.http.expectOne(r => r.method === 'PUT');
+    expect(put.request.body).toMatchObject({ deanery: 'Wysoka', address: 'Bądecz 3', phone: '67 287 11 09', email: 'p@example.org', website: 'www.p.example.org' });
+  });
+
+  it('saves the parish contact typed in the form', async () => {
+    const ctx = boot([{ id: 'pa4', name: 'Fara', city: null, website: 'https://fara.example.org', phone: '52 1', pastorPersonId: null } as never]);
+    expect(ctx.el.querySelector('.contact a[href="https://fara.example.org"]')).not.toBeNull();
+    clickByText(ctx.el, '＋ Dodaj parafię');
+    ctx.fixture.detectChanges();
+    ctx.http.match(() => true).forEach(r => r.flush({ items: [], totalCount: 0, page: 1, pageSize: 200 }));
+    await ctx.fixture.whenStable();
+    setInput(ctx.el, 'input[name="name"]', 'św. Rocha');
+    setInput(ctx.el, 'input[name="deanery"]', 'Złotów I');
+    setInput(ctx.el, 'input[name="address"]', 'ul. Kościelna 1');
+    setInput(ctx.el, 'input[name="phone"]', '67 000');
+    setInput(ctx.el, 'input[name="email"]', 'roch@example.org');
+    setInput(ctx.el, 'input[name="website"]', 'roch.example.org');
+    clickByText(ctx.el, 'Zapisz', '.modal-foot button');
+    expect(ctx.http.expectOne(r => r.method === 'POST').request.body).toMatchObject({
+      name: 'św. Rocha', deanery: 'Złotów I', address: 'ul. Kościelna 1', phone: '67 000', email: 'roch@example.org', website: 'roch.example.org'
+    });
+  });
+
+  it('ignores an empty file choice and shows that the file is being checked', () => {
+    const ctx = boot();
+    clickByText(ctx.el, 'Importuj proboszczów');
+    ctx.fixture.detectChanges();
+    const component = ctx.fixture.componentInstance;
+    component.runImport(false);
+    const input = ctx.el.querySelector('.import-modal input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [], configurable: true });
+    input.dispatchEvent(new Event('change'));
+    ctx.http.expectNone(`${url}/import/preview`);
+
+    Object.defineProperty(input, 'files', { value: [new File(['x'], 'a.xlsx')], configurable: true });
+    input.dispatchEvent(new Event('change'));
+    ctx.fixture.detectChanges();
+    expect(textOf(ctx.el)).toContain('Sprawdzanie');
+    component.runImport(false);
+    ctx.http.expectOne(`${url}/import/preview`).flush({ applied: false, newParishes: 0, matchedParishes: 0, newPeople: 0, existingPeople: 0, pastorsSet: 0, pastorsUnchanged: 0, pastorsReplaced: 0, rows: [] });
+    clickByText(ctx.el, '×', '.import-modal .close');
+  });
 });

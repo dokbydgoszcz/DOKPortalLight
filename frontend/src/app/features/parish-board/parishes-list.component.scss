@@ -3,3 +3,40 @@
   color: inherit;
   font-weight: 600;
 }
+
+.contact {
+  margin-top: 2px;
+  font-weight: 400;
+}
+
+.contact a {
+  color: inherit;
+}
+
+.import-modal {
+  max-width: 920px;
+}
+
+.import-intro {
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 14px 0 10px;
+  font-size: 13px;
+}
+
+.import-table {
+  max-height: 50vh;
+  overflow: auto;
+}
+
+.warning {
+  margin-top: 4px;
+  color: #9a6a04;
+  font-size: 12px;
+}
