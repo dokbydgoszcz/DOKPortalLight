@@ -3,6 +3,7 @@ using DokPortal.Application.Documents;
 using DokPortal.Domain.Documents;
 using DokPortal.Domain.Entities;
 using DokPortal.Domain.Enums;
+using DokPortal.Infrastructure.Documents;
 using DokPortal.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
@@ -14,46 +15,79 @@ public class DocumentService : IDocumentService
 {
     private readonly AppDbContext _db;
     private readonly IFileStorageService? _storage;
+    private readonly TimeProvider _time;
+    private readonly LetterRenderer _renderer;
 
     static DocumentService()
     {
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
-    public DocumentService(AppDbContext db, IFileStorageService? storage = null)
+    public DocumentService(AppDbContext db, IFileStorageService? storage = null, TimeProvider? time = null)
     {
         _db = db;
         _storage = storage;
+        _time = time ?? TimeProvider.System;
+        _renderer = new LetterRenderer(db, storage);
     }
 
     public async Task<GeneratedDocumentResult?> GenerateAsync(GenerateDocumentRequest request, string generatedByUserId, CancellationToken ct)
     {
-        if (!DocumentTemplates.IsOffered(request.Template))
-        {
-            throw new InvalidOperationException($"Typ pisma „{DocumentTemplates.Title(request.Template)}” nie jest już dostępny.");
-        }
-        var person = await _db.People.Include(p => p.Parish).AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == request.PersonId, ct);
+        var template = await FindTemplateAsync(request, ct);
+        if (!template.IsActive) throw new InvalidOperationException($"Wzór „{template.Name}” jest wyłączony.");
+        var person = await _db.People.AsNoTracking().FirstOrDefaultAsync(p => p.Id == request.PersonId, ct);
         if (person is null) return null;
 
-        var createdAt = DateTime.UtcNow;
-        var pdfBytes = RenderPdf(DocumentTemplates.Title(request.Template), person, request.AdditionalNotes, createdAt, DocumentTemplates.IsDraft(request.Template));
+        var format = LetterRenderer.NormalizeFormat(request.Format);
+        var createdAt = _time.GetUtcNow().UtcDateTime;
+        var head = await _renderer.LetterheadAsync(ct);
+        var values = await LetterFields.ResolveAsync(_db, person.Id, head.Place ?? "", await _renderer.IssuerAsync(generatedByUserId, ct), createdAt, ct);
+        values["pismo.uwagi"] = string.IsNullOrWhiteSpace(request.AdditionalNotes) ? null : request.AdditionalNotes.Trim();
+        var missing = new List<string>();
+        var filled = LetterFields.Fill(template.Body, values, request.Inputs, missing);
+
+        // Archiwum zawsze w PDF; plik dla użytkownika – w wybranym formacie.
+        var pdf = await _renderer.RenderAsync(filled, template.UseLetterhead, LetterRenderer.Pdf, ct);
+        var bytes = format == LetterRenderer.Docx ? await _renderer.RenderAsync(filled, template.UseLetterhead, LetterRenderer.Docx, ct) : pdf;
 
         var history = new GeneratedDocument
         {
             Id = Guid.NewGuid(),
-            Template = request.Template,
+            Template = template.LegacyType,
+            LetterTemplateId = template.Id,
+            Title = template.Name,
+            RenderedBody = filled,
+            UseLetterhead = template.UseLetterhead,
             PersonId = person.Id,
             GeneratedByUserId = generatedByUserId,
             AdditionalNotes = request.AdditionalNotes,
             CreatedAtUtc = createdAt,
             DownloadCount = 1
         };
-        await TryStoreAsync(history, pdfBytes, ct);
+        await TryStoreAsync(history, pdf, ct);
         _db.GeneratedDocuments.Add(history);
         await _db.SaveChangesAsync(ct);
 
-        return new GeneratedDocumentResult { PdfBytes = pdfBytes, History = ToDto(history, person.FullName) };
+        return new GeneratedDocumentResult
+        {
+            File = new LetterFile
+            {
+                Bytes = bytes, ContentType = format == LetterRenderer.Docx ? LetterRenderer.DocxType : LetterRenderer.PdfType,
+                FileName = LetterRenderer.FileName(template.Name, person.LastName, createdAt, format), MissingFields = missing
+            },
+            History = ToDto(history, person.FullName)
+        };
+    }
+
+    private async Task<LetterTemplate> FindTemplateAsync(GenerateDocumentRequest request, CancellationToken ct)
+    {
+        await LetterStarterTemplates.EnsureAsync(_db, _time.GetUtcNow().UtcDateTime, ct);
+        LetterTemplate? template = null;
+        if (request.LetterTemplateId is { } id)
+            template = await _db.LetterTemplates.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct);
+        else if (request.Template is { } legacy)
+            template = await _db.LetterTemplates.AsNoTracking().Where(t => t.LegacyType == legacy).OrderByDescending(t => t.IsActive).FirstOrDefaultAsync(ct);
+        return template ?? throw new InvalidOperationException("Nie znaleziono wzoru pisma – wybierz wzór z listy.");
     }
 
     public async Task<IReadOnlyList<GeneratedDocumentDto>> GetHistoryAsync(CancellationToken ct)
@@ -64,14 +98,17 @@ public class DocumentService : IDocumentService
         return docs.Select(d => ToDto(d, d.Person!.FullName)).ToList();
     }
 
-    public async Task<DocumentDownload?> DownloadAsync(Guid id, CancellationToken ct)
+    public async Task<DocumentDownload?> DownloadAsync(Guid id, CancellationToken ct, string? format = null)
     {
-        var history = await _db.GeneratedDocuments.FirstOrDefaultAsync(d => d.Id == id, ct);
+        var history = await _db.GeneratedDocuments.Include(d => d.Person).FirstOrDefaultAsync(d => d.Id == id, ct);
         if (history is null) return null;
+        var wanted = LetterRenderer.NormalizeFormat(format);
+        var title = TitleOf(history);
+        var fileName = LetterRenderer.FileName(title, history.Person?.LastName, history.CreatedAtUtc, wanted);
 
-        var fileName = $"{history.Template}.pdf";
         byte[]? bytes = null;
-        if (history.BlobPath is not null && _storage is not null)
+        var restored = false;
+        if (wanted == LetterRenderer.Pdf && history.BlobPath is not null && _storage is not null)
         {
             var stored = await _storage.DownloadAsync(history.BlobPath, ct);
             if (stored is not null)
@@ -83,18 +120,31 @@ public class DocumentService : IDocumentService
             }
         }
 
-        var restored = bytes is null;
-        if (restored)
+        if (bytes is null && history.RenderedBody is not null)
         {
+            // Treść zapisana przy generowaniu – ta sama co w oryginale.
+            bytes = await _renderer.RenderAsync(history.RenderedBody, history.UseLetterhead, wanted, ct);
+        }
+        if (bytes is null)
+        {
+            if (wanted == LetterRenderer.Docx)
+                throw new InvalidOperationException("Wersja Word jest dostępna tylko dla pism wygenerowanych z wzorów w portalu.");
             var person = await _db.People.Include(p => p.Parish).AsNoTracking().FirstOrDefaultAsync(p => p.Id == history.PersonId, ct)
                 ?? throw new InvalidOperationException("Nie można odtworzyć pisma: osoba została usunięta.");
-            bytes = RenderPdf(DocumentTemplates.Title(history.Template), person, history.AdditionalNotes, history.CreatedAtUtc, DocumentTemplates.IsDraft(history.Template));
+            bytes = RenderLegacyPdf(title, person, history.AdditionalNotes, history.CreatedAtUtc);
+            restored = true;
         }
 
         history.DownloadCount++;
         await _db.SaveChangesAsync(ct);
-        return new DocumentDownload { PdfBytes = bytes!, FileName = fileName, Restored = restored };
+        return new DocumentDownload
+        {
+            Bytes = bytes, FileName = fileName, Restored = restored,
+            ContentType = wanted == LetterRenderer.Docx ? LetterRenderer.DocxType : LetterRenderer.PdfType
+        };
     }
+
+    private static string TitleOf(GeneratedDocument d) => d.Title ?? (d.Template is { } t ? DocumentTemplates.Title(t) : "Pismo");
 
     public async Task<GeneratedDocumentDto?> DeleteAsync(Guid id, CancellationToken ct)
     {
@@ -124,7 +174,7 @@ public class DocumentService : IDocumentService
     {
         if (_storage is null) return;
 
-        var blobPath = $"generated-documents/{history.Id}/{history.Template}.pdf";
+        var blobPath = $"generated-documents/{history.Id}/pismo.pdf";
         try
         {
             using var stream = new MemoryStream(pdfBytes);
@@ -139,7 +189,8 @@ public class DocumentService : IDocumentService
         }
     }
 
-    private static byte[] RenderPdf(string title, Person person, string? additionalNotes, DateTime date, bool isDraft)
+    /// <summary>Dawne pisma (sprzed wzorów w portalu) bez zapisanego pliku – odtwarzane w dawnym układzie.</summary>
+    private static byte[] RenderLegacyPdf(string title, Person person, string? additionalNotes, DateTime date)
     {
         var document = Document.Create(container =>
         {
@@ -159,10 +210,7 @@ public class DocumentService : IDocumentService
                         column.Item().Text($"Uwagi dodatkowe: {additionalNotes}");
                     }
                 });
-                if (isDraft)
-                {
-                    page.Footer().AlignCenter().Text(DocumentTemplates.DraftNotice).FontSize(9).Italic();
-                }
+                page.Footer().AlignCenter().Text(DocumentTemplates.DraftNotice).FontSize(9).Italic();
             });
         });
         return document.GeneratePdf();
@@ -172,6 +220,9 @@ public class DocumentService : IDocumentService
     {
         Id = d.Id,
         Template = d.Template,
+        LetterTemplateId = d.LetterTemplateId,
+        Title = TitleOf(d),
+        CanDownloadWord = d.RenderedBody is not null,
         PersonId = d.PersonId,
         PersonFullName = personFullName,
         GeneratedByUserId = d.GeneratedByUserId,

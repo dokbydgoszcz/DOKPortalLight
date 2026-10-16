@@ -1,60 +1,99 @@
 <div class="page-heading">
-  <div><h2>Dokumenty i pisma</h2><p>Generator pism z polami scalonymi z profilu osoby.</p></div>
+  <div><h2>Dokumenty i pisma</h2><p>Pisma z wzorów – pola wypełniają się danymi osoby, jej sprawy, parafii i misji.</p></div>
 </div>
 
-<div *appHasPermission="'Documents.Generate'" class="card">
-  <div class="card-body">
-    <div class="note draft-notice" style="margin-bottom:12px">
-      <b>Wzór do uzupełnienia.</b> Pisma mają na razie wspólny, prosty układ (dane osoby i uwagi) i nie są jeszcze dokumentami urzędowymi —
-      właściwa treść każdego pisma zostanie wstawiona po zatwierdzeniu wzorów. Każdy PDF ma u dołu takie samo ostrzeżenie.
+@if (canEditTemplates) {
+  <div class="card tabs-card">
+    <div class="tabs">
+      <button class="tab" type="button" [class.active]="tab() === 'generate'" (click)="switchTab('generate')">Pisma</button>
+      <button class="tab" type="button" [class.active]="tab() === 'templates'" (click)="switchTab('templates')">Wzory pism</button>
+      <button class="tab" type="button" [class.active]="tab() === 'letterhead'" (click)="switchTab('letterhead')">Nagłówek i stopka</button>
     </div>
-    <div class="form-grid">
-      <div class="field">
-        <label>Szablon</label>
-        <select [(ngModel)]="form.template" name="template">
-          @for (template of templates; track template) {
-            <option [value]="template">{{ templateLabels[template] }}</option>
+  </div>
+}
+
+@if (tab() === 'templates') {
+  <app-letter-templates />
+} @else if (tab() === 'letterhead') {
+  <app-letterhead-settings />
+} @else {
+  @if (canGenerate) {
+    <div class="card">
+      <div class="card-head"><h3>Nowe pismo</h3></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="field">
+            <label for="doc-template">Wzór</label>
+            <select id="doc-template" name="template" [ngModel]="templateId" (ngModelChange)="selectTemplate($event)">
+              @for (t of templates(); track t.id) { <option [value]="t.id">{{ t.name }}</option> }
+            </select>
+          </div>
+          <div class="field">
+            <label>Osoba</label>
+            <app-person-picker [(ngModel)]="personId" name="personId" />
+          </div>
+          @for (name of selected?.inputs ?? []; track name) {
+            <div class="field">
+              <label [for]="'input-' + $index">{{ name }}</label>
+              <input [id]="'input-' + $index" [name]="'input-' + $index" [(ngModel)]="inputs[name]" />
+            </div>
           }
-        </select>
-      </div>
-      <div class="field">
-        <label>Osoba</label>
-        <app-person-picker [(ngModel)]="form.personId" name="personId" />
-      </div>
-      <div class="field full"><label>Uwagi dodatkowe</label><textarea [(ngModel)]="form.additionalNotes" name="additionalNotes"></textarea></div>
-    </div>
-    <button class="btn primary" [disabled]="!form.personId" (click)="generate()">Generuj PDF</button>
-  </div>
-</div>
-
-<div class="card">
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Data</th><th>Szablon</th><th>Osoba</th><th>Pobrania</th><th></th></tr></thead>
-      <tbody>
-        @for (doc of history(); track doc.id) {
-          <tr>
-            <td>{{ doc.createdAtUtc | date: 'dd.MM.yyyy HH:mm' }}</td>
-            <td>
-              {{ templateLabels[doc.template] }}
-              @if (!doc.hasStoredFile) {
-                <br /><span class="small-muted">odtwarzane z aktualnych danych</span>
-              }
-            </td>
-            <td>{{ doc.personFullName }}</td>
-            <td class="download-count">{{ doc.downloadCount }}</td>
-            <td>
-              <span class="link" (click)="download(doc)">Pobierz</span>
-              <ng-container *appHasPermission="'Documents.Generate'">
-                &nbsp;·&nbsp;
-                <span class="link" style="color:var(--danger)" (click)="remove(doc)">Usuń</span>
-              </ng-container>
-            </td>
-          </tr>
-        } @empty {
-          <tr><td colspan="5" class="empty">Brak wygenerowanych dokumentów.</td></tr>
+          <div class="field full">
+            <label for="doc-notes">Uwagi (do historii i pola „Uwagi” we wzorze)</label>
+            <textarea id="doc-notes" name="additionalNotes" [(ngModel)]="additionalNotes"></textarea>
+          </div>
+        </div>
+        @if (!templates().length) {
+          <p class="small-muted">Nie ma aktywnych wzorów pism.@if (canEditTemplates) { Dodaj je w zakładce „Wzory pism”. }</p>
         }
-      </tbody>
-    </table>
+        <div class="generate-actions">
+          <button class="btn ghost" type="button" [disabled]="!templateId || !personId || busy()" (click)="showPreview()">Podgląd</button>
+          <button class="btn primary" type="button" [disabled]="!templateId || !personId || busy()" (click)="generate('pdf')">Generuj PDF</button>
+          <button class="btn ghost" type="button" [disabled]="!templateId || !personId || busy()" (click)="generate('docx')">Generuj Word</button>
+        </div>
+        @if (lastMissing().length) {
+          <div class="note missing">W ostatnim piśmie zabrakło danych: <b>{{ lastMissing().join(', ') }}</b>. Są tam kropki do wypełnienia –
+            możesz uzupełnić dane osoby i wygenerować pismo ponownie.</div>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="card">
+    <div class="card-head"><h3>Wygenerowane pisma</h3></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Data</th><th>Pismo</th><th>Osoba</th><th>Pobrania</th><th></th></tr></thead>
+        <tbody>
+          @for (doc of history(); track doc.id) {
+            <tr>
+              <td>{{ doc.createdAtUtc | date: 'dd.MM.yyyy HH:mm' }}</td>
+              <td>
+                {{ doc.title }}
+                @if (!doc.hasStoredFile && !doc.canDownloadWord) {
+                  <br /><span class="small-muted">odtwarzane z aktualnych danych</span>
+                }
+              </td>
+              <td>{{ doc.personFullName }}</td>
+              <td class="download-count">{{ doc.downloadCount }}</td>
+              <td class="letter-actions">
+                <span class="link" (click)="download(doc)">PDF</span>
+                @if (doc.canDownloadWord) { &nbsp;·&nbsp;<span class="link" (click)="download(doc, 'docx')">Word</span> }
+                <ng-container *appHasPermission="'Documents.Generate'">
+                  &nbsp;·&nbsp;
+                  <span class="link" style="color:var(--danger)" (click)="remove(doc)">Usuń</span>
+                </ng-container>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" class="empty">Brak wygenerowanych dokumentów.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
   </div>
-</div>
+}
+
+@if (preview(); as p) {
+  <app-pdf-preview [blob]="p.blob" [missing]="p.missing" [title]="'Podgląd: ' + (selected?.name ?? '')" (closed)="preview.set(null)" />
+}

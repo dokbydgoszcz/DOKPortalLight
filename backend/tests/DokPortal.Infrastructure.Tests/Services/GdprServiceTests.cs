@@ -43,6 +43,9 @@ public class GdprServiceTests
         var parish = new Parish { Id = Guid.NewGuid(), Name = "św. Mateusza" };
         var student = NewPerson("Jan", "Kowalski", "jan@example.org");
         student.Phone = "600 100 200";
+        student.AddressStreet = "ul. Polna 5";
+        student.AddressPostalCode = "85-001";
+        student.AddressCity = "Bydgoszcz";
         student.BirthDate = new DateOnly(1990, 5, 1);
         student.ParishId = parish.Id;
         student.Notes = "Uwaga o osobie";
@@ -99,6 +102,7 @@ public class GdprServiceTests
 
         Assert.Contains("\"imie\":\"Jan\"", json);
         Assert.Contains("600 100 200", json);
+        Assert.Contains("ul. Polna 5, 85-001 Bydgoszcz", json);
         Assert.Contains("Metryka chrztu", json);
         Assert.Contains("Anna Maj", json);
         Assert.Contains("rozmowa", json);
@@ -124,7 +128,7 @@ public class GdprServiceTests
         var person = await db.People.Include(p => p.Functions).SingleAsync(p => p.Id == seed.Student.Id);
         Assert.Equal("Osoba", person.FirstName);
         Assert.StartsWith("zanonimizowana ", person.LastName);
-        Assert.All(new object?[] { person.Email, person.Phone, person.BirthDate, person.ParishId, person.Notes, person.NameDayMonth, person.PhotoBlobPath, person.MailingUnsubscribeToken }, Assert.Null);
+        Assert.All(new object?[] { person.AddressStreet, person.AddressPostalCode, person.AddressCity, person.Email, person.Phone, person.BirthDate, person.ParishId, person.Notes, person.NameDayMonth, person.PhotoBlobPath, person.MailingUnsubscribeToken }, Assert.Null);
         Assert.NotNull(person.AnonymizedAtUtc);
         Assert.NotNull(person.MailingOptOutAtUtc);
         Assert.Null(person.Functions.Single().Notes);

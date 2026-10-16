@@ -37,6 +37,9 @@ export interface Person {
   fullName: string;
   email: string | null;
   phone: string | null;
+  addressStreet?: string | null;
+  addressPostalCode?: string | null;
+  addressCity?: string | null;
   birthDate: string | null;
   parishId: string | null;
   parishName: string | null;
@@ -64,6 +67,9 @@ export interface PersonFormValue {
   lastName: string;
   email?: string;
   phone?: string;
+  addressStreet?: string;
+  addressPostalCode?: string;
+  addressCity?: string;
   birthDate?: string;
   parishId?: string;
   notes?: string;

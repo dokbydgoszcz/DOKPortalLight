@@ -36,16 +36,16 @@ public class DocumentsController : ControllerBase
         var userId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
         var result = await _documentService.GenerateAsync(request, userId, ct);
         if (result is null) return NotFound();
-        return File(result.PdfBytes, "application/pdf", $"{result.History.Template}.pdf");
+        return this.LetterFileResult(result.File);
     }
 
     [HttpGet("{id:guid}/download")]
     [Audit("DownloadDocument")]
     [HasPermission(Permissions.DocumentsView)]
-    public async Task<IActionResult> Download(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Download(Guid id, [FromQuery] string? format, CancellationToken ct)
     {
-        var download = await _documentService.DownloadAsync(id, ct);
-        return download is null ? NotFound() : File(download.PdfBytes, "application/pdf", download.FileName);
+        var download = await _documentService.DownloadAsync(id, ct, format);
+        return download is null ? NotFound() : File(download.Bytes, download.ContentType, download.FileName);
     }
 
     [HttpDelete("{id:guid}")]
@@ -58,8 +58,19 @@ public class DocumentsController : ControllerBase
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
         var currentUserEmail = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Email).Value;
         await _auditLogService.LogAsync(
-            currentUserId, currentUserEmail, "DeleteGeneratedDocument", $"{removed.Template} – {removed.PersonFullName}",
+            currentUserId, currentUserEmail, "DeleteGeneratedDocument", $"{removed.Title} – {removed.PersonFullName}",
             DokPortal.Domain.Enums.AuditResult.Allowed, ct);
         return NoContent();
+    }
+}
+
+internal static class LetterFileResults
+{
+    /// <summary>Plik pisma; nazwy pól bez danych idą w nagłówku X-Missing-Fields (zakodowane, rozdzielone „|”).</summary>
+    public static IActionResult LetterFileResult(this ControllerBase controller, LetterFile file)
+    {
+        if (file.MissingFields.Count > 0)
+            controller.Response.Headers["X-Missing-Fields"] = Uri.EscapeDataString(string.Join("|", file.MissingFields));
+        return controller.File(file.Bytes, file.ContentType, file.FileName);
     }
 }

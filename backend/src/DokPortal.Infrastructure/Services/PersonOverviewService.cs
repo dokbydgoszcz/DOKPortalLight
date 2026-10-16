@@ -102,7 +102,7 @@ public class PersonOverviewService : IPersonOverviewService
         {
             documents = (await _db.GeneratedDocuments.AsNoTracking().Where(d => d.PersonId == personId)
                     .OrderByDescending(d => d.CreatedAtUtc).ToListAsync(ct))
-                .Select(d => new OverviewDocumentDto { Id = d.Id, Title = DocumentTemplates.Title(d.Template), CreatedAtUtc = d.CreatedAtUtc })
+                .Select(d => new OverviewDocumentDto { Id = d.Id, Title = d.Title ?? (d.Template != null ? DocumentTemplates.Title(d.Template.Value) : "Pismo"), CreatedAtUtc = d.CreatedAtUtc })
                 .ToList();
         }
 

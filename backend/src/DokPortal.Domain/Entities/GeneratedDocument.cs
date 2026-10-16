@@ -5,7 +5,15 @@ namespace DokPortal.Domain.Entities;
 public class GeneratedDocument
 {
     public Guid Id { get; set; }
-    public DocumentTemplate Template { get; set; }
+    /// <summary>Dawny wbudowany typ pisma (stare wpisy i wzory startowe); null dla wzorów dodanych w portalu.</summary>
+    public DocumentTemplate? Template { get; set; }
+    /// <summary>Wzór, z którego powstało pismo.</summary>
+    public Guid? LetterTemplateId { get; set; }
+    /// <summary>Nazwa wzoru w chwili generowania (zmiana nazwy wzoru nie zmienia historii).</summary>
+    public string? Title { get; set; }
+    /// <summary>Wypełniona treść pisma w chwili generowania – z niej odtwarzamy PDF i Word, nawet gdy wzór się zmieni.</summary>
+    public string? RenderedBody { get; set; }
+    public bool UseLetterhead { get; set; }
     public Guid PersonId { get; set; }
     public Person? Person { get; set; }
     public required string GeneratedByUserId { get; set; }

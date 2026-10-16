@@ -66,7 +66,7 @@ public class DocumentStorageTests
         var result = await service.GenerateAsync(Request(person.Id), "user-1", default);
 
         var stored = Assert.Single(storage.Files);
-        Assert.Equal(result!.PdfBytes, stored.Value);
+        Assert.Equal(result!.File.Bytes, stored.Value);
         Assert.StartsWith($"generated-documents/{result.History.Id}/", stored.Key);
         Assert.True(result.History.HasStoredFile);
         Assert.Equal(1, result.History.DownloadCount);
@@ -81,7 +81,7 @@ public class DocumentStorageTests
 
         var result = await service.GenerateAsync(Request(person.Id), "user-1", default);
 
-        Assert.True(IsPdf(result!.PdfBytes));
+        Assert.True(IsPdf(result!.File.Bytes));
         Assert.False(result.History.HasStoredFile);
         Assert.Single(await db.GeneratedDocuments.ToListAsync());
     }
@@ -94,7 +94,7 @@ public class DocumentStorageTests
 
         var result = await new DocumentService(db).GenerateAsync(Request(person.Id), "user-1", default);
 
-        Assert.True(IsPdf(result!.PdfBytes));
+        Assert.True(IsPdf(result!.File.Bytes));
         Assert.False(result.History.HasStoredFile);
     }
 
@@ -109,10 +109,11 @@ public class DocumentStorageTests
         var first = await service.DownloadAsync(generated!.History.Id, default);
         var second = await service.DownloadAsync(generated.History.Id, default);
 
-        Assert.Equal(generated.PdfBytes, first!.PdfBytes);
+        Assert.Equal(generated.File.Bytes, first!.Bytes);
         Assert.False(first.Restored);
-        Assert.Equal("LetterToBishop.pdf", first.FileName);
-        Assert.Equal(generated.PdfBytes, second!.PdfBytes);
+        Assert.StartsWith("Pismo-do-Biskupa_", first.FileName);
+        Assert.EndsWith(".pdf", first.FileName);
+        Assert.Equal(generated.File.Bytes, second!.Bytes);
         Assert.Equal(3, (await service.GetHistoryAsync(default)).Single().DownloadCount);
     }
 
@@ -133,8 +134,9 @@ public class DocumentStorageTests
         var download = await service.DownloadAsync(old.Id, default);
 
         Assert.True(download!.Restored);
-        Assert.True(IsPdf(download.PdfBytes));
-        Assert.Equal("DokReferral.pdf", download.FileName);
+        Assert.True(IsPdf(download.Bytes));
+        Assert.StartsWith("Skierowanie-do-DOK_", download.FileName);
+        Assert.EndsWith("_2026-09-01.pdf", download.FileName);
         Assert.Equal(2, (await service.GetHistoryAsync(default)).Single().DownloadCount);
     }
 
@@ -150,8 +152,9 @@ public class DocumentStorageTests
 
         var download = await service.DownloadAsync(generated!.History.Id, default);
 
-        Assert.True(download!.Restored);
-        Assert.True(IsPdf(download.PdfBytes));
+        // Treść zapisana przy generowaniu – plik powstaje z niej na nowo, bez sięgania do aktualnych danych.
+        Assert.False(download!.Restored);
+        Assert.True(IsPdf(download.Bytes));
     }
 
     [Fact]

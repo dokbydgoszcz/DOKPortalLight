@@ -46,6 +46,22 @@ public class PersonFunctionEndpointsTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task TheHomeAddress_IsSavedTrimmed_AndCanBeCleared()
+    {
+        var admin = await AdminAsync();
+        var created = await (await admin.PostAsJsonAsync("/api/people", new
+        {
+            FirstName = "Ala", LastName = $"Adres{Guid.NewGuid():N}"[..14], AddressStreet = " ul. Długa 5 ", AddressPostalCode = "85-001", AddressCity = "Bydgoszcz"
+        })).Content.ReadFromJsonAsync<PersonDto>(EnumJsonOptions);
+        Assert.Equal(("ul. Długa 5", "85-001", "Bydgoszcz"), (created!.AddressStreet, created.AddressPostalCode, created.AddressCity));
+
+        var cleared = await (await admin.PutAsJsonAsync($"/api/people/{created.Id}", new { FirstName = "Ala", LastName = created.LastName, AddressStreet = "  " }))
+            .Content.ReadFromJsonAsync<PersonDto>(EnumJsonOptions);
+        Assert.Null(cleared!.AddressStreet);
+        Assert.Null(cleared.AddressCity);
+    }
+
+    [Fact]
     public async Task PeopleWithoutAnyFunction_CanBeListedOnTheirOwn()
     {
         var admin = await AdminAsync();

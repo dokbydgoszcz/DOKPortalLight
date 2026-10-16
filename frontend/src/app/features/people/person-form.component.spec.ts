@@ -134,4 +134,14 @@ describe('PersonFormComponent', () => {
     clickByText(el, 'Zapisz', '.modal-foot button');
     expect(saved).toEqual([{ firstName: 'Anna', lastName: 'Maj', mailingOptOut: false }]);
   });
+
+  it('edits the home address', async () => {
+    const { fixture, el, saved } = render(true, { firstName: 'Anna', lastName: 'Maj' });
+    await fixture.whenStable();
+    setInput(el, 'input[name="addressStreet"]', 'ul. Długa 5');
+    setInput(el, 'input[name="addressPostalCode"]', '85-001');
+    setInput(el, 'input[name="addressCity"]', 'Bydgoszcz');
+    clickByText(el, 'Zapisz', '.modal-foot button');
+    expect(saved).toEqual([{ firstName: 'Anna', lastName: 'Maj', addressStreet: 'ul. Długa 5', addressPostalCode: '85-001', addressCity: 'Bydgoszcz' }]);
+  });
 });

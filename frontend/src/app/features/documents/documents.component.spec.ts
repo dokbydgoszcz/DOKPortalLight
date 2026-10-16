@@ -1,243 +1,179 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpHeaders } from '@angular/common/http';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DocumentsComponent } from './documents.component';
-import { GeneratedDocument } from './generated-document.model';
+import { GeneratedDocument, LetterTemplate } from './generated-document.model';
 import { ToastService } from '../../core/notifications/toast.service';
-import { api, clickByText, paged, setInput, setSelect, setup, textOf , choosePerson, pickedPerson } from '../../testing/test-helpers';
+import { api, choosePerson, clickByText, setup, textOf } from '../../testing/test-helpers';
 
 const history: GeneratedDocument[] = [{
-  id: 'd1', template: 'LetterToBishop', personId: 'p1', personFullName: 'Jan Kowalski',
+  id: 'd1', template: null, letterTemplateId: 't1', title: 'Zaświadczenie o chrzcie', canDownloadWord: true, personId: 'p1', personFullName: 'Jan Kowalski',
   generatedByUserId: 'u1', additionalNotes: null, createdAtUtc: '2026-09-22T10:00:00Z', hasStoredFile: true, downloadCount: 3
 }];
-const oldDocument: GeneratedDocument = { ...history[0], id: 'd2', template: 'DokReferral', hasStoredFile: false, downloadCount: 1 };
-const people = [
-  { id: 'p1', firstName: 'Jan', lastName: 'Kowalski', fullName: 'Jan Kowalski', email: null, phone: null, birthDate: null, parishId: null, parishName: null, notes: null }
+const oldDocument: GeneratedDocument = { ...history[0], id: 'd2', title: 'Skierowanie do DOK', canDownloadWord: false, hasStoredFile: false, downloadCount: 1 };
+const templates: LetterTemplate[] = [
+  { id: 't1', name: 'Zaświadczenie o chrzcie', body: '<p>{{wpisz:Data chrztu}}</p>', useLetterhead: true, isActive: true, sortOrder: 0, updatedAtUtc: '', updatedByEmail: null, inputs: ['Data chrztu'], unknownFields: [], usageCount: 1 },
+  { id: 't2', name: 'Klauzula RODO', body: '<p>RODO</p>', useLetterhead: false, isActive: true, sortOrder: 1, updatedAtUtc: '', updatedByEmail: null, inputs: [], unknownFields: [], usageCount: 0 }
 ];
 const url = api('/api/documents');
+const templatesUrl = api('/api/document-templates');
+const pdfHeaders = new HttpHeaders({ 'Content-Disposition': 'attachment; filename="Zaswiadczenie_Kowalski.pdf"', 'X-Missing-Fields': encodeURIComponent('Misja od') });
 
-function boot(items: GeneratedDocument[] = history) {
-  const ctx = setup(DocumentsComponent);
+function boot(items: GeneratedDocument[] = history, granted?: string[]) {
+  const ctx = setup(DocumentsComponent, { granted });
   ctx.fixture.detectChanges();
   ctx.http.expectOne(url).flush(items);
+  ctx.http.match(r => r.url === templatesUrl).forEach(r => r.flush(templates));
   ctx.fixture.detectChanges();
   return ctx;
 }
 
-const generateButton = (el: HTMLElement) => el.querySelector('.card-body > button.primary') as HTMLButtonElement;
 const toastMessages = () => TestBed.inject(ToastService).toasts().map(t => t.message);
+const button = (el: HTMLElement, text: string) => Array.from(el.querySelectorAll('button')).find(b => b.textContent!.trim() === text) as HTMLButtonElement;
 
 describe('DocumentsComponent', () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it('renders the history of generated documents with readable template names', () => {
-    const { el } = boot();
-
-    expect(textOf(el)).toContain('Pismo do Biskupa');
-    expect(textOf(el)).toContain('Jan Kowalski');
+  it('lists generated letters by title, with PDF and Word downloads', () => {
+    const { el } = boot([...history, oldDocument]);
+    const text = textOf(el);
+    expect(text).toContain('Zaświadczenie o chrzcie');
+    expect(text).toContain('odtwarzane z aktualnych danych');
+    expect(el.querySelectorAll('tbody tr')[0].textContent).toContain('Word');
+    expect(el.querySelectorAll('tbody tr')[1].textContent).not.toContain('Word');
   });
 
-  it('says when nothing has been generated yet', () => {
-    const { el } = boot([]);
-
-    expect(textOf(el)).toContain('Brak wygenerowanych dokumentów.');
+  it('says when nothing has been generated yet, and when there are no templates', () => {
+    const ctx = setup(DocumentsComponent);
+    ctx.fixture.detectChanges();
+    ctx.http.expectOne(url).flush([]);
+    ctx.http.expectOne(templatesUrl).flush([]);
+    ctx.fixture.detectChanges();
+    expect(textOf(ctx.el)).toContain('Brak wygenerowanych dokumentów.');
+    expect(textOf(ctx.el)).toContain('Nie ma aktywnych wzorów pism.');
   });
 
-  it('offers every template and keeps generating disabled until a person is chosen', () => {
-    const { fixture, el } = boot();
-
-    expect(el.querySelectorAll('select[name="template"] option').length).toBe(11);
-    expect(generateButton(el).disabled).toBe(true);
-
-    choosePerson(fixture, 'personId', 'p1');
-    fixture.detectChanges();
-    expect(generateButton(el).disabled).toBe(false);
-  });
-
-  it('requests the chosen template for the chosen person and downloads the PDF, then reloads the history', async () => {
+  it('asks for the typed-in fields, generates PDF and Word, and lists the missing data', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:x');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     const ctx = boot();
-    await ctx.fixture.whenStable();
-    URL.createObjectURL = vi.fn(() => 'blob:test');
-    URL.revokeObjectURL = vi.fn();
-    let downloadName = '';
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
-      downloadName = this.download;
-    });
-
-    setSelect(ctx.el, 'select[name="template"]', 'ConversionConsent');
-    choosePerson(ctx.fixture, 'personId', 'p1');
-    setInput(ctx.el, 'textarea[name="additionalNotes"]', 'Pilne');
-    ctx.fixture.detectChanges();
-    generateButton(ctx.el).click();
-
-    const req = ctx.http.expectOne(r => r.method === 'POST' && r.url === `${url}/generate`);
-    expect(req.request.body).toEqual({ template: 'ConversionConsent', personId: 'p1', additionalNotes: 'Pilne' });
-    expect(req.request.responseType).toBe('blob');
-    req.flush(new Blob(['%PDF']));
-
-    expect(downloadName).toBe('ConversionConsent.pdf');
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test');
-    ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush(history);
-  });
-
-  it('tells the user when generating the document fails', async () => {
-    const ctx = boot();
-    await ctx.fixture.whenStable();
-    choosePerson(ctx.fixture, 'personId', 'p1');
+    expect(button(ctx.el, 'Generuj PDF').disabled).toBe(true);
+    choosePerson(ctx.fixture, 'personId', 'p1', 'Jan Kowalski');
+    const input = ctx.el.querySelector('#input-0') as HTMLInputElement;
+    expect(ctx.el.querySelector('label[for="input-0"]')!.textContent).toContain('Data chrztu');
+    input.value = ' 1 maja ';
+    input.dispatchEvent(new Event('input'));
+    const notes = ctx.el.querySelector('#doc-notes') as HTMLTextAreaElement;
+    notes.value = 'Do akt';
+    notes.dispatchEvent(new Event('input'));
     ctx.fixture.detectChanges();
 
-    generateButton(ctx.el).click();
-    ctx.http.expectOne(r => r.method === 'POST').error(new ProgressEvent('error'), { status: 500, statusText: 'Server Error' });
-
-    expect(toastMessages()).toContain('Nie udało się wygenerować dokumentu.');
-  });
-
-  it('warns that every letter is still a draft template awaiting approval', () => {
-    const { el } = boot();
-
-    expect(textOf(el)).toContain('Wzór do uzupełnienia');
-    expect(textOf(el)).toContain('nie są jeszcze dokumentami urzędowymi');
-  });
-
-  it('shows no generator card without the Documents.Generate permission', () => {
-    const ctx = setup(DocumentsComponent, { granted: ['Documents.View'] });
-    ctx.fixture.detectChanges();
+    button(ctx.el, 'Generuj PDF').click();
+    const req = ctx.http.expectOne(`${url}/generate`);
+    expect(req.request.body).toEqual({ letterTemplateId: 't1', personId: 'p1', additionalNotes: 'Do akt', inputs: { 'Data chrztu': '1 maja' }, format: 'pdf' });
+    req.flush(new Blob(['%PDF']), { headers: pdfHeaders });
     ctx.http.expectOne(url).flush(history);
     ctx.fixture.detectChanges();
+    expect(textOf(ctx.el)).toContain('zabrakło danych: Misja od');
+    expect(toastMessages().join(' ')).toContain('uzupełnij odręcznie');
 
-    expect(clickByTextSafe(ctx.el, 'Generuj PDF')).toBe(false);
+    button(ctx.el, 'Generuj Word').click();
+    ctx.http.expectOne(`${url}/generate`).flush(new Blob(['x']));
+    ctx.http.expectOne(url).flush(history);
+    expect(toastMessages()).toContain('Pismo gotowe.');
+
+    button(ctx.el, 'Generuj PDF').click();
+    ctx.http.expectOne(`${url}/generate`).flush(new Blob([JSON.stringify({ title: 'Wzór „X” jest wyłączony.' })]), { status: 400, statusText: 'Bad Request' });
+    await new Promise(r => setTimeout(r, 0));
+    expect(toastMessages()).toContain('Wzór „X” jest wyłączony.');
   });
 
-  describe('history actions', () => {
-    const rowOf = (el: HTMLElement, text: string) =>
-      Array.from(el.querySelectorAll('tbody tr')).find(r => r.textContent!.includes(text)) as HTMLElement;
-    const action = (el: HTMLElement, rowText: string, label: string) =>
-      Array.from(rowOf(el, rowText).querySelectorAll<HTMLElement>('.link, button')).find(e => e.textContent!.trim() === label)!;
+  it('switches template keeping typed values, and previews the letter for the person', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:x');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const ctx = boot();
+    const component = ctx.fixture.componentInstance;
+    component.inputs['Data chrztu'] = 'x';
+    component.selectTemplate('t2');
+    expect(component.inputs).toEqual({});
+    const select = ctx.el.querySelector('#doc-template') as HTMLSelectElement;
+    select.value = 't2';
+    select.dispatchEvent(new Event('change'));
+    expect(component.templateId).toBe('t2');
+    component.selectTemplate('t1');
+    component.showPreview();
+    ctx.http.expectNone(`${templatesUrl}/preview`);
+    choosePerson(ctx.fixture, 'personId', 'p1');
+    button(ctx.el, 'Podgląd').click();
+    const preview = ctx.http.expectOne(`${templatesUrl}/preview`);
+    expect(preview.request.body).toMatchObject({ body: templates[0].body, useLetterhead: true, personId: 'p1', format: 'pdf' });
+    preview.flush(new Blob(['%PDF']), { headers: pdfHeaders });
+    ctx.fixture.detectChanges();
+    expect(ctx.el.querySelector('app-pdf-preview iframe')).not.toBeNull();
+    expect(textOf(ctx.el)).toContain('Brak danych w polach: Misja od');
+    clickByText(ctx.el, 'Zamknij');
+    ctx.fixture.detectChanges();
+    expect(ctx.el.querySelector('app-pdf-preview')).toBeNull();
 
-    function stubDownload() {
-      URL.createObjectURL = vi.fn(() => 'blob:test');
-      URL.revokeObjectURL = vi.fn();
-      const names: string[] = [];
-      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
-        names.push(this.download);
-      });
-      return names;
-    }
-
-    it('shows a readable date and the number of downloads', () => {
-      const { el } = boot();
-
-      const text = rowOf(el, 'Jan Kowalski').textContent!;
-      expect(text).toMatch(/22\.09\.2026 \d{2}:\d{2}/);
-      expect(text).not.toContain('2026-09-22T');
-      expect(el.querySelector('thead')!.textContent).toContain('Pobrania');
-      expect(rowOf(el, 'Jan Kowalski').querySelector('.download-count')!.textContent!.trim()).toBe('3');
-    });
-
-    it('marks entries without a stored file as restored from current data', () => {
-      const { el } = boot([history[0], oldDocument]);
-
-      expect(rowOf(el, 'Skierowanie do DOK').textContent).toContain('odtwarzane z aktualnych danych');
-      expect(rowOf(el, 'Pismo do Biskupa').textContent).not.toContain('odtwarzane');
-    });
-
-    it('downloads the document again as a PDF and refreshes the download count', () => {
-      const names = stubDownload();
-      const ctx = boot();
-
-      action(ctx.el, 'Jan Kowalski', 'Pobierz').click();
-
-      const req = ctx.http.expectOne(r => r.method === 'GET' && r.url === `${url}/d1/download`);
-      expect(req.request.responseType).toBe('blob');
-      req.flush(new Blob(['%PDF']));
-      expect(names).toEqual(['LetterToBishop.pdf']);
-      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test');
-      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([{ ...history[0], downloadCount: 4 }]);
-      ctx.fixture.detectChanges();
-      expect(rowOf(ctx.el, 'Jan Kowalski').querySelector('.download-count')!.textContent!.trim()).toBe('4');
-    });
-
-    it('shows a toast when the download fails', () => {
-      stubDownload();
-      const ctx = boot();
-
-      action(ctx.el, 'Jan Kowalski', 'Pobierz').click();
-      ctx.http.expectOne(r => r.method === 'GET' && r.url === `${url}/d1/download`).flush(new Blob(['x']), { status: 500, statusText: 'Server Error' });
-
-      expect(toastMessages()).toContain('Nie udało się pobrać dokumentu.');
-    });
-
-    it('deletes a document after confirmation and reloads the history', () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
-      const ctx = boot();
-
-      action(ctx.el, 'Jan Kowalski', 'Usuń').click();
-
-      ctx.http.expectOne(r => r.method === 'DELETE' && r.url === `${url}/d1`).flush(null, { status: 204, statusText: 'No Content' });
-      expect(toastMessages()).toContain('Dokument usunięty.');
-      ctx.http.expectOne(r => r.method === 'GET' && r.url === url).flush([]);
-      ctx.fixture.detectChanges();
-      expect(textOf(ctx.el)).toContain('Brak wygenerowanych dokumentów.');
-    });
-
-    it('does not delete anything when the confirmation is declined', () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
-      const ctx = boot();
-
-      action(ctx.el, 'Jan Kowalski', 'Usuń').click();
-
-      ctx.http.expectNone(r => r.method === 'DELETE');
-    });
-
-    it('shows a toast when deleting fails', () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
-      const ctx = boot();
-
-      action(ctx.el, 'Jan Kowalski', 'Usuń').click();
-      ctx.http.expectOne(r => r.method === 'DELETE').flush('x', { status: 500, statusText: 'Server Error' });
-
-      expect(toastMessages()).toContain('Nie udało się usunąć dokumentu.');
-    });
-
-    it('offers download but not delete to users who cannot generate documents', () => {
-      const ctx = setup(DocumentsComponent, { granted: ['Documents.View'] });
-      ctx.fixture.detectChanges();
-      ctx.http.expectOne(url).flush(history);
-      ctx.fixture.detectChanges();
-
-      expect(rowOf(ctx.el, 'Jan Kowalski').textContent).toContain('Pobierz');
-      expect(rowOf(ctx.el, 'Jan Kowalski').textContent).not.toContain('Usuń');
-    });
-  });
-  describe('templates', () => {
-    it('offers the new documents, but not the old generic sacrament certificate', () => {
-      const { el } = boot();
-      const options = Array.from(el.querySelectorAll('select[name="template"] option')).map(o => o.textContent!.trim());
-
-      expect(options).toContain('Wniosek o misję kanoniczną');
-      expect(options).toContain('Zaświadczenie o chrzcie');
-      expect(options).toContain('Zaświadczenie o bierzmowaniu');
-      expect(options).toContain('Zaświadczenie o Eucharystii');
-      expect(options).toContain('Zaświadczenie o ukończeniu studium katechumenalnego');
-      expect(options).toContain('Zaświadczenie – ojciec chrzestny / matka chrzestna');
-      expect(options).toContain('Klauzula RODO');
-      expect(options).not.toContain('Dekret misji kanonicznej');
-      expect(options).not.toContain('Zaświadczenie o sakramencie (dawne)');
-    });
-
-    it('still names an old generic certificate in the history', () => {
-      const { el } = boot([{ ...history[0], id: 'old', template: 'SacramentCertificate' }]);
-
-      expect(textOf(el)).toContain('Zaświadczenie o sakramencie (dawne)');
-    });
+    button(ctx.el, 'Podgląd').click();
+    ctx.http.expectOne(`${templatesUrl}/preview`).flush(new Blob(['x']), { status: 500, statusText: 'Error' });
+    await new Promise(r => setTimeout(r, 0));
+    expect(toastMessages()).toContain('Nie udało się przygotować podglądu.');
   });
 
+  it('downloads and deletes from the history', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:x');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    const ctx = boot();
+    clickByText(ctx.el, 'Word', '.letter-actions .link');
+    ctx.http.expectOne(r => r.url === `${url}/d1/download` && r.params.get('format') === 'docx').flush(new Blob(['x']));
+    ctx.http.expectOne(url).flush(history);
+    clickByText(ctx.el, 'PDF', '.letter-actions .link');
+    ctx.http.expectOne(r => r.url === `${url}/d1/download`).flush(new Blob(['nie json']), { status: 400, statusText: 'Bad Request' });
+    await new Promise(r => setTimeout(r, 0));
+    expect(toastMessages()).toContain('Nie udało się pobrać dokumentu.');
+
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
+    clickByText(ctx.el, 'Usuń', '.letter-actions .link');
+    ctx.http.expectNone(`${url}/d1`);
+    clickByText(ctx.el, 'Usuń', '.letter-actions .link');
+    ctx.http.expectOne(r => r.method === 'DELETE').flush(null);
+    ctx.http.expectOne(url).flush([]);
+    expect(toastMessages()).toContain('Dokument usunięty.');
+    ctx.fixture.detectChanges();
+  });
+
+  it('reports a failed delete and failed templates load', () => {
+    const ctx = setup(DocumentsComponent);
+    ctx.fixture.detectChanges();
+    ctx.http.expectOne(url).flush(history);
+    ctx.http.expectOne(templatesUrl).flush('x', { status: 500, statusText: 'Error' });
+    ctx.fixture.detectChanges();
+    expect(toastMessages()).toContain('Nie udało się wczytać wzorów pism.');
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    clickByText(ctx.el, 'Usuń', '.letter-actions .link');
+    ctx.http.expectOne(r => r.method === 'DELETE').flush('x', { status: 500, statusText: 'Error' });
+    expect(toastMessages()).toContain('Nie udało się usunąć dokumentu.');
+  });
+
+  it('shows the template and letterhead tabs only to those who may edit templates', () => {
+    const viewer = boot(history, ['Documents.View']);
+    expect(viewer.el.querySelector('.tabs')).toBeNull();
+    expect(textOf(viewer.el)).not.toContain('Nowe pismo');
+    TestBed.resetTestingModule();
+
+    const editor = boot();
+    clickByText(editor.el, 'Wzory pism', '.tabs button');
+    editor.fixture.detectChanges();
+    expect(editor.el.querySelector('app-letter-templates')).not.toBeNull();
+    clickByText(editor.el, 'Nagłówek i stopka', '.tabs button');
+    editor.fixture.detectChanges();
+    expect(editor.el.querySelector('app-letterhead-settings')).not.toBeNull();
+    clickByText(editor.el, 'Pisma', '.tabs button');
+    editor.http.match(r => r.url === templatesUrl).forEach(r => r.flush(templates));
+    editor.fixture.detectChanges();
+    expect(textOf(editor.el)).toContain('Nowe pismo');
+  });
 });
-
-function clickByTextSafe(el: HTMLElement, text: string): boolean {
-  try {
-    clickByText(el, text);
-    return true;
-  } catch {
-    return false;
-  }
-}

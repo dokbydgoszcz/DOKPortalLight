@@ -129,6 +129,7 @@ builder.Services.AddScoped<IPersonService, PersonService>();
 builder.Services.AddScoped<IPersonOverviewService, PersonOverviewService>();
 builder.Services.AddScoped<IPersonPhotoService, PersonPhotoService>();
 builder.Services.AddScoped<IGdprService, GdprService>();
+builder.Services.AddScoped<DokPortal.Application.Documents.ILetterTemplateService, LetterTemplateService>();
 builder.Services.AddScoped<IPeopleImportService, PeopleImportService>();
 builder.Services.AddScoped<ICalendarFeedService, CalendarFeedService>();
 builder.Services.AddScoped<IParishService, ParishService>();
@@ -237,7 +238,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("Frontend", policy =>
         policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
               .AllowAnyHeader()
-              .AllowAnyMethod());
+              .AllowAnyMethod()
+              .WithExposedHeaders("Content-Disposition", "X-Missing-Fields"));
 });
 
 var app = builder.Build();

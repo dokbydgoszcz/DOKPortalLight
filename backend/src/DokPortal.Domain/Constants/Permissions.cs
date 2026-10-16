@@ -39,6 +39,7 @@ public static class Permissions
     public const string SupervisionsExport = "Supervisions.Export";
     public const string DocumentsView = "Documents.View";
     public const string DocumentsGenerate = "Documents.Generate";
+    public const string DocumentTemplatesManage = "DocumentTemplates.Manage";
     public const string MailingView = "Mailing.View";
     public const string MailingManage = "Mailing.Manage";
     public const string GraduatesView = "Graduates.View";
@@ -92,6 +93,7 @@ public static class PermissionCatalog
         new(Permissions.SupervisionsExport, "Superwizje", "Eksport superwizji do Excela"),
         new(Permissions.DocumentsView, "Dokumenty i pisma", "Podgląd wygenerowanych dokumentów"),
         new(Permissions.DocumentsGenerate, "Dokumenty i pisma", "Generowanie dokumentów"),
+        new(Permissions.DocumentTemplatesManage, "Dokumenty i pisma", "Edycja wzorów pism oraz nagłówka i stopki"),
         new(Permissions.MailingView, "Mailing", "Podgląd kampanii mailingowych"),
         new(Permissions.MailingManage, "Mailing", "Tworzenie i wysyłka kampanii"),
         new(Permissions.GraduatesView, "Absolwenci", "Dostęp do ekranu absolwentów"),

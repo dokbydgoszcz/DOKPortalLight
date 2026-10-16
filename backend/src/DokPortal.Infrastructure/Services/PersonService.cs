@@ -109,6 +109,9 @@ public class PersonService : IPersonService
             LastName = request.LastName,
             Email = request.Email,
             Phone = request.Phone,
+            AddressStreet = Trimmed(request.AddressStreet),
+            AddressPostalCode = Trimmed(request.AddressPostalCode),
+            AddressCity = Trimmed(request.AddressCity),
             BirthDate = request.BirthDate,
             ParishId = request.ParishId,
             Notes = request.Notes,
@@ -145,6 +148,9 @@ public class PersonService : IPersonService
         person.LastName = request.LastName;
         person.Email = request.Email;
         person.Phone = request.Phone;
+        person.AddressStreet = Trimmed(request.AddressStreet);
+        person.AddressPostalCode = Trimmed(request.AddressPostalCode);
+        person.AddressCity = Trimmed(request.AddressCity);
         person.BirthDate = request.BirthDate;
         person.ParishId = request.ParishId;
         person.Notes = request.Notes;
@@ -279,6 +285,8 @@ public class PersonService : IPersonService
     /// Telefon tylko ostrzega, chyba że potwierdzono zapis. Przy edycji sprawdzamy wyłącznie zmienione pola,
     /// żeby dało się poprawiać osoby, które mają już duplikaty z wcześniejszych danych.
     /// </summary>
+    private static string? Trimmed(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     private async Task EnsureContactIsUniqueAsync(Guid? selfId, string? currentEmail, string? currentPhone, CreatePersonRequest request, CancellationToken ct)
     {
         var email = PersonContactNormalizer.NormalizeEmail(request.Email);
@@ -376,6 +384,9 @@ public class PersonService : IPersonService
         FullName = p.FullName,
         Email = p.Email,
         Phone = p.Phone,
+        AddressStreet = p.AddressStreet,
+        AddressPostalCode = p.AddressPostalCode,
+        AddressCity = p.AddressCity,
         BirthDate = p.BirthDate,
         ParishId = p.ParishId,
         ParishName = p.Parish?.Name,

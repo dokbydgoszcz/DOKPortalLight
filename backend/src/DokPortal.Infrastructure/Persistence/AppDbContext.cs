@@ -38,6 +38,8 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<SupervisionAttendee> SupervisionAttendees => Set<SupervisionAttendee>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<GeneratedDocument> GeneratedDocuments => Set<GeneratedDocument>();
+    public DbSet<LetterTemplate> LetterTemplates => Set<LetterTemplate>();
+    public DbSet<Letterhead> Letterheads => Set<Letterhead>();
     public DbSet<MailingCampaign> MailingCampaigns => Set<MailingCampaign>();
     public DbSet<MailingCampaignRecipient> MailingCampaignRecipients => Set<MailingCampaignRecipient>();
     public DbSet<MailingDelivery> MailingDeliveries => Set<MailingDelivery>();
@@ -71,6 +73,9 @@ public class AppDbContext : IdentityDbContext<AppUser>
             entity.Property(p => p.LastName).IsRequired().HasMaxLength(100);
             entity.Property(p => p.Email).HasMaxLength(256);
             entity.Property(p => p.Phone).HasMaxLength(50);
+            entity.Property(p => p.AddressStreet).HasMaxLength(200);
+            entity.Property(p => p.AddressPostalCode).HasMaxLength(20);
+            entity.Property(p => p.AddressCity).HasMaxLength(100);
             entity.Property(p => p.MailingUnsubscribeToken).HasMaxLength(64);
             entity.HasIndex(p => p.MailingUnsubscribeToken).IsUnique().HasFilter("[MailingUnsubscribeToken] IS NOT NULL");
 
@@ -245,8 +250,26 @@ public class AppDbContext : IdentityDbContext<AppUser>
             entity.HasIndex(a => new { a.OwnerType, a.OwnerId });
         });
 
+        builder.Entity<LetterTemplate>(entity =>
+        {
+            entity.Property(t => t.Name).IsRequired().HasMaxLength(200);
+            entity.Property(t => t.Body).IsRequired();
+            entity.Property(t => t.UpdatedByEmail).HasMaxLength(256);
+        });
+
+        builder.Entity<Letterhead>(entity =>
+        {
+            entity.Property(l => l.Id).ValueGeneratedNever();
+            entity.Property(l => l.HeaderText).HasMaxLength(1000);
+            entity.Property(l => l.FooterText).HasMaxLength(1000);
+            entity.Property(l => l.Place).HasMaxLength(100);
+            entity.Property(l => l.LogoBlobPath).HasMaxLength(300);
+            entity.Property(l => l.LogoContentType).HasMaxLength(100);
+        });
+
         builder.Entity<GeneratedDocument>(entity =>
         {
+            entity.Property(d => d.Title).HasMaxLength(200);
             entity.HasOne(d => d.Person).WithMany().HasForeignKey(d => d.PersonId).OnDelete(DeleteBehavior.Restrict);
         });
 

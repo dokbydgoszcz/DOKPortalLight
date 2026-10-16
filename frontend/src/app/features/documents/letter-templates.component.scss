@@ -1,0 +1,24 @@
+.templates-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 14px; align-items: start; }
+.list-card { position: sticky; top: 12px; }
+.template-list { list-style: none; margin: 0; padding: 6px; max-height: 72vh; overflow: auto; }
+.template-list button { width: 100%; display: grid; gap: 3px; text-align: left; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; font-size: 13px; }
+.template-list button:hover { background: #EEF2EF; }
+.template-list button.active { background: #DCEBE7; font-weight: 700; }
+.template-list .meta { display: flex; gap: 6px; align-items: center; font-weight: 400; }
+.empty-list { padding: 10px; }
+.editor-body { display: grid; gap: 12px; }
+.editor-head { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: flex-end; }
+.name-field { flex: 1 1 280px; margin: 0; }
+.toggles { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0 0 10px; }
+.fields-bar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.fields-bar select { width: auto; max-width: 360px; }
+.fields-bar code { font-size: 12px; }
+.warning { color: #7a5300; }
+.editor-foot { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: flex-end; }
+.preview-person { flex: 1 1 260px; max-width: 380px; margin: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 900px) {
+  .templates-layout { grid-template-columns: 1fr; }
+  .list-card { position: static; }
+  .template-list { max-height: 220px; }
+}

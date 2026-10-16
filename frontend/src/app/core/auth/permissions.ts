@@ -36,6 +36,7 @@ export const Permissions = {
   SupervisionsExport: 'Supervisions.Export',
   DocumentsView: 'Documents.View',
   DocumentsGenerate: 'Documents.Generate',
+  DocumentTemplatesManage: 'DocumentTemplates.Manage',
   MailingView: 'Mailing.View',
   MailingManage: 'Mailing.Manage',
   GraduatesView: 'Graduates.View',

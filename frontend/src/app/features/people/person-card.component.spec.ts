@@ -240,4 +240,13 @@ describe('PersonCardComponent', () => {
       expect(textOf(ctx.el)).not.toContain('RODO');
     });
   });
+
+  it('shows the home address when there is one', () => {
+    const empty = { dokCases: null, casesLed: null, candidate: null, candidateVisible: false, missions: null, parishAssignments: null,
+      formatorFunctions: null, documents: null, supervisions: null, account: null, accountVisible: false };
+    const ctx = boot({ person: { ...person, addressStreet: 'ul. Długa 5', addressPostalCode: '85-001', addressCity: 'Bydgoszcz' }, ...empty });
+    expect(textOf(ctx.el)).toContain('ul. Długa 5, 85-001 Bydgoszcz');
+    expect(ctx.fixture.componentInstance.address({ addressCity: 'Nakło' })).toBe('Nakło');
+    expect(ctx.fixture.componentInstance.address({})).toBeNull();
+  });
 });

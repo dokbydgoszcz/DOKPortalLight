@@ -42,6 +42,7 @@ public static class DbSeeder
         }
 
         await SeedRolePermissionsAsync(services.GetRequiredService<AppDbContext>());
+        await DokPortal.Infrastructure.Documents.LetterStarterTemplates.EnsureAsync(services.GetRequiredService<AppDbContext>(), DateTime.UtcNow, CancellationToken.None);
     }
 
     public static async Task SeedRolePermissionsAsync(AppDbContext db, CancellationToken ct = default)

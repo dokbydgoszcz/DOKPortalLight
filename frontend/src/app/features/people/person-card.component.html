@@ -38,6 +38,7 @@
           <dt>Parafia</dt><dd>{{ o.person.parishName || '—' }}</dd>
           <dt>E-mail</dt><dd>@if (o.person.email) { <a [href]="'mailto:' + o.person.email">{{ o.person.email }}</a> } @else { — }</dd>
           <dt>Telefon</dt><dd>@if (o.person.phone) { <a [href]="'tel:' + o.person.phone">{{ o.person.phone }}</a> } @else { — }</dd>
+          @if (address(o.person); as a) { <dt>Adres</dt><dd>{{ a }}</dd> }
           <dt>Urodzony(a)</dt><dd>{{ o.person.birthDate ? (o.person.birthDate | date:'dd.MM.yyyy') : '—' }}</dd>
           @if (o.person.nameDayMonth && o.person.nameDayDay) {
             <dt>Imieniny</dt><dd>{{ o.person.nameDayDay }}.{{ o.person.nameDayMonth < 10 ? '0' : '' }}{{ o.person.nameDayMonth }}</dd>

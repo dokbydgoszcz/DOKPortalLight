@@ -1,0 +1,85 @@
+<div class="templates-layout">
+  <aside class="card list-card">
+    <div class="card-head">
+      <h3>Wzory pism</h3>
+      <button class="btn primary small" type="button" (click)="startNew()">＋ Nowy</button>
+    </div>
+    <ul class="template-list">
+      @for (t of templates(); track t.id) {
+        <li>
+          <button type="button" [class.active]="t.id === selectedId()" (click)="open(t)">
+            <span class="name">{{ t.name }}</span>
+            <span class="meta">
+              @if (!t.isActive) { <span class="pill">wyłączony</span> }
+              @if (t.unknownFields.length) { <span class="pill gold" title="Nieznane pola">⚠ pola</span> }
+              @if (t.usageCount) { <span class="small-muted">{{ t.usageCount }} pism</span> }
+            </span>
+          </button>
+        </li>
+      } @empty {
+        <li class="small-muted empty-list">Brak wzorów – dodaj pierwszy.</li>
+      }
+    </ul>
+  </aside>
+
+  @if (draft(); as d) {
+    <section class="card editor-card">
+      <div class="card-body editor-body">
+        <div class="editor-head">
+          <div class="field name-field">
+            <label for="tpl-name">Nazwa wzoru</label>
+            <input id="tpl-name" name="name" [ngModel]="d.name" (ngModelChange)="update({ name: $event })" maxlength="200" />
+          </div>
+          <div class="field toggles">
+            <label class="checkbox-label"><input type="checkbox" name="isActive" [checked]="d.isActive" (change)="update({ isActive: $any($event.target).checked })" /> Aktywny</label>
+            <label class="checkbox-label"><input type="checkbox" name="useLetterhead" [checked]="d.useLetterhead" (change)="update({ useLetterhead: $any($event.target).checked })" /> Papier firmowy (nagłówek i stopka)</label>
+          </div>
+        </div>
+
+        <div class="fields-bar">
+          <select name="field" [(ngModel)]="fieldChoice" (ngModelChange)="insertField($event)" aria-label="Wstaw pole">
+            <option value="">＋ Wstaw pole z danych…</option>
+            @for (g of groups(); track g.name) {
+              <optgroup [label]="g.name">
+                @for (f of g.items; track f.key) { <option [value]="f.key">{{ f.label }} – np. {{ f.example }}</option> }
+              </optgroup>
+            }
+          </select>
+          <button class="btn ghost small" type="button" (click)="insertInput()" title="Pole, o które portal zapyta przy generowaniu">＋ Pole do wpisania…</button>
+          <span class="small-muted">Pola wstawiają się w miejscu kursora, np. <code>{{ '{' }}{{ '{' }}osoba.imię{{ '}' }}{{ '}' }}</code>. Brakujące dane drukują się jako kropki.</span>
+        </div>
+
+        @if (unknown().length) {
+          <div class="note warning">Nieznane pola: <b>{{ unknown().join(', ') }}</b> – sprawdź pisownię albo wstaw je z listy.</div>
+        }
+        @if (inputs().length) {
+          <div class="small-muted">Przy generowaniu portal zapyta o: <b>{{ inputs().join(', ') }}</b>.</div>
+        }
+
+        <app-rich-text-editor [value]="d.body" (valueChange)="update({ body: $event })" />
+
+        <div class="editor-foot">
+          <div class="field preview-person">
+            <label>Podgląd na osobie (bez wyboru: przykładowe dane)</label>
+            <app-person-picker [(ngModel)]="previewPersonId" name="previewPersonId" />
+          </div>
+          <div class="actions">
+            <button class="btn ghost" type="button" (click)="showPreview()">Podgląd PDF</button>
+            <button class="btn ghost" type="button" (click)="showPreview('docx')">Pobierz Word</button>
+            <button class="btn ghost danger" type="button" (click)="remove()">{{ selected() ? 'Usuń' : 'Porzuć' }}</button>
+            @if (selected(); as s) { <button class="btn ghost" type="button" (click)="startNew(s)">Powiel</button> }
+            <button class="btn primary" type="button" [disabled]="saving() || !dirty()" (click)="save()">{{ saving() ? 'Zapisywanie…' : 'Zapisz' }}</button>
+          </div>
+        </div>
+        @if (selected(); as s) {
+          <div class="small-muted">Ostatnia zmiana: {{ s.updatedAtUtc | date: 'dd.MM.yyyy HH:mm' }}@if (s.updatedByEmail) { · {{ s.updatedByEmail }} }
+            @if (s.usageCount) { · wygenerowano {{ s.usageCount }} pism (zmiana wzoru nie zmienia już wydanych) }</div>
+        }
+      </div>
+    </section>
+  }
+</div>
+
+@if (preview(); as p) {
+  <app-pdf-preview [blob]="p.blob" [missing]="p.missing" [title]="'Podgląd: ' + (draft()?.name ?? '')" (closed)="preview.set(null)" />
+}

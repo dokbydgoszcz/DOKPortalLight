@@ -17,7 +17,7 @@ public static class DefaultRolePermissions
             Permissions.ParishNeedsView, Permissions.ParishNeedsManage,
             Permissions.BudgetSkspView, Permissions.BudgetSkspManage,
             Permissions.SupervisionsView, Permissions.SupervisionsManage, Permissions.SupervisionsExport,
-            Permissions.DocumentsView, Permissions.DocumentsGenerate,
+            Permissions.DocumentsView, Permissions.DocumentsGenerate, Permissions.DocumentTemplatesManage,
             Permissions.MailingView, Permissions.MailingManage,
             Permissions.ResourcesView, Permissions.ResourcesManage
         },
@@ -29,7 +29,7 @@ public static class DefaultRolePermissions
             Permissions.PastoralNotesView, Permissions.PastoralNotesWrite, Permissions.PastoralNotesReadAll,
             Permissions.MeetingsView, Permissions.MeetingsManage, Permissions.MeetingsExport,
             Permissions.SupervisionsView, Permissions.SupervisionsManage, Permissions.SupervisionsExport,
-            Permissions.DocumentsView, Permissions.DocumentsGenerate,
+            Permissions.DocumentsView, Permissions.DocumentsGenerate, Permissions.DocumentTemplatesManage,
             Permissions.MailingView, Permissions.MailingManage,
             Permissions.BudgetDokView, Permissions.BudgetDokManage,
             Permissions.GraduatesView,

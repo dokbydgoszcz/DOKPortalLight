@@ -7,6 +7,10 @@ public class Person : ISoftDeletable
     public required string LastName { get; set; }
     public string? Email { get; set; }
     public string? Phone { get; set; }
+    /// <summary>Adres zamieszkania (do pism): ulica z numerem.</summary>
+    public string? AddressStreet { get; set; }
+    public string? AddressPostalCode { get; set; }
+    public string? AddressCity { get; set; }
     public DateOnly? BirthDate { get; set; }
     public Guid? ParishId { get; set; }
     public Parish? Parish { get; set; }

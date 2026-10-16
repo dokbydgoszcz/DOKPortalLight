@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { ALL_PERMISSIONS, Permissions } from './permissions';
 
 describe('Permissions', () => {
-  it('has 45 unique names in Module.Action format', () => {
-    expect(ALL_PERMISSIONS.length).toBe(45);
-    expect(new Set(ALL_PERMISSIONS).size).toBe(45);
+  it('has 46 unique names in Module.Action format', () => {
+    expect(ALL_PERMISSIONS.length).toBe(46);
+    expect(new Set(ALL_PERMISSIONS).size).toBe(46);
     for (const name of ALL_PERMISSIONS) {
       expect(name).toMatch(/^[A-Za-z]+\.[A-Za-z]+$/);
     }

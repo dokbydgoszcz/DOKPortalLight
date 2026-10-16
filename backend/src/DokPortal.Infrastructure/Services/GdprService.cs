@@ -75,6 +75,7 @@ public class GdprService : IGdprService
                 nazwisko = person.LastName,
                 email = person.Email,
                 telefon = person.Phone,
+                adres = string.Join(", ", new[] { person.AddressStreet, string.Join(" ", new[] { person.AddressPostalCode, person.AddressCity }.Where(s => !string.IsNullOrWhiteSpace(s))) }.Where(s => !string.IsNullOrWhiteSpace(s))) is { Length: > 0 } address ? address : null,
                 dataUrodzenia = person.BirthDate,
                 parafia = person.Parish?.Name,
                 imieniny = person.NameDayMonth is { } m && person.NameDayDay is { } d ? $"{d:00}.{m:00}" : null,
@@ -127,7 +128,7 @@ public class GdprService : IGdprService
             ["skierowaniaDoParafii"] = referrals.Select(r => new { parafia = r.ParishNeed?.Parish?.Name, zapotrzebowanie = r.ParishNeed?.Description, kiedy = r.AssignedAtUtc }),
             ["superwizje"] = supervisions.Select(s => new { data = s.Supervision!.SupervisionDate, grupa = s.Supervision.GroupLabel, temat = s.Supervision.Topic, obecny = s.IsPresent }),
             ["formator"] = formator,
-            ["pisma"] = documents.Select(d => new { wzor = d.Template.ToString(), kiedy = d.CreatedAtUtc, uwagi = d.AdditionalNotes }),
+            ["pisma"] = documents.Select(d => new { wzor = d.Title ?? d.Template.ToString(), kiedy = d.CreatedAtUtc, uwagi = d.AdditionalNotes }),
             ["mailing"] = mailings.Select(d => new { temat = d.Campaign?.Subject, kiedy = d.AttemptedAtUtc, adres = d.Email }),
             ["prowadzoneSprawy"] = leadsCases == 0 ? null : $"{leadsCases} spraw DOK, w których osoba jest katechistą lub mentorem (dane podopiecznych nie są częścią tej kopii)."
         };
@@ -151,6 +152,9 @@ public class GdprService : IGdprService
         person.LastName = $"zanonimizowana {person.Id.ToString()[..6]}";
         person.Email = null;
         person.Phone = null;
+        person.AddressStreet = null;
+        person.AddressPostalCode = null;
+        person.AddressCity = null;
         person.BirthDate = null;
         person.ParishId = null;
         person.Notes = null;

@@ -11,6 +11,9 @@
           <div class="field"><label>Nazwisko</label><input [(ngModel)]="value.lastName" name="lastName" /></div>
           <div class="field"><label>E-mail</label><input [(ngModel)]="value.email" name="email" /></div>
           <div class="field"><label>Telefon</label><input [(ngModel)]="value.phone" name="phone" /></div>
+          <div class="field full"><label>Adres (ulica i numer)</label><input [(ngModel)]="value.addressStreet" name="addressStreet" placeholder="np. ul. Długa 5/3" /></div>
+          <div class="field"><label>Kod pocztowy</label><input [(ngModel)]="value.addressPostalCode" name="addressPostalCode" placeholder="85-001" /></div>
+          <div class="field"><label>Miejscowość</label><input [(ngModel)]="value.addressCity" name="addressCity" /></div>
           <div class="field full"><label>Uwagi</label><textarea [(ngModel)]="value.notes" name="notes"></textarea></div>
           <div class="field full">
             <label class="checkbox-label">

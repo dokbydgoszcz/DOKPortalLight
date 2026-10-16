@@ -31,7 +31,7 @@ public class DocumentServiceTests
             "user-1", default);
 
         Assert.NotNull(result);
-        Assert.NotEmpty(result!.PdfBytes);
+        Assert.NotEmpty(result!.File.Bytes);
         Assert.Equal(1, await db.GeneratedDocuments.CountAsync());
         Assert.Equal("Jan Kowalski", result.History.PersonFullName);
     }

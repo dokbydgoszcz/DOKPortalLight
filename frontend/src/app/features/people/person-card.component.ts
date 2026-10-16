@@ -166,6 +166,12 @@ export class PersonCardComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** „ul. Długa 5, 85-001 Bydgoszcz” albo null, gdy adresu nie ma. */
+  address(p: { addressStreet?: string | null; addressPostalCode?: string | null; addressCity?: string | null }): string | null {
+    const town = [p.addressPostalCode, p.addressCity].filter(Boolean).join(' ');
+    return [p.addressStreet, town].filter(Boolean).join(', ') || null;
+  }
+
   initials(fullName: string): string {
     return fullName.split(' ').filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
   }

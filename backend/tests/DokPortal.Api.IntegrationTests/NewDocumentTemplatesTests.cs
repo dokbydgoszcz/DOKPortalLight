@@ -44,7 +44,7 @@ public class NewDocumentTemplatesTests : IntegrationTestBase
         var response = await admin.PostAsJsonAsync("/api/documents/generate", new { Template = "SacramentCertificate", PersonId = personId });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("nie jest już dostępny", await response.Content.ReadAsStringAsync());
+        Assert.Contains("Nie znaleziono wzoru", await response.Content.ReadAsStringAsync());
     }
 
     [Fact]

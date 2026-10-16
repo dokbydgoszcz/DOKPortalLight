@@ -8,6 +8,9 @@ public class PersonDto
     public required string FullName { get; init; }
     public string? Email { get; init; }
     public string? Phone { get; init; }
+    public string? AddressStreet { get; init; }
+    public string? AddressPostalCode { get; init; }
+    public string? AddressCity { get; init; }
     public DateOnly? BirthDate { get; init; }
     public Guid? ParishId { get; init; }
     public string? ParishName { get; init; }
