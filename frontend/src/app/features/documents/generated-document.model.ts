@@ -68,7 +68,23 @@ export interface LetterField {
   label: string;
   group: string;
   example: string;
+  /** Imię i nazwisko – można wybrać przypadek. */
+  declinable?: boolean;
 }
+
+/** Przypadki do odmiany imion i nazwisk w polach: {{osoba.imię i nazwisko|dopełniacz}}. */
+export const GRAMMATICAL_CASES: ReadonlyArray<{ name: string; question: string }> = [
+  { name: 'mianownik', question: 'kto?' },
+  { name: 'dopełniacz', question: 'kogo? – np. „zaświadczenie dla”' },
+  { name: 'celownik', question: 'komu? – np. „udzielić misji”' },
+  { name: 'biernik', question: 'kogo? – np. „kieruję”' },
+  { name: 'narzędnik', question: 'z kim?' },
+  { name: 'miejscownik', question: 'o kim?' },
+  { name: 'wołacz', question: 'zwrot, np. „Drogi …”' }
+];
+
+/** Forma zależna od płci osoby: {{rodzaj:urodzony|urodzona}}. */
+export const GENDER_PREFIX = 'rodzaj:';
 
 export interface Letterhead {
   headerText: string | null;
@@ -101,11 +117,20 @@ export function inputsOf(body: string): string[] {
 
 /** Pola, których portal nie zna (np. literówka w {{osoba.imie}}). */
 export function unknownFieldsOf(body: string, fields: LetterField[]): string[] {
-  const known = new Set(fields.map(f => f.key.toLowerCase()));
+  const known = new Map(fields.map(f => [f.key.toLowerCase(), f]));
+  const cases = new Set(GRAMMATICAL_CASES.map(c => c.name));
   const unknown = new Set<string>();
   for (const match of plainText(body).matchAll(TOKEN)) {
-    const key = match[1].trim();
-    if (!key.toLowerCase().startsWith(INPUT_PREFIX) && !known.has(key.toLowerCase())) unknown.add(key);
+    const token = match[1].trim();
+    const lower = token.toLowerCase();
+    if (lower.startsWith(INPUT_PREFIX)) continue;
+    if (lower.startsWith(GENDER_PREFIX)) {
+      if (!token.includes('|')) unknown.add(token);
+      continue;
+    }
+    const [key, caseName] = lower.split('|').map(p => p.trim());
+    const field = known.get(key);
+    if (!field || (caseName !== undefined && (!field.declinable || !cases.has(caseName)))) unknown.add(token);
   }
   return [...unknown];
 }

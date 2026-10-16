@@ -93,6 +93,7 @@ export class PeopleListComponent implements OnInit {
       addressStreet: person.addressStreet ?? undefined,
       addressPostalCode: person.addressPostalCode ?? undefined,
       addressCity: person.addressCity ?? undefined,
+      sex: person.sex ?? undefined,
       birthDate: person.birthDate ?? undefined,
       parishId: person.parishId ?? undefined,
       notes: person.notes ?? undefined,

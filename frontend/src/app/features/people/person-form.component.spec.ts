@@ -144,4 +144,15 @@ describe('PersonFormComponent', () => {
     clickByText(el, 'Zapisz', '.modal-foot button');
     expect(saved).toEqual([{ firstName: 'Anna', lastName: 'Maj', addressStreet: 'ul. Długa 5', addressPostalCode: '85-001', addressCity: 'Bydgoszcz' }]);
   });
+
+  it('lets the sex be set for declension, or left to the first name', async () => {
+    const { fixture, el, saved } = render(true, { firstName: 'Noemi', lastName: 'Lis' });
+    await fixture.whenStable();
+    setSelect(el, 'select[name="sex"]', 'Female');
+    clickByText(el, 'Zapisz', '.modal-foot button');
+    expect(saved[0].sex).toBe('Female');
+    setSelect(el, 'select[name="sex"]', '');
+    clickByText(el, 'Zapisz', '.modal-foot button');
+    expect(saved[1].sex).toBeNull();
+  });
 });

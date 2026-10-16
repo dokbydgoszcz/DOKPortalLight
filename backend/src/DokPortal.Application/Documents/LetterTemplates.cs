@@ -32,6 +32,8 @@ public class LetterFieldDto
     public required string Label { get; init; }
     public required string Group { get; init; }
     public required string Example { get; init; }
+    /// <summary>Pole z imieniem i nazwiskiem – można wybrać przypadek (dopełniacz, celownik…).</summary>
+    public bool Declinable { get; init; }
 }
 
 public class LetterheadDto

@@ -9,6 +9,8 @@ public class CreatePersonRequest
     public string? AddressStreet { get; init; }
     public string? AddressPostalCode { get; init; }
     public string? AddressCity { get; init; }
+    /// <summary>Płeć do odmiany w pismach; brak = rozpoznawana z imienia.</summary>
+    public DokPortal.Domain.Enums.PersonSex? Sex { get; init; }
     public DateOnly? BirthDate { get; init; }
     public Guid? ParishId { get; init; }
     public string? Notes { get; init; }

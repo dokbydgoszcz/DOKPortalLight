@@ -112,6 +112,7 @@ public class PersonService : IPersonService
             AddressStreet = Trimmed(request.AddressStreet),
             AddressPostalCode = Trimmed(request.AddressPostalCode),
             AddressCity = Trimmed(request.AddressCity),
+            Sex = request.Sex,
             BirthDate = request.BirthDate,
             ParishId = request.ParishId,
             Notes = request.Notes,
@@ -151,6 +152,7 @@ public class PersonService : IPersonService
         person.AddressStreet = Trimmed(request.AddressStreet);
         person.AddressPostalCode = Trimmed(request.AddressPostalCode);
         person.AddressCity = Trimmed(request.AddressCity);
+        person.Sex = request.Sex;
         person.BirthDate = request.BirthDate;
         person.ParishId = request.ParishId;
         person.Notes = request.Notes;
@@ -387,6 +389,7 @@ public class PersonService : IPersonService
         AddressStreet = p.AddressStreet,
         AddressPostalCode = p.AddressPostalCode,
         AddressCity = p.AddressCity,
+        Sex = p.Sex,
         BirthDate = p.BirthDate,
         ParishId = p.ParishId,
         ParishName = p.Parish?.Name,

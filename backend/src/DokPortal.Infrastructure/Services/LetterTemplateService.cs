@@ -98,7 +98,7 @@ public class LetterTemplateService : ILetterTemplateService
     }
 
     public IReadOnlyList<LetterFieldDto> Fields() =>
-        LetterFields.Catalog.Select(f => new LetterFieldDto { Key = f.Key, Label = f.Label, Group = f.Group, Example = f.Example }).ToList();
+        LetterFields.Catalog.Select(f => new LetterFieldDto { Key = f.Key, Label = f.Label, Group = f.Group, Example = f.Example, Declinable = f.Declinable }).ToList();
 
     private async Task<Letterhead> TrackedLetterheadAsync(CancellationToken ct)
     {
@@ -190,14 +190,14 @@ public class LetterTemplateService : ILetterTemplateService
         var format = LetterRenderer.NormalizeFormat(request.Format);
         var head = await _renderer.LetterheadAsync(ct);
         var issuer = await _renderer.IssuerAsync(userId, ct);
-        Dictionary<string, string?> values;
+        LetterValues values;
         string? lastName = null;
         if (request.PersonId is { } personId)
         {
             try
             {
                 values = await LetterFields.ResolveAsync(_db, personId, head.Place ?? "", issuer, Now, ct);
-                lastName = values.GetValueOrDefault("osoba.nazwisko");
+                lastName = values["osoba.nazwisko"];
             }
             catch (KeyNotFoundException)
             {

@@ -155,6 +155,7 @@ public class GdprService : IGdprService
         person.AddressStreet = null;
         person.AddressPostalCode = null;
         person.AddressCity = null;
+        person.Sex = null;
         person.BirthDate = null;
         person.ParishId = null;
         person.Notes = null;

@@ -14,7 +14,7 @@ const templates: LetterTemplate[] = [
     updatedAtUtc: '2026-10-16T08:00:00Z', updatedByEmail: null, inputs: [], unknownFields: ['osoba.imie'], usageCount: 0 }
 ];
 const fields = [
-  { key: 'osoba.imię', label: 'Imię', group: 'Osoba', example: 'Jan' },
+  { key: 'osoba.imię', label: 'Imię', group: 'Osoba', example: 'Jan', declinable: true },
   { key: 'pismo.data', label: 'Data', group: 'Pismo', example: '16.10.2026' }
 ];
 
@@ -74,6 +74,22 @@ describe('LetterTemplatesComponent', () => {
     ctx.fixture.detectChanges();
     expect(component.draft()!.body).toContain('{{pismo.data}}');
     expect(component.draft()!.body).toContain('{{wpisz:Data ślubu}}');
+
+    const caseSelect = ctx.el.querySelector('select[name="case"]') as HTMLSelectElement;
+    caseSelect.value = 'celownik';
+    caseSelect.dispatchEvent(new Event('change'));
+    component.insertField('osoba.imię');
+    component.insertField('pismo.data');
+    vi.spyOn(window, 'prompt').mockReturnValueOnce(' urodzony / urodzona ').mockReturnValueOnce('tylko jedna').mockReturnValueOnce(null);
+    component.insertGenderForm();
+    component.insertGenderForm();
+    component.insertGenderForm();
+    ctx.fixture.detectChanges();
+    expect(component.draft()!.body).toContain('{{osoba.imię|celownik}}');
+    expect(component.draft()!.body).not.toContain('{{pismo.data|celownik}}');
+    expect(component.draft()!.body).toContain('{{rodzaj:urodzony|urodzona}}');
+    expect(toasts()).toContain('Podaj obie formy rozdzielone ukośnikiem, np. urodzony/urodzona.');
+    expect(textOf(ctx.el)).toContain('Imię (odmienia się)');
 
     tickBox(ctx.el, 'isActive', true);
     tickBox(ctx.el, 'useLetterhead', true);

@@ -2,7 +2,7 @@ import { Component, OnInit, ViewChild, computed, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DocumentsService } from './documents.service';
-import { DownloadedFile, INPUT_PREFIX, LetterField, LetterTemplate, SaveLetterTemplate, inputsOf, unknownFieldsOf } from './generated-document.model';
+import { DownloadedFile, GENDER_PREFIX, GRAMMATICAL_CASES, INPUT_PREFIX, LetterField, LetterTemplate, SaveLetterTemplate, inputsOf, unknownFieldsOf } from './generated-document.model';
 import { RichTextEditorComponent } from '../../shared/rich-text/rich-text-editor.component';
 import { PersonPickerComponent } from '../../shared/person-picker/person-picker.component';
 import { PdfPreviewComponent } from './pdf-preview.component';
@@ -39,6 +39,9 @@ export class LetterTemplatesComponent implements OnInit {
   readonly preview = signal<DownloadedFile | null>(null);
   previewPersonId = '';
   fieldChoice = '';
+  /** Przypadek dla pól z imieniem i nazwiskiem. */
+  caseChoice = 'mianownik';
+  readonly cases = GRAMMATICAL_CASES;
 
   readonly inputs = computed(() => inputsOf(this.draft()?.body ?? ''));
   readonly unknown = computed(() => unknownFieldsOf(this.draft()?.body ?? '', this.fields()));
@@ -97,8 +100,22 @@ export class LetterTemplatesComponent implements OnInit {
 
   insertField(key: string): void {
     if (!key) return;
-    this.editor?.insertText(`{{${key}}}`);
+    const declinable = this.fields().find(f => f.key === key)?.declinable;
+    const suffix = declinable && this.caseChoice !== 'mianownik' ? `|${this.caseChoice}` : '';
+    this.editor?.insertText(`{{${key}${suffix}}}`);
     this.fieldChoice = '';
+  }
+
+  /** Forma zależna od płci osoby, np. „urodzony/urodzona” → {{rodzaj:urodzony|urodzona}}. */
+  insertGenderForm(): void {
+    const answer = prompt('Forma męska i żeńska rozdzielone ukośnikiem, np. „urodzony/urodzona” albo „Pan/Pani”:')?.trim();
+    if (!answer) return;
+    const [male, female] = answer.split('/').map(p => p.trim().replace(/[{}|]/g, ''));
+    if (!male || !female) {
+      this.toast.error('Podaj obie formy rozdzielone ukośnikiem, np. urodzony/urodzona.');
+      return;
+    }
+    this.editor?.insertText(`{{${GENDER_PREFIX}${male}|${female}}}`);
   }
 
   insertInput(): void {

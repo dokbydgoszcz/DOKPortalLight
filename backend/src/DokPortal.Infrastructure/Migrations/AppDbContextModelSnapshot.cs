@@ -1095,6 +1095,9 @@ namespace DokPortal.Infrastructure.Migrations
                     b.Property<DateTime?>("PhotoUpdatedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("Sex")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 

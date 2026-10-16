@@ -11,6 +11,8 @@ public class Person : ISoftDeletable
     public string? AddressStreet { get; set; }
     public string? AddressPostalCode { get; set; }
     public string? AddressCity { get; set; }
+    /// <summary>Płeć (do odmiany w pismach); puste = rozpoznawana z imienia.</summary>
+    public DokPortal.Domain.Enums.PersonSex? Sex { get; set; }
     public DateOnly? BirthDate { get; set; }
     public Guid? ParishId { get; set; }
     public Parish? Parish { get; set; }

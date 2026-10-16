@@ -41,12 +41,18 @@
             <option value="">＋ Wstaw pole z danych…</option>
             @for (g of groups(); track g.name) {
               <optgroup [label]="g.name">
-                @for (f of g.items; track f.key) { <option [value]="f.key">{{ f.label }} – np. {{ f.example }}</option> }
+                @for (f of g.items; track f.key) { <option [value]="f.key">{{ f.label }}{{ f.declinable ? ' (odmienia się)' : '' }} – np. {{ f.example }}</option> }
               </optgroup>
             }
           </select>
+          <select name="case" [(ngModel)]="caseChoice" aria-label="Przypadek imienia i nazwiska" title="Przypadek dla pól z imieniem i nazwiskiem">
+            @for (c of cases; track c.name) { <option [value]="c.name">{{ c.name }} ({{ c.question }})</option> }
+          </select>
           <button class="btn ghost small" type="button" (click)="insertInput()" title="Pole, o które portal zapyta przy generowaniu">＋ Pole do wpisania…</button>
-          <span class="small-muted">Pola wstawiają się w miejscu kursora, np. <code>{{ '{' }}{{ '{' }}osoba.imię{{ '}' }}{{ '}' }}</code>. Brakujące dane drukują się jako kropki.</span>
+          <button class="btn ghost small" type="button" (click)="insertGenderForm()" title="Np. urodzony/urodzona – portal wybierze formę według płci osoby">＋ Forma Pan/Pani…</button>
+          <span class="small-muted">Pola wstawiają się w miejscu kursora. Imię i nazwisko odmienia się według wybranego przypadku
+            (np. <code>{{ '{' }}{{ '{' }}osoba.imię i nazwisko|celownik{{ '}' }}{{ '}' }}</code> → „Janowi Kowalskiemu”), a forma
+            <code>{{ '{' }}{{ '{' }}rodzaj:urodzony|urodzona{{ '}' }}{{ '}' }}</code> dopasowuje się do płci osoby. Brakujące dane drukują się jako kropki.</span>
         </div>
 
         @if (unknown().length) {

@@ -296,4 +296,52 @@ public class LetterTemplateTests
         Assert.Null(await service.GetLogoAsync(default));
         Assert.Equal("Nakło", (await service.GetLetterheadAsync(default)).Place);
     }
+
+    [Fact]
+    public async Task NamesAreDeclined_AndGenderFormsFollowThePerson()
+    {
+        await using var db = CreateContext();
+        var (person, _) = await SeedAsync(db);
+        var woman = new Person { Id = Guid.NewGuid(), FirstName = "Kamilla", LastName = "Bzdawka-Piątkowska", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
+        var unusual = new Person { Id = Guid.NewGuid(), FirstName = "Noemi", LastName = "Lis", Sex = PersonSex.Female, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
+        db.People.AddRange(woman, unusual);
+        await db.SaveChangesAsync();
+        const string body = "<p>{{rodzaj:Pan|Pani}} {{osoba.imię i nazwisko}}, {{rodzaj:urodzony|urodzona}}; dla {{osoba.imię i nazwisko|celownik}}; " +
+            "od {{osoba.nazwisko|dopełniacz}}; z {{osoba.imię|narzędnik}}; katechista {{dok.katechista|narzędnik}}; proboszcz {{proboszcz.imię i nazwisko|celownik}}; " +
+            "wystawił {{pismo.wystawił|dopełniacz}}; {{pismo.data|dopełniacz}}</p>";
+
+        string Render(LetterValues values) => LetterFields.Fill(body, values, null, new List<string>());
+
+        var man = Render(await LetterFields.ResolveAsync(db, person.Id, "Bydgoszcz", "Szymon Łuczak", DateTime.UtcNow, default));
+        Assert.Contains("Pan Jan Kowalski, urodzony; dla Janowi Kowalskiemu; od Kowalskiego; z Janem; katechista Anną Maj; proboszcz Adamowi Proboszczowi; wystawił Szymona Łuczaka;", man);
+        Assert.DoesNotContain("|dopełniacz", man);
+
+        var female = Render(await LetterFields.ResolveAsync(db, woman.Id, "Bydgoszcz", "s@example.org", DateTime.UtcNow, default));
+        Assert.Contains("Pani Kamilla Bzdawka-Piątkowska, urodzona; dla Kamilli Bzdawce-Piątkowskiej; od Bzdawki-Piątkowskiej; z Kamillą;", female);
+        Assert.Contains("wystawił s@example.org;", female);
+        Assert.Contains("Pani Noemi Lis, urodzona", Render(await LetterFields.ResolveAsync(db, unusual.Id, "", "", DateTime.UtcNow, default)));
+
+        Assert.Contains("Pan Jan Kowalski", Render(LetterFields.Examples("Bydgoszcz", "Szymon Łuczak", DateTime.UtcNow)));
+        Assert.Equal(new[] { "osoba.imię|wołacz2", "pismo.data|dopełniacz", "rodzaj:bez kreski" },
+            LetterFields.Unknown("<p>{{osoba.imię|wołacz2}} {{pismo.data|dopełniacz}} {{rodzaj:bez kreski}} {{osoba.imię|wołacz}} {{rodzaj:a|b}}</p>"));
+    }
+
+    [Fact]
+    public async Task UntouchedStarterTemplates_GetTheNewerWording_EditedOnesKeepTheirs()
+    {
+        await using var db = CreateContext();
+        var service = new LetterTemplateService(db);
+        await service.ListAsync(true, default);
+        var all = await db.LetterTemplates.ToListAsync();
+        foreach (var t in all) t.Body = "<p>stara wersja</p>";
+        all[1].UpdatedByEmail = "ktos@example.org";
+        await db.SaveChangesAsync();
+
+        var refreshed = await service.ListAsync(true, default);
+
+        Assert.Equal(10, refreshed.Count(t => t.Body != "<p>stara wersja</p>"));
+        Assert.Equal(9, refreshed.Count(t => t.Body.Contains("rodzaj:")));
+        Assert.Equal("<p>stara wersja</p>", refreshed.Single(t => t.Id == all[1].Id).Body);
+        Assert.All(refreshed, t => Assert.Empty(t.UnknownFields));
+    }
 }

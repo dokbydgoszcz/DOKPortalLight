@@ -1,3 +1,5 @@
+export type PersonSex = 'Female' | 'Male';
+
 export type FunctionType = 'Catechist' | 'Acolyte' | 'Lector' | 'Pastor';
 
 export const FUNCTION_LABELS: Record<FunctionType, string> = {
@@ -40,6 +42,8 @@ export interface Person {
   addressStreet?: string | null;
   addressPostalCode?: string | null;
   addressCity?: string | null;
+  /** Płeć do odmiany w pismach; brak = rozpoznawana z imienia. */
+  sex?: PersonSex | null;
   birthDate: string | null;
   parishId: string | null;
   parishName: string | null;
@@ -70,6 +74,7 @@ export interface PersonFormValue {
   addressStreet?: string;
   addressPostalCode?: string;
   addressCity?: string;
+  sex?: PersonSex | null;
   birthDate?: string;
   parishId?: string;
   notes?: string;

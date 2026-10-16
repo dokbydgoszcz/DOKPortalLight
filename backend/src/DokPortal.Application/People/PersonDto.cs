@@ -1,3 +1,5 @@
+using DokPortal.Domain.Enums;
+
 namespace DokPortal.Application.People;
 
 public class PersonDto
@@ -11,6 +13,7 @@ public class PersonDto
     public string? AddressStreet { get; init; }
     public string? AddressPostalCode { get; init; }
     public string? AddressCity { get; init; }
+    public PersonSex? Sex { get; init; }
     public DateOnly? BirthDate { get; init; }
     public Guid? ParishId { get; init; }
     public string? ParishName { get; init; }
