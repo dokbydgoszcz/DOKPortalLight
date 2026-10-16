@@ -10,9 +10,11 @@ export class PeopleService {
 
   constructor(private readonly http: HttpClient) {}
 
-  search(query: string, page = 1, pageSize = 20, fn?: FunctionType) {
+  /** fn = 'none' – osoby bez żadnej funkcji. */
+  search(query: string, page = 1, pageSize = 20, fn?: FunctionType | 'none') {
     const params: Record<string, string | number> = { query, page, pageSize };
-    if (fn) params['function'] = fn;
+    if (fn === 'none') params['withoutFunction'] = 'true';
+    else if (fn) params['function'] = fn;
     return this.http.get<PagedResult<Person>>(this.baseUrl, { params });
   }
 

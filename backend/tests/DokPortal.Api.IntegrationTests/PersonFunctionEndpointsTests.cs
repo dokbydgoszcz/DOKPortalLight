@@ -46,6 +46,19 @@ public class PersonFunctionEndpointsTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task PeopleWithoutAnyFunction_CanBeListedOnTheirOwn()
+    {
+        var admin = await AdminAsync();
+        var last = $"Bezfunkcji{Guid.NewGuid():N}".Substring(0, 18);
+        (await admin.PostAsJsonAsync("/api/people", new { FirstName = "Ala", LastName = last })).EnsureSuccessStatusCode();
+        (await admin.PostAsJsonAsync("/api/people", new { FirstName = "Ola", LastName = last, Functions = new[] { new { Type = "Lector" } } })).EnsureSuccessStatusCode();
+
+        var without = await admin.GetFromJsonAsync<PagedResult<PersonDto>>($"/api/people?query={last}&withoutFunction=true", EnumJsonOptions);
+
+        Assert.Equal("Ala", Assert.Single(without!.Items).FirstName);
+    }
+
+    [Fact]
     public async Task AParishWithAPastor_RefusesASecondOne_WithAMessageNamingHim()
     {
         var admin = await AdminAsync();

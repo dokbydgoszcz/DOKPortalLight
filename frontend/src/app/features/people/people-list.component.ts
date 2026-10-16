@@ -30,7 +30,7 @@ export class PeopleListComponent implements OnInit {
   readonly page = signal(1);
   readonly totalCount = signal(0);
   readonly pageSize = PAGE_SIZE;
-  readonly functionFilter = signal<FunctionType | ''>('');
+  readonly functionFilter = signal<FunctionType | 'none' | ''>('');
   readonly parishes = signal<Parish[]>([]);
   readonly functionTypes = FUNCTION_TYPES;
   readonly functionLabels = FUNCTION_LABELS;
@@ -66,7 +66,7 @@ export class PeopleListComponent implements OnInit {
     this.load();
   }
 
-  onFunctionFilter(value: FunctionType | ''): void {
+  onFunctionFilter(value: FunctionType | 'none' | ''): void {
     this.functionFilter.set(value);
     this.page.set(1);
     this.load();

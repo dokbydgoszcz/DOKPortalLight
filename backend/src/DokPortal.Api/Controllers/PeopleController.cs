@@ -85,10 +85,10 @@ public class PeopleController : ControllerBase
         Permissions.MissionsManage, Permissions.ParishNeedsManage, Permissions.FormatorsManage, Permissions.DocumentsGenerate, Permissions.UsersManage)]
     public async Task<ActionResult<PagedResult<PersonDto>>> Search(
         [FromQuery] string? query, [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
-        [FromQuery] FunctionType? function = null, CancellationToken ct = default)
+        [FromQuery] FunctionType? function = null, [FromQuery] bool withoutFunction = false, CancellationToken ct = default)
     {
         (page, pageSize) = Paging.Normalize(page, pageSize, MaxPageSize);
-        return Ok(await _personService.SearchAsync(query, page, pageSize, ct, function));
+        return Ok(await _personService.SearchAsync(query, page, pageSize, ct, function, withoutFunction));
     }
 
     [HttpGet("{id:guid}")]

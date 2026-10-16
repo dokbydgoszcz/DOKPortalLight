@@ -47,9 +47,15 @@ public class PersonService : IPersonService
         _ => type.ToString()
     };
 
-    public async Task<PagedResult<PersonDto>> SearchAsync(string? query, int page, int pageSize, CancellationToken ct, FunctionType? function = null)
+    public async Task<PagedResult<PersonDto>> SearchAsync(string? query, int page, int pageSize, CancellationToken ct, FunctionType? function = null,
+        bool withoutFunction = false)
     {
         var q = PeopleWithDetails();
+
+        if (withoutFunction)
+        {
+            q = q.Where(p => !p.Functions.Any());
+        }
 
         if (function is { } wanted)
         {

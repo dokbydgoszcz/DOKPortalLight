@@ -82,6 +82,14 @@ describe('PeopleListComponent', () => {
       req.flush({ items: [], totalCount: 0, page: 1, pageSize: 20 });
     });
 
+    it('lists people without any function', () => {
+      const ctx = boot();
+      setSelect(ctx.el, 'select[name="functionFilter"]', 'none');
+      const req = ctx.http.expectOne(r => r.url === peopleUrl && r.params.get('withoutFunction') === 'true');
+      expect(req.request.params.has('function')).toBe(false);
+      req.flush({ items: [], totalCount: 0, page: 1, pageSize: 20 });
+    });
+
     it('does not send a function when the filter is cleared', () => {
       const ctx = boot();
       setSelect(ctx.el, 'select[name="functionFilter"]', 'Lector');
