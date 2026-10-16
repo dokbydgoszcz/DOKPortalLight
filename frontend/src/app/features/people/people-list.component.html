@@ -2,6 +2,7 @@
   <div><h2>Osoby</h2><p>Jeden profil osoby, wiele funkcji i powiązań.</p></div>
   <div style="display:flex;gap:8px;align-items:center">
     <app-export-button list="people" />
+    <button *appHasPermission="'People.Manage'" class="btn ghost" (click)="importOpen.set(true)">Importuj listę</button>
     <button *appHasPermission="'People.Manage'" class="btn primary" (click)="openAddForm()">＋ Dodaj osobę</button>
   </div>
 </div>
@@ -54,3 +55,7 @@
   (save)="onSave($event)"
   (cancel)="onCancel()">
 </app-person-form>
+
+@if (importOpen()) {
+  <app-people-import (closed)="importOpen.set(false)" (imported)="importOpen.set(false); load()" />
+}

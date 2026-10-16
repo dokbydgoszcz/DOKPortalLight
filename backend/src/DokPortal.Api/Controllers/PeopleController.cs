@@ -20,10 +20,12 @@ public class PeopleController : ControllerBase
     private readonly IAuthorizationService _authorization;
     private readonly IPersonPhotoService _photos;
     private readonly IGdprService? _gdpr;
+    private readonly IPeopleImportService? _import;
 
     public PeopleController(IPersonService personService, IPersonOverviewService overview, IAuthorizationService authorization, IPersonPhotoService photos,
-        IGdprService? gdpr = null)
+        IGdprService? gdpr = null, IPeopleImportService? import = null)
     {
+        _import = import;
         _gdpr = gdpr;
         _photos = photos;
         _personService = personService;
@@ -148,4 +150,17 @@ public class PeopleController : ControllerBase
     [HasPermission(Permissions.UsersManage)]
     public async Task<IActionResult> Anonymize(Guid id, CancellationToken ct) =>
         await _gdpr!.AnonymizeAsync(id, ct) ? NoContent() : NotFound();
+
+    /// <summary>Podgląd importu wklejonej listy osób (nic nie zapisuje).</summary>
+    [HttpPost("import/preview")]
+    [HasPermission(Permissions.PeopleManage)]
+    public async Task<ActionResult<PeopleImportResultDto>> ImportPreview(PeopleImportRequest request, CancellationToken ct) =>
+        Ok(await _import!.RunAsync(request, apply: false, ct));
+
+    /// <summary>Import wklejonej listy osób z nadaniem funkcji (np. Katechista).</summary>
+    [HttpPost("import")]
+    [Audit("ImportPeople")]
+    [HasPermission(Permissions.PeopleManage)]
+    public async Task<ActionResult<PeopleImportResultDto>> Import(PeopleImportRequest request, CancellationToken ct) =>
+        Ok(await _import!.RunAsync(request, apply: true, ct));
 }

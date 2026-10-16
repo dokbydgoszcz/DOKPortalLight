@@ -11,17 +11,20 @@ import { PersonFormComponent } from './person-form.component';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
 import { PaginationComponent } from '../../shared/pagination.component';
+import { PeopleImportComponent } from './people-import.component';
 
 const PAGE_SIZE = 20;
 
 @Component({
   selector: 'app-people-list',
   standalone: true,
-  imports: [HasPermissionDirective, ExportButtonComponent, PersonFormComponent, PaginationComponent, RouterLink],
+  imports: [HasPermissionDirective, ExportButtonComponent, PersonFormComponent, PaginationComponent, RouterLink, PeopleImportComponent],
   templateUrl: './people-list.component.html',
   styleUrl: './people-list.component.scss'
 })
 export class PeopleListComponent implements OnInit {
+  /** Okno importu wklejonej listy osób. */
+  readonly importOpen = signal(false);
   readonly people = signal<Person[]>([]);
   readonly query = signal('');
   readonly page = signal(1);

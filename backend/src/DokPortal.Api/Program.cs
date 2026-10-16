@@ -129,6 +129,7 @@ builder.Services.AddScoped<IPersonService, PersonService>();
 builder.Services.AddScoped<IPersonOverviewService, PersonOverviewService>();
 builder.Services.AddScoped<IPersonPhotoService, PersonPhotoService>();
 builder.Services.AddScoped<IGdprService, GdprService>();
+builder.Services.AddScoped<IPeopleImportService, PeopleImportService>();
 builder.Services.AddScoped<ICalendarFeedService, CalendarFeedService>();
 builder.Services.AddScoped<IParishService, ParishService>();
 builder.Services.AddScoped<IParishImportService, ParishImportService>();

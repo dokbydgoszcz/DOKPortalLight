@@ -320,4 +320,15 @@ describe('PeopleListComponent', () => {
       expect(toastMessages()).toContain('Ta osoba ma ważną misję kanoniczną.');
     });
   });
+
+  it('opens the list import and reloads after importing', () => {
+    const ctx = boot();
+    clickByText(ctx.el, 'Importuj listę');
+    ctx.fixture.detectChanges();
+    expect(ctx.el.querySelector('app-people-import')).not.toBeNull();
+    const dialog = ctx.el.querySelector('app-people-import')!;
+    (dialog.querySelector('.close') as HTMLButtonElement).click();
+    ctx.fixture.detectChanges();
+    expect(ctx.el.querySelector('app-people-import')).toBeNull();
+  });
 });
