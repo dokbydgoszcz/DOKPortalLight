@@ -15,6 +15,7 @@ public sealed class MailingQueueRunner : IMailingQueue, IHostedService, IDisposa
     private readonly object _gate = new();
     private bool _running;
     private bool _again;
+    private bool _disposed;
     private Timer? _retry;
 
     public MailingQueueRunner(IServiceScopeFactory scopes, ILogger<MailingQueueRunner> logger, IConfiguration configuration)
@@ -34,6 +35,7 @@ public sealed class MailingQueueRunner : IMailingQueue, IHostedService, IDisposa
     {
         lock (_gate)
         {
+            if (_disposed) return;
             if (_running)
             {
                 _again = true;
@@ -75,7 +77,7 @@ public sealed class MailingQueueRunner : IMailingQueue, IHostedService, IDisposa
                     continue;
                 }
                 _running = false;
-                if (pending > 0 && !_stopping.IsCancellationRequested)
+                if (pending > 0 && !_disposed)
                 {
                     _retry?.Dispose();
                     _retry = new Timer(_ => Kick(), null, RetryAfter, Timeout.InfiniteTimeSpan);
@@ -90,21 +92,36 @@ public sealed class MailingQueueRunner : IMailingQueue, IHostedService, IDisposa
         // Po restarcie (np. uśpienie darmowego planu) dokończ przerwane kampanie.
         if (_configuration.GetValue("Mailing:ResumeOnStartup", true))
         {
-            _retry = new Timer(_ => Kick(), null, TimeSpan.FromSeconds(30), Timeout.InfiniteTimeSpan);
+            lock (_gate) _retry = _disposed ? null : new Timer(_ => Kick(), null, TimeSpan.FromSeconds(30), Timeout.InfiniteTimeSpan);
         }
         return Task.CompletedTask;
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        _stopping.Cancel();
-        _retry?.Dispose();
+        Shutdown();
         return Task.CompletedTask;
     }
 
-    public void Dispose()
+    /// <summary>Zatrzymuje przebiegi i ponowienia; bezpieczne przy wielokrotnym wywołaniu i w dowolnej kolejności z <see cref="Dispose"/>.</summary>
+    private void Shutdown()
     {
-        _retry?.Dispose();
-        _stopping.Dispose();
+        lock (_gate)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _retry?.Dispose();
+            _retry = null;
+        }
+        try
+        {
+            _stopping.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
     }
+
+    // Źródła anulowania nie zwalniamy: przebieg w tle może jeszcze sprawdzać jego token.
+    public void Dispose() => Shutdown();
 }

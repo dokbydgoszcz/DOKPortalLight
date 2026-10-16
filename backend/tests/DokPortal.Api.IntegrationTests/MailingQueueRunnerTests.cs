@@ -102,13 +102,20 @@ public class MailingQueueRunnerTests
         await runner.StartAsync(default);
         mailing.Next = async _ =>
         {
-            await Task.Delay(Timeout.Infinite, CancellationToken.None).WaitAsync(TimeSpan.FromMilliseconds(1)).ContinueWith(_ => { });
+            await Task.Delay(50);
             throw new OperationCanceledException();
         };
+        runner.Kick();
         await runner.StopAsync(default);
+        await runner.Current;
+        Assert.Equal(1, mailing.Runs);
+
+        // Po zatrzymaniu nic już nie rusza, a zatrzymanie i zwolnienie można powtarzać w dowolnej kolejności.
         runner.Kick();
         await runner.Current;
         Assert.Equal(1, mailing.Runs);
+        runner.Dispose();
+        await runner.StopAsync(default);
         runner.Dispose();
     }
 }
