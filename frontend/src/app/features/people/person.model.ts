@@ -9,6 +9,12 @@ export const FUNCTION_LABELS: Record<FunctionType, string> = {
   Pastor: 'Proboszcz'
 };
 
+/** Nazwy miesięcy (mianownik – do wyboru w formularzu). */
+export const MONTH_NAMES: readonly string[] = ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'];
+
+/** Nazwy miesięcy w dopełniaczu – do dat słownie, np. „26 lipca”. */
+export const MONTH_NAMES_GENITIVE: readonly string[] = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+
 export const FUNCTION_TYPES = Object.keys(FUNCTION_LABELS) as FunctionType[];
 
 export interface PersonFunction {

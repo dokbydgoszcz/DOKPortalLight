@@ -26,5 +26,6 @@ describe('NameDaysListComponent', () => {
 
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Ewa Nowak');
+    expect(text).toContain('24 grudnia');
   });
 });

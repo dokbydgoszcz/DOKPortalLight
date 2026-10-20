@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { PeopleService } from './people.service';
 import { PersonOverview } from './person-overview.model';
-import { functionText } from './person.model';
+import { MONTH_NAMES_GENITIVE, functionText } from './person.model';
 import { roleLabel } from '../../shared/role-labels';
 import { serverMessage } from '../../shared/http-error';
 import { AuthService } from '../../core/auth/auth.service';
@@ -41,6 +41,7 @@ export class PersonCardComponent implements OnInit, OnDestroy {
   readonly photoUrl = signal<string | null>(null);
   readonly uploading = signal(false);
   readonly functionText = functionText;
+  readonly monthsGenitive = MONTH_NAMES_GENITIVE;
   readonly roleLabel = roleLabel;
   readonly canManage = this.auth.hasPermission(Permissions.PeopleManage);
   /** Kopia danych i anonimizacja (RODO) – tylko administrator kont. */

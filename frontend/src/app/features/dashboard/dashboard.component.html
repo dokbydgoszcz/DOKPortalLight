@@ -70,7 +70,7 @@
         <div class="list-row">
           <div class="list-main">
             <div class="list-title">{{ item.fullName }}</div>
-            <div class="list-sub">{{ pad(item.nameDayDay) }}.{{ pad(item.nameDayMonth) }} — {{ nameDayWhen(item.daysUntil) }}</div>
+            <div class="list-sub">{{ item.nameDayDay }} {{ monthsGenitive[item.nameDayMonth - 1] }} — {{ nameDayWhen(item.daysUntil) }}</div>
           </div>
         </div>
       } @empty {

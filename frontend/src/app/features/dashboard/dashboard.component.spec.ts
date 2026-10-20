@@ -252,9 +252,9 @@ describe('DashboardComponent', () => {
         `${r.querySelector('.list-title')!.textContent!.trim()} ${r.querySelector('.list-sub')!.textContent!.trim()}`);
       expect(card.textContent).toContain('Nadchodzące imieniny');
       expect(rows).toEqual([
-        'Jan Kowalski 07.10 — dziś',
-        'Anna Maj 08.10 — jutro',
-        'Piotr Nowak 12.10 — za 5 dni'
+        'Jan Kowalski 7 października — dziś',
+        'Anna Maj 8 października — jutro',
+        'Piotr Nowak 12 października — za 5 dni'
       ]);
     });
 

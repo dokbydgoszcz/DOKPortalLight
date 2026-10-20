@@ -249,4 +249,10 @@ describe('PersonCardComponent', () => {
     expect(ctx.fixture.componentInstance.address({ addressCity: 'Nakło' })).toBe('Nakło');
     expect(ctx.fixture.componentInstance.address({})).toBeNull();
   });
+
+  it('shows the name day in words', () => {
+    const ctx = boot({ person: { ...person, nameDayMonth: 7, nameDayDay: 26 }, dokCases: null, casesLed: null, candidate: null, candidateVisible: false,
+      missions: null, parishAssignments: null, formatorFunctions: null, documents: null, supervisions: null, account: null, accountVisible: false });
+    expect(textOf(ctx.el)).toContain('26 lipca');
+  });
 });

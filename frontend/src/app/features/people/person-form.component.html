@@ -29,8 +29,14 @@
               Nie wysyłaj wiadomości z mailingu (osoba się wypisała)
             </label>
           </div>
-          <div class="field"><label>Miesiąc imienin</label><input type="number" min="1" max="12" [(ngModel)]="value.nameDayMonth" name="nameDayMonth" /></div>
           <div class="field"><label>Dzień imienin</label><input type="number" min="1" max="31" [(ngModel)]="value.nameDayDay" name="nameDayDay" /></div>
+          <div class="field">
+            <label>Miesiąc imienin</label>
+            <select name="nameDayMonth" [ngModel]="value.nameDayMonth ?? ''" (ngModelChange)="value.nameDayMonth = $event ? +$event : undefined">
+              <option value="">— brak —</option>
+              @for (month of months; track $index) { <option [value]="$index + 1">{{ month }}</option> }
+            </select>
+          </div>
           <div class="field full functions">
             <label>Funkcje</label>
             @for (fn of value.functions ?? []; track $index) {

@@ -9,6 +9,7 @@ import { PastoralNotesService } from '../dok-cases/pastoral-notes.service';
 import { HandedOverCase } from '../dok-cases/pastoral-note.model';
 import { UpcomingNameDay } from '../name-days/name-day.model';
 import { AuthService } from '../../core/auth/auth.service';
+import { MONTH_NAMES_GENITIVE } from '../people/person.model';
 import { Permissions } from '../../core/auth/permissions';
 import { DashboardSummary } from './dashboard.model';
 import { timeRange } from '../meetings/meeting.model';
@@ -24,6 +25,7 @@ const NAME_DAYS_WINDOW = 14;
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
+  readonly monthsGenitive = MONTH_NAMES_GENITIVE;
   readonly summary = signal<DashboardSummary | null>(null);
   /** Imieniny w najbliższych dniach; null, gdy się nie wczytały (reszta pulpitu działa bez nich). */
   readonly nameDays = signal<UpcomingNameDay[] | null>(null);
@@ -38,6 +40,7 @@ export class DashboardComponent implements OnInit {
 
   readonly timeRange = timeRange;
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-10-20', text: 'Imieniny — w formularzu osoby miesiąc imienin wybierasz z listy nazw (styczeń…grudzień), a dzień jest przed miesiącem. Na karcie osoby, w kalendarzu imienin i na pulpicie daty imienin są zapisane słownie, np. „26 lipca”.' },
     { date: '2026-10-16', text: 'Pisma — odmiana imion i nazwisk: przy wstawianiu pola z imieniem i nazwiskiem (osoba, katechista, mentor, proboszcz, wystawiający) wybierz przypadek, np. celownik → „Janowi Kowalskiemu”, dopełniacz → „Anny Kowalskiej”, biernik → „Kamillę Bzdawkę-Piątkowską”. Przycisk „Forma Pan/Pani…” wstawia formę zależną od płci osoby (np. urodzony/urodzona, Pan/Pani, ukończył/ukończyła), więc w piśmie nie ma już „Pan(i)” ani „urodzony(-a)”. Płeć portal rozpoznaje z imienia; przy nietypowym imieniu ustaw ją w Osoby → Edytuj → „Płeć”. Wzory startowe, których nie zmieniano, dostały taką odmianę automatycznie.' },
     { date: '2026-10-16', text: 'Dokumenty i pisma — wzory pism edytujesz teraz w portalu (zakładka „Wzory pism”, dla dyrektorów i administratora): edytor z pogrubieniem, kursywą, tytułami, listami i wyrównaniem, a przyciskiem „Wstaw pole z danych” dodajesz pola wypełniane automatycznie – imię i nazwisko, data urodzenia, adres, parafia i proboszcz, ścieżka i katechista DOK, rok i data ukończenia SKŚP, misja, data wystawienia (cyfrowo lub słownie), kto wystawia. „Pole do wpisania…” dodaje pole, o które portal zapyta przy generowaniu (np. „Data chrztu”). Podgląd PDF pokazuje pismo na przykładowych danych albo na wybranej osobie. Dotychczasowe 11 pism to wzory startowe do poprawienia (z dopiskiem „WZÓR DO UZUPEŁNIENIA”). W zakładce „Nagłówek i stopka” ustawisz logo, tekst nagłówka, stopkę i miejscowość wystawienia (papier firmowy). Pismo generujesz jako PDF albo Word; brakujące dane drukują się jako kropki, a portal mówi, których zabrakło. Wydane pisma nie zmieniają się po poprawieniu wzoru. Osoby mają też nowe pola adresu zamieszkania (ulica, kod, miejscowość).' },
     { date: '2026-10-16', text: 'Osoby — w liście funkcji nad tabelą jest opcja „Bez funkcji”: pokazuje osoby, które nie mają żadnej funkcji (np. podopiecznych albo osoby do uzupełnienia).' },
@@ -184,10 +187,6 @@ export class DashboardComponent implements OnInit {
     if (daysUntil === 0) return 'dziś';
     if (daysUntil === 1) return 'jutro';
     return `za ${daysUntil} dni`;
-  }
-
-  pad(n: number): string {
-    return String(n).padStart(2, '0');
   }
 
   ngOnInit(): void {

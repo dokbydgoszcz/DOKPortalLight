@@ -124,7 +124,7 @@ describe('PeopleListComponent', () => {
       setInput(ctx.el, 'input[name="email"]', 'ola@example.org');
       setInput(ctx.el, 'input[name="phone"]', '600');
       setInput(ctx.el, 'textarea[name="notes"]', 'Notatka');
-      setInput(ctx.el, 'input[name="nameDayMonth"]', '6');
+      setSelect(ctx.el, 'select[name="nameDayMonth"]', '6');
       setInput(ctx.el, 'input[name="nameDayDay"]', '15');
       clickByText(ctx.el, 'Zapisz', '.modal-foot button');
 
@@ -162,7 +162,9 @@ describe('PeopleListComponent', () => {
       ctx.fixture.detectChanges();
       await ctx.fixture.whenStable();
       expect((ctx.el.querySelector('input[name="firstName"]') as HTMLInputElement).value).toBe('Anna');
-      expect((ctx.el.querySelector('input[name="nameDayMonth"]') as HTMLInputElement).value).toBe('7');
+      const month = ctx.el.querySelector('select[name="nameDayMonth"]') as HTMLSelectElement;
+      expect(month.value).toBe('7');
+      expect(month.selectedOptions[0].textContent).toBe('lipiec');
 
       setInput(ctx.el, 'input[name="lastName"]', 'Maj-Kowalska');
       clickByText(ctx.el, 'Zapisz', '.modal-foot button');

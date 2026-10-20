@@ -41,7 +41,7 @@
           @if (address(o.person); as a) { <dt>Adres</dt><dd>{{ a }}</dd> }
           <dt>Urodzony(a)</dt><dd>{{ o.person.birthDate ? (o.person.birthDate | date:'dd.MM.yyyy') : '—' }}</dd>
           @if (o.person.nameDayMonth && o.person.nameDayDay) {
-            <dt>Imieniny</dt><dd>{{ o.person.nameDayDay }}.{{ o.person.nameDayMonth < 10 ? '0' : '' }}{{ o.person.nameDayMonth }}</dd>
+            <dt>Imieniny</dt><dd>{{ o.person.nameDayDay }} {{ monthsGenitive[o.person.nameDayMonth - 1] }}</dd>
           }
         </dl>
       </div>

@@ -10,7 +10,7 @@
         @for (item of nameDays(); track item.personId) {
           <tr>
             <td>{{ item.fullName }}</td>
-            <td>{{ item.nameDayDay }}.{{ item.nameDayMonth }}</td>
+            <td>{{ item.nameDayDay }} {{ monthsGenitive[item.nameDayMonth - 1] }}</td>
             <td>{{ item.daysUntil === 0 ? 'dziś' : item.daysUntil }}</td>
           </tr>
         } @empty {

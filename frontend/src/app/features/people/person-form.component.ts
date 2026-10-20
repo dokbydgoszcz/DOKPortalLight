@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Parish } from '../parish-board/parish-need.model';
-import { FUNCTION_LABELS, FUNCTION_TYPES, FunctionType, PersonFormValue, PersonFunctionInput } from './person.model';
+import { FUNCTION_LABELS, FUNCTION_TYPES, FunctionType, MONTH_NAMES, PersonFormValue, PersonFunctionInput } from './person.model';
 
 @Component({
   selector: 'app-person-form',
@@ -11,6 +11,7 @@ import { FUNCTION_LABELS, FUNCTION_TYPES, FunctionType, PersonFormValue, PersonF
   styleUrl: './person-form.component.scss'
 })
 export class PersonFormComponent {
+  readonly months = MONTH_NAMES;
   @Input() open = false;
   @Input() value: PersonFormValue = { firstName: '', lastName: '' };
   @Input() parishes: Parish[] = [];

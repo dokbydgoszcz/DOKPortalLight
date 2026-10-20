@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { NameDaysService } from './name-days.service';
 import { UpcomingNameDay } from './name-day.model';
+import { MONTH_NAMES_GENITIVE } from '../people/person.model';
 
 @Component({
   selector: 'app-name-days-list',
@@ -10,6 +11,7 @@ import { UpcomingNameDay } from './name-day.model';
 })
 export class NameDaysListComponent implements OnInit {
   readonly nameDays = signal<UpcomingNameDay[]>([]);
+  readonly monthsGenitive = MONTH_NAMES_GENITIVE;
 
   constructor(private readonly nameDaysService: NameDaysService) {}
 
