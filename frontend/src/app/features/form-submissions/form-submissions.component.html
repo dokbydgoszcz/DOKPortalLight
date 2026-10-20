@@ -1,0 +1,166 @@
+<div class="page-heading">
+  <div>
+    <h2>Zgłoszenia z formularzy</h2>
+    <p>Odpowiedzi z Tally trafiają tu same. Do osób zapisują się dopiero, gdy je przejrzysz: poprawisz dane i wybierzesz nową albo istniejącą osobę.</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="tabs">
+    <button class="tab" type="button" [class.active]="tab() === 'Pending'" (click)="selectTab('Pending')">
+      Do przejrzenia @if (pendingCount() !== null) { ({{ pendingCount() }}) }
+    </button>
+    <button class="tab" type="button" [class.active]="tab() === 'Applied'" (click)="selectTab('Applied')">Zapisane</button>
+    <button class="tab" type="button" [class.active]="tab() === 'Rejected'" (click)="selectTab('Rejected')">Odrzucone</button>
+  </div>
+
+  @if (loadError()) {
+    <div class="empty">{{ loadError() }}</div>
+  } @else if (items() === null) {
+    <div class="empty">Wczytuję…</div>
+  } @else if (items()!.length === 0) {
+    <div class="empty">
+      @switch (tab()) {
+        @case ('Pending') { Nie ma nowych zgłoszeń. Każda nowa odpowiedź w formularzu Tally pojawi się tutaj. }
+        @case ('Applied') { Nic jeszcze nie zapisano ze zgłoszeń. }
+        @default { Brak odrzuconych zgłoszeń. }
+      }
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table class="submissions">
+        <thead>
+          <tr>
+            <th>Zgłaszający</th>
+            <th>Formularz</th>
+            <th>Wysłano</th>
+            <th>{{ tab() === 'Pending' ? 'Propozycja' : tab() === 'Applied' ? 'Zapisano do' : 'Odrzucił(a)' }}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of items(); track s.id) {
+            <tr>
+              <td>
+                <b>{{ displayName(s) }}</b>
+                @if (s.draft.email) { <div class="muted">{{ s.draft.email }}</div> }
+              </td>
+              <td>{{ s.formName || s.source }}</td>
+              <td>{{ s.submittedAtUtc | date: 'dd.MM.yyyy HH:mm' }}</td>
+              <td>
+                @switch (s.status) {
+                  @case ('Pending') { <span class="suggestion">{{ suggestion(s) }}</span> }
+                  @case ('Applied') {
+                    @if (s.personId) { <a [routerLink]="['/people', s.personId]">{{ s.personFullName }}</a> } @else { — }
+                    <div class="muted">{{ s.reviewedByEmail }}, {{ s.reviewedAtUtc | date: 'dd.MM.yyyy HH:mm' }}</div>
+                  }
+                  @default { {{ s.reviewedByEmail }} <div class="muted">{{ s.reviewedAtUtc | date: 'dd.MM.yyyy HH:mm' }}</div> }
+                }
+              </td>
+              <td class="row-actions">
+                @switch (s.status) {
+                  @case ('Pending') {
+                    <button class="btn primary small" type="button" (click)="open(s)">Przejrzyj</button>
+                    <button class="btn ghost small" type="button" (click)="reject(s)">Odrzuć</button>
+                  }
+                  @case ('Rejected') { <button class="btn ghost small" type="button" (click)="reopen(s)">Przywróć</button> }
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (current(); as s) {
+  <div class="overlay show">
+    <div class="modal review-modal" role="dialog" aria-label="Przejrzyj zgłoszenie">
+      <div class="modal-head">
+        <h3>{{ displayName(s) }} <small>{{ s.formName }}, {{ s.submittedAtUtc | date: 'dd.MM.yyyy HH:mm' }}</small></h3>
+        <button class="close" type="button" (click)="close()">×</button>
+      </div>
+      <div class="modal-body review">
+        <section class="answers">
+          <h4>Odpowiedzi z formularza</h4>
+          <dl>
+            @for (f of s.fields; track $index) {
+              <dt>{{ f.label }}</dt>
+              <dd>
+                @if (f.files?.length) {
+                  @for (file of f.files; track file.url) {
+                    <button type="button" class="link file-link" (click)="download(s, fileIndex(s, file), file)">{{ file.name }}</button>
+                  }
+                } @else {
+                  {{ f.text ?? '—' }}
+                }
+              </dd>
+            }
+          </dl>
+        </section>
+
+        <section class="edit">
+          <h4>Zapisz jako</h4>
+          <div class="targets">
+            <label class="checkbox-label"><input type="radio" name="target" [checked]="target() === NEW" (change)="chooseTarget(NEW)" /> Nowa osoba</label>
+            @for (c of s.candidates; track c.personId) {
+              <label class="checkbox-label">
+                <input type="radio" name="target" [checked]="target() === c.personId" (change)="chooseTarget(c.personId)" />
+                Aktualizacja: <b>{{ c.fullName }}</b>
+                <span class="muted">(zgodne: {{ c.matchedBy }}@if (c.functions.length) {; {{ functionLabels(c) }}})</span>
+              </label>
+            }
+            <label class="checkbox-label"><input type="radio" name="target" [checked]="target() === OTHER" (change)="chooseTarget(OTHER)" /> Aktualizacja innej osoby…</label>
+            @if (target() === OTHER) {
+              <app-person-picker name="other" placeholder="Wpisz nazwisko osoby" [ngModel]="otherPersonId()" (ngModelChange)="otherPersonId.set($event)" />
+            }
+          </div>
+          @if (target() !== NEW) {
+            <p class="form-hint">Puste pola nie kasują danych osoby. Pod polem widać, co jest teraz w bazie, jeśli się różni.</p>
+          }
+
+          <div class="form-grid">
+            @for (f of textFields; track f.key) {
+              <div class="field" [class.full]="f.wide">
+                <label [for]="'fs-' + f.key">{{ f.label }}</label>
+                <input [id]="'fs-' + f.key" [name]="f.key" [(ngModel)]="value[f.key]" />
+                @if (existing(f.key); as old) { <span class="was">w bazie: {{ old }}</span> }
+              </div>
+            }
+            <div class="field">
+              <label for="fs-nameday">Imieniny</label>
+              <div class="nameday">
+                <input id="fs-nameday" name="nameDayDay" type="number" min="1" max="31" placeholder="dzień" [ngModel]="value.nameDayDay" (ngModelChange)="setDay($event)" />
+                <select name="nameDayMonth" [ngModel]="value.nameDayMonth ?? ''" (ngModelChange)="setMonth($event)">
+                  <option value="">— brak —</option>
+                  @for (month of months; track $index) { <option [value]="$index + 1">{{ month }}</option> }
+                </select>
+              </div>
+              @if (existingNameDay(); as old) { <span class="was">w bazie: {{ old }}</span> }
+            </div>
+          </div>
+
+          @if (hasPhoto()) {
+            <div class="photo">
+              @if (photoUrl()) { <img [src]="photoUrl()" alt="Zdjęcie z formularza" /> }
+              @if (photoError()) { <span class="was">{{ photoError() }}</span> }
+              <label class="checkbox-label">
+                <input type="checkbox" name="setPhoto" [checked]="setPhoto()" [disabled]="!!photoError()" (change)="setPhoto.set($any($event.target).checked)" />
+                Ustaw jako zdjęcie osoby
+                @if (candidate()?.hasPhoto) { <span class="muted">(osoba ma już zdjęcie – zostanie zastąpione)</span> }
+              </label>
+            </div>
+          }
+        </section>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" type="button" (click)="reject(s)">Odrzuć</button>
+        <button class="btn ghost" type="button" (click)="close()">Anuluj</button>
+        <button class="btn primary" type="button" [disabled]="saving()" (click)="save()">
+          {{ saving() ? 'Zapisuję…' : target() === NEW ? 'Dodaj nową osobę' : 'Zaktualizuj osobę' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -182,3 +182,16 @@ Przepływy danych poza portal, które warto opisać w klauzuli informacyjnej: ma
 ## Wzory pism
 
 Pisma powstają z wzorów edytowanych w portalu (Dokumenty i pisma → „Wzory pism”, uprawnienie `DocumentTemplates.Manage`; domyślnie dyrektorzy i administrator). Treść to HTML z edytora TipTap (akapity, nagłówki, pogrubienie, listy, wyrównanie) z polami `{{osoba.imię}}` itp. oraz `{{wpisz:Nazwa}}` wpisywanymi przy generowaniu; katalog pól: `GET /api/document-templates/fields` (kod: `LetterFields`). Wydruk: PDF (QuestPDF) i Word (OpenXML), z papierem firmowym z zakładki „Nagłówek i stopka” (logo w magazynie plików pod `letterhead/logo`). Przy pierwszym uruchomieniu powstaje nagłówek domyślny i 11 wzorów startowych (dawne typy pism) – znacznikiem jest wiersz w tabeli `Letterheads`, więc usunięte wzory startowe nie wracają. Wydane pismo zapisuje wypełnioną treść (`GeneratedDocuments.RenderedBody`) i PDF w magazynie, więc późniejsza zmiana wzoru go nie zmienia; wersję Word odtwarza się z tej treści.
+
+## Zgłoszenia z formularzy (Tally)
+
+Odpowiedzi z formularzy Tally trafiają do kolejki **Zgłoszenia z formularzy** (menu, prawo `People.Manage`) przez webhook. Do osób zapisują się dopiero po przejrzeniu.
+
+- Adres webhooka: `https://dokportal-api.azurewebsites.net/api/integrations/tally/webhook` (POST, bez logowania).
+- Wiarygodność: nagłówek `Tally-Signature` = base64(HMAC-SHA256(sekret, treść)). Sekret ustawia się w dwóch miejscach, w obu ten sam:
+  1. w Tally: formularz → *Integrations* → *Webhooks* → *Signing secret*;
+  2. w Azure App Service: *Configuration* → *Application settings* → `Tally__SigningSecret`.
+  Bez ustawienia webhook odpowiada 503 i niczego nie zapisuje; przy złym podpisie odpowiada 401 (widać w logu webhooka w Tally).
+- Ponowne wysłanie tego samego zgłoszenia (retry w Tally) nie tworzy dubla, bo liczy się `submissionId`.
+- Zdjęcia i pliki zostają w Tally. Portal pobiera je przez serwer (tylko z domen `tally.so`) przy przeglądaniu zgłoszenia. Zdjęcie ustawione osobie zapisuje się w portalu (zmniejszone do 1600 px).
+- RODO: anonimizacja osoby usuwa też jej zapisane zgłoszenia. Odrzucone zgłoszenia zostają w zakładce „Odrzucone”, a w Tally trzeba je usunąć osobno.

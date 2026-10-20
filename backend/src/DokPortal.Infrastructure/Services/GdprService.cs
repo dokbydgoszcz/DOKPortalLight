@@ -202,6 +202,8 @@ public class GdprService : IGdprService
         var generated = await _db.GeneratedDocuments.Where(d => d.PersonId == personId).ToListAsync(ct);
         blobs.AddRange(generated.Where(d => d.BlobPath != null).Select(d => d.BlobPath!));
         _db.GeneratedDocuments.RemoveRange(generated);
+        // Zgłoszenia z formularzy (Tally) zawierają dane osobowe – znikają razem z danymi osoby.
+        _db.FormSubmissions.RemoveRange(await _db.FormSubmissions.Where(f => f.PersonId == personId).ToListAsync(ct));
         var missionIds = await _db.CanonicalMissions.IgnoreQueryFilters().Where(m => m.PersonId == personId).Select(m => m.Id).ToListAsync(ct);
         await RemoveAttachmentsAsync(AttachmentOwnerType.Mission, missionIds, blobs, ct);
 

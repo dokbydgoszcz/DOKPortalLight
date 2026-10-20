@@ -131,6 +131,8 @@ builder.Services.AddScoped<IPersonPhotoService, PersonPhotoService>();
 builder.Services.AddScoped<IGdprService, GdprService>();
 builder.Services.AddScoped<DokPortal.Application.Documents.ILetterTemplateService, LetterTemplateService>();
 builder.Services.AddScoped<IPeopleImportService, PeopleImportService>();
+builder.Services.AddScoped<DokPortal.Application.FormSubmissions.IFormSubmissionService, FormSubmissionService>();
+builder.Services.AddHttpClient<DokPortal.Application.FormSubmissions.IFormFileFetcher, TallyFileFetcher>(http => http.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddScoped<ICalendarFeedService, CalendarFeedService>();
 builder.Services.AddScoped<IParishService, ParishService>();
 builder.Services.AddScoped<IParishImportService, ParishImportService>();

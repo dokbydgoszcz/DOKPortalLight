@@ -42,6 +42,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/people/person-card.component').then(m => m.PersonCardComponent)
       },
       {
+        path: 'form-submissions',
+        title: 'Zgłoszenia z formularzy',
+        canActivate: [permissionGuard(Permissions.PeopleManage)],
+        loadComponent: () => import('./features/form-submissions/form-submissions.component').then(m => m.FormSubmissionsComponent)
+      },
+      {
         path: 'name-days',
         canActivate: [permissionGuard(Permissions.PeopleView)],
         loadComponent: () => import('./features/name-days/name-days-list.component').then(m => m.NameDaysListComponent)

@@ -45,6 +45,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<MailingDelivery> MailingDeliveries => Set<MailingDelivery>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<FormSubmission> FormSubmissions => Set<FormSubmission>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -83,6 +84,19 @@ public class AppDbContext : IdentityDbContext<AppUser>
                 .WithMany()
                 .HasForeignKey(p => p.ParishId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<FormSubmission>(entity =>
+        {
+            entity.Property(s => s.Source).IsRequired().HasMaxLength(32);
+            entity.Property(s => s.ExternalId).IsRequired().HasMaxLength(64);
+            entity.Property(s => s.FormId).HasMaxLength(64);
+            entity.Property(s => s.FormName).HasMaxLength(200);
+            entity.Property(s => s.FieldsJson).IsRequired();
+            entity.Property(s => s.ReviewedByEmail).HasMaxLength(256);
+            entity.HasIndex(s => new { s.Source, s.ExternalId }).IsUnique();
+            entity.HasIndex(s => s.Status);
+            entity.HasOne(s => s.Person).WithMany().HasForeignKey(s => s.PersonId).OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<LibraryResource>(entity =>
