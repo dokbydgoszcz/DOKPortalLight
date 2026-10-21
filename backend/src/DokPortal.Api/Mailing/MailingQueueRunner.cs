@@ -1,3 +1,4 @@
+using DokPortal.Api.Startup;
 using DokPortal.Application.Mailing;
 
 namespace DokPortal.Api.Mailing;
@@ -5,6 +6,8 @@ namespace DokPortal.Api.Mailing;
 /// <summary>
 /// Wysyła kolejkę kampanii w tle: po kliknięciu „Wyślij”, przy starcie aplikacji i z codziennego workflow.
 /// Działa jeden przebieg naraz; gdy po przebiegu zostają wiadomości (limit dobowy), próbuje ponownie za godzinę.
+/// Na Azure start aplikacji wznawia kolejkę tylko wtedy, gdy znacznik mówi, że coś w niej zostało – inaczej każdy
+/// restart budziłby bazę (darmowy limit liczy czas, gdy baza jest włączona).
 /// </summary>
 public sealed class MailingQueueRunner : IMailingQueue, IHostedService, IDisposable
 {
@@ -17,9 +20,14 @@ public sealed class MailingQueueRunner : IMailingQueue, IHostedService, IDisposa
     private bool _again;
     private bool _disposed;
     private Timer? _retry;
+    private readonly LocalStateFiles? _state;
 
-    public MailingQueueRunner(IServiceScopeFactory scopes, ILogger<MailingQueueRunner> logger, IConfiguration configuration)
+    /// <summary>Znacznik „w kolejce może coś czekać” – ustawiany na czas przebiegu, kasowany, gdy kolejka jest pusta.</summary>
+    public const string PendingFlag = "mailing-pending.flag";
+
+    public MailingQueueRunner(IServiceScopeFactory scopes, ILogger<MailingQueueRunner> logger, IConfiguration configuration, LocalStateFiles? state = null)
     {
+        _state = state;
         _scopes = scopes;
         _logger = logger;
         _configuration = configuration;
@@ -27,6 +35,9 @@ public sealed class MailingQueueRunner : IMailingQueue, IHostedService, IDisposa
 
     /// <summary>Odstęp ponownej próby, gdy w kolejce coś zostało.</summary>
     public TimeSpan RetryAfter { get; init; } = TimeSpan.FromHours(1);
+
+    /// <summary>Opóźnienie wznowienia kolejki po starcie aplikacji.</summary>
+    public TimeSpan StartupDelay { get; init; } = TimeSpan.FromSeconds(30);
 
     /// <summary>Ostatni przebieg (do testów i diagnostyki).</summary>
     public Task Current { get; private set; } = Task.CompletedTask;
@@ -51,11 +62,13 @@ public sealed class MailingQueueRunner : IMailingQueue, IHostedService, IDisposa
         while (true)
         {
             var pending = 0;
+            _state?.Write(PendingFlag, DateTime.UtcNow.ToString("O"));
             try
             {
                 using var scope = _scopes.CreateScope();
                 var result = await scope.ServiceProvider.GetRequiredService<IMailingService>().ProcessQueueAsync(_stopping.Token);
                 pending = result.Pending;
+                if (pending == 0) _state?.Delete(PendingFlag);
                 if (result.Sent + result.Failed > 0)
                     _logger.LogInformation("Kolejka mailingu: wysłano {Sent}, błędy {Failed}, czeka {Pending} (limit {Limit}/dobę)",
                         result.Sent, result.Failed, result.Pending, result.DailyLimit);
@@ -90,9 +103,10 @@ public sealed class MailingQueueRunner : IMailingQueue, IHostedService, IDisposa
     public Task StartAsync(CancellationToken cancellationToken)
     {
         // Po restarcie (np. uśpienie darmowego planu) dokończ przerwane kampanie.
-        if (_configuration.GetValue("Mailing:ResumeOnStartup", true))
+        var mayHaveWork = _state is not { Enabled: true } || _state.Exists(PendingFlag);
+        if (_configuration.GetValue("Mailing:ResumeOnStartup", true) && mayHaveWork)
         {
-            lock (_gate) _retry = _disposed ? null : new Timer(_ => Kick(), null, TimeSpan.FromSeconds(30), Timeout.InfiniteTimeSpan);
+            lock (_gate) _retry = _disposed ? null : new Timer(_ => Kick(), null, StartupDelay, Timeout.InfiniteTimeSpan);
         }
         return Task.CompletedTask;
     }

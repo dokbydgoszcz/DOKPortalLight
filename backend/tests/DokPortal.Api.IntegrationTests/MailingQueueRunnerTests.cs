@@ -32,14 +32,15 @@ public class MailingQueueRunnerTests
         public Task<MailingSubscriptionDto?> SetOptOutAsync(string token, bool optOut, CancellationToken ct) => throw new NotSupportedException();
     }
 
-    private static (MailingQueueRunner Runner, FakeMailing Mailing) Create(Dictionary<string, string?>? settings = null, TimeSpan? retry = null)
+    private static (MailingQueueRunner Runner, FakeMailing Mailing) Create(Dictionary<string, string?>? settings = null, TimeSpan? retry = null, DokPortal.Api.Startup.LocalStateFiles? state = null)
     {
         var mailing = new FakeMailing();
         var services = new ServiceCollection().AddSingleton<IMailingService>(mailing).BuildServiceProvider();
         var config = new ConfigurationBuilder().AddInMemoryCollection(settings ?? new()).Build();
-        var runner = new MailingQueueRunner(services.GetRequiredService<IServiceScopeFactory>(), NullLogger<MailingQueueRunner>.Instance, config)
+        var runner = new MailingQueueRunner(services.GetRequiredService<IServiceScopeFactory>(), NullLogger<MailingQueueRunner>.Instance, config, state)
         {
-            RetryAfter = retry ?? TimeSpan.FromHours(1)
+            RetryAfter = retry ?? TimeSpan.FromHours(1),
+            StartupDelay = state is null ? TimeSpan.FromSeconds(30) : TimeSpan.FromMilliseconds(10)
         };
         return (runner, mailing);
     }
@@ -117,5 +118,49 @@ public class MailingQueueRunnerTests
         runner.Dispose();
         await runner.StopAsync(default);
         runner.Dispose();
+    }
+
+    [Fact]
+    public async Task OnAzure_ARestartWakesTheDatabaseOnlyWhenTheQueueMayHaveWork()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "dokportal-queue-" + Guid.NewGuid().ToString("N"));
+        var state = new DokPortal.Api.Startup.LocalStateFiles(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Startup:StateDirectory"] = dir }).Build());
+        try
+        {
+            // Pusta kolejka po ostatnim przebiegu: restart nie rusza bazy.
+            var (idle, idleMailing) = Create(state: state);
+            await idle.StartAsync(default);
+            await Task.Delay(100);
+            Assert.Equal(0, idleMailing.Runs);
+            await idle.StopAsync(default);
+            idle.Dispose();
+
+            // Przebieg zostawia wiadomości (limit dobowy) – znacznik zostaje; po opróżnieniu znika.
+            var (runner, mailing) = Create(state: state);
+            mailing.Next = run => Task.FromResult(FakeMailing.Result(run == 1 ? 3 : 0));
+            runner.Kick();
+            await runner.Current;
+            Assert.True(state.Exists(MailingQueueRunner.PendingFlag));
+            runner.Kick();
+            await runner.Current;
+            Assert.False(state.Exists(MailingQueueRunner.PendingFlag));
+            runner.Dispose();
+
+            // Przerwany przebieg (znacznik został): start aplikacji wznawia kolejkę.
+            state.Write(MailingQueueRunner.PendingFlag, "x");
+            var (resumed, resumedMailing) = Create(state: state);
+            await resumed.StartAsync(default);
+            for (var i = 0; i < 100 && resumedMailing.Runs < 1; i++) await Task.Delay(20);
+            await resumed.Current;
+            Assert.Equal(1, resumedMailing.Runs);
+            Assert.False(state.Exists(MailingQueueRunner.PendingFlag));
+            await resumed.StopAsync(default);
+            resumed.Dispose();
+        }
+        finally
+        {
+            if (Directory.Exists(dir)) Directory.Delete(dir, true);
+        }
     }
 }

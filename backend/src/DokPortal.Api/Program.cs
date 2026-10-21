@@ -162,6 +162,7 @@ builder.Services.AddSingleton(new MailingOptions
     DailyLimit = builder.Configuration.GetValue("Mailing:DailyLimit", 400),
     DelayBetweenMessages = TimeSpan.FromSeconds(builder.Configuration.GetValue("Mailing:DelaySeconds", 1.0))
 });
+builder.Services.AddSingleton<DokPortal.Api.Startup.LocalStateFiles>();
 builder.Services.AddSingleton<DokPortal.Api.Mailing.MailingQueueRunner>();
 builder.Services.AddSingleton<IMailingQueue>(sp => sp.GetRequiredService<DokPortal.Api.Mailing.MailingQueueRunner>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<DokPortal.Api.Mailing.MailingQueueRunner>());
@@ -249,10 +250,17 @@ var app = builder.Build();
 if (!app.Environment.IsEnvironment("Testing"))
 {
     using var scope = app.Services.CreateScope();
-    await DatabaseResilience.MigrateWithRetryAsync(
-        scope.ServiceProvider.GetRequiredService<AppDbContext>(),
-        scope.ServiceProvider.GetRequiredService<ILogger<Program>>());
-    await DbSeeder.SeedAsync(scope.ServiceProvider);
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await DokPortal.Api.Startup.StartupDatabase.RunOncePerVersionAsync(
+        app.Services.GetRequiredService<DokPortal.Api.Startup.LocalStateFiles>(),
+        DokPortal.Api.Startup.StartupDatabase.CurrentStamp(),
+        app.Configuration.GetValue("Startup:AlwaysMigrate", false),
+        async () =>
+        {
+            await DatabaseResilience.MigrateWithRetryAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>(), startupLogger);
+            await DbSeeder.SeedAsync(scope.ServiceProvider);
+        },
+        startupLogger);
 }
 
 if (app.Environment.IsDevelopment())

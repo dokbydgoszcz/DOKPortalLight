@@ -58,6 +58,15 @@ Zapytania KQL z `az monitor app-insights query` mogą być blokowane przez firmo
 
 Telemetria żądań `/health*` jest odrzucana w aplikacji. Dzienny limit danych Log Analytics to ok. 0,15 GB (pilnuje darmowych 5 GB/mies.).
 
+## Oszczędzanie darmowego limitu bazy
+
+Darmowa baza liczy limit (100 tys. vCore-s/mies., ok. 55 godzin przy 0,5 vCore) czasem bycia włączoną, a każde wybudzenie trzyma ją włączoną co najmniej godzinę (auto-pauza po 60 min bezczynności). Dlatego:
+
+- **Migracje i dane startowe tylko raz na wdrożoną wersję.** Pierwszy start nowej wersji wykonuje migracje i seed, a potem zapisuje odcisk wersji w `%HOME%/data/dokportal/startup-version.txt` (trwały dysk App Service). Zwykłe restarty tej samej wersji (uśpienie F1, recykling) nie dotykają bazy. Po odtworzeniu bazy z kopii albo zmianie bazy usuń ten plik (Kudu → Debug console) albo ustaw `Startup__AlwaysMigrate=true` na jeden start.
+- **Kolejka mailingu po restarcie** rusza tylko, gdy w tym samym katalogu jest `mailing-pending.flag` (przebieg przerwany albo coś zostało przez limit dobowy).
+- **Zadania dnia o jednej porze:** `daily-jobs.yml` o 7:00 UTC uruchamia przypomnienie o spotkaniach i kolejkę mailingu, a w poniedziałki także braki dokumentów, imieniny i wygasające misje. Ręcznie: *Actions → Daily Jobs → Run workflow* z wyborem jednego zadania (wysyła prawdziwe e-maile).
+- Poza Azure (lokalnie, testy) znaczniki są wyłączone, chyba że ustawiono `Startup:StateDirectory`.
+
 ## Uptime i rozgrzewanie
 
 Workflow `.github/workflows/uptime.yml` co 15 minut w dni robocze (UTC 5–19) woła `/health`. Gdy aplikacja nie odpowie po 5 próbach, run kończy się błędem i GitHub wysyła powiadomienie. Cron GitHuba bywa opóźniany, więc zimne starty są łagodzone, nie wyeliminowane. Workflow nie dotyka bazy.
@@ -86,7 +95,7 @@ Działa od razu, bez udziału administratora Microsoft 365. Wymaga **hasła apli
 
 4. Po restarcie: Mailing → „Wyślij wiadomość testową”.
 
-Ograniczenia Gmaila: ok. 500 wiadomości na dobę dla zwykłego konta (Google Workspace: ok. 2000). Kampanie idą przez kolejkę (`MailingDeliveries`): po „Wyślij” pierwsza wiadomość wychodzi od razu (błąd ustawień poczty widać przy kliknięciu), reszta w tle, co sekundę, najwyżej `Mailing:DailyLimit` (domyślnie 400) wiadomości kampanii na 24 godziny – zapas na przypomnienia i hasła. Przerwaną wysyłkę (uśpienie F1, limit dobowy) wznawia start aplikacji i codzienny workflow `mailing-queue.yml` (6:30 UTC, `POST /api/reminders/mailing-queue/run`). Adres, który trzy razy z rzędu zwróci błąd, liczy się jako nieudany. Każda wiadomość kampanii ma stopkę z linkiem „wypisz się” (`/wypisz/<klucz>`; wypisanie wymaga kliknięcia przycisku), a osoby wypisane są pomijane – można to też zaznaczyć w formularzu osoby. Ustawienia: `Mailing__DailyLimit`, `Mailing__DelaySeconds` (Workspace: limit można podnieść do ok. 1800); nadawca zawsze będzie `dokbydgoszcz@gmail.com` (Gmail podmienia inny adres „Od”); odpowiedzi odbiorców lądują w tej skrzynce.
+Ograniczenia Gmaila: ok. 500 wiadomości na dobę dla zwykłego konta (Google Workspace: ok. 2000). Kampanie idą przez kolejkę (`MailingDeliveries`): po „Wyślij” pierwsza wiadomość wychodzi od razu (błąd ustawień poczty widać przy kliknięciu), reszta w tle, co sekundę, najwyżej `Mailing:DailyLimit` (domyślnie 400) wiadomości kampanii na 24 godziny – zapas na przypomnienia i hasła. Przerwaną wysyłkę (uśpienie F1, limit dobowy) wznawia start aplikacji (tylko gdy znacznik `mailing-pending.flag` mówi, że coś czeka) i codzienny workflow `daily-jobs.yml` (7:00 UTC, `POST /api/reminders/mailing-queue/run`). Adres, który trzy razy z rzędu zwróci błąd, liczy się jako nieudany. Każda wiadomość kampanii ma stopkę z linkiem „wypisz się” (`/wypisz/<klucz>`; wypisanie wymaga kliknięcia przycisku), a osoby wypisane są pomijane – można to też zaznaczyć w formularzu osoby. Ustawienia: `Mailing__DailyLimit`, `Mailing__DelaySeconds` (Workspace: limit można podnieść do ok. 1800); nadawca zawsze będzie `dokbydgoszcz@gmail.com` (Gmail podmienia inny adres „Od”); odpowiedzi odbiorców lądują w tej skrzynce.
 
 ### Wariant B: `noreply@bydgoskateologia.pl` (Exchange Online / Microsoft 365)
 

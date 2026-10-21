@@ -1,0 +1,79 @@
+name: Daily Jobs
+
+# Wszystkie zadania dnia o jednej porze: darmowa baza budzi się raz (każde wybudzenie liczy się
+# do miesięcznego limitu jako co najmniej godzina pracy), a nie kilka razy rano.
+# 7:00 UTC = 9:00 latem / 8:00 zimą czasu polskiego. Zadania tygodniowe idą w poniedziałki.
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Które zadanie uruchomić ręcznie (przypomnienia wysyłają prawdziwe e-maile)"
+        required: true
+        type: choice
+        options:
+          - mailing-queue
+          - upcoming-meetings
+          - missing-documents
+          - upcoming-name-days
+          - expiring-missions
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Zadania dnia
+        env:
+          REMINDERS_API_KEY: ${{ secrets.REMINDERS_API_KEY }}
+          MANUAL_JOB: ${{ github.event.inputs.job }}
+        run: |
+          base="https://dokportal-api.azurewebsites.net/api/reminders"
+          failed=0
+
+          # call <ścieżka> <oczekiwany kod> – baza budzi się do ok. minuty, więc ponawiamy przy 503 i podobnych.
+          call() {
+            local path="$1" expected="$2" max_attempts=6
+            for attempt in $(seq 1 $max_attempts); do
+              response=$(curl -s --max-time 120 -w "\n%{http_code}" -X POST -H "X-Reminders-Key: $REMINDERS_API_KEY" "$base/$path") || true
+              http_code=$(echo "$response" | tail -n1)
+              body=$(echo "$response" | sed '$d')
+              if [ "$http_code" = "$expected" ]; then
+                echo "$path: $body"
+                return 0
+              fi
+              echo "$path – próba $attempt/$max_attempts: kod $http_code, odpowiedź: ${body:0:200}"
+              case "$http_code" in
+                000|429|502|503|504) ;;
+                *) echo "$path: błąd nieprzejściowy — bez ponawiania."; return 1 ;;
+              esac
+              if [ "$attempt" -lt "$max_attempts" ]; then sleep 45; fi
+            done
+            echo "$path: endpoint niedostępny po $max_attempts próbach."
+            return 1
+          }
+
+          run_job() {
+            case "$1" in
+              mailing-queue) call "mailing-queue/run" 202 ;;
+              upcoming-meetings) call "upcoming-meetings/run" 200 ;;
+              missing-documents) call "missing-documents/run" 200 ;;
+              upcoming-name-days) call "upcoming-name-days/run" 200 ;;
+              expiring-missions) call "expiring-missions/run" 200 ;;
+              *) echo "Nieznane zadanie: $1"; return 1 ;;
+            esac
+          }
+
+          if [ -n "$MANUAL_JOB" ]; then
+            jobs="$MANUAL_JOB"
+          else
+            jobs="upcoming-meetings mailing-queue"
+            if [ "$(date -u +%u)" = "1" ]; then
+              jobs="$jobs missing-documents upcoming-name-days expiring-missions"
+            fi
+          fi
+
+          for job in $jobs; do
+            run_job "$job" || failed=1
+          done
+          exit $failed
