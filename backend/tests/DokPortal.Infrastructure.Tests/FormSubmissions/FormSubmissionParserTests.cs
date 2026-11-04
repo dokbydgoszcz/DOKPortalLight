@@ -164,3 +164,110 @@ public class FormSubmissionParserTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => huge.FetchAsync(new FormSubmissionFile("a", "https://storage.tally.so/a", null, null), default));
     }
 }
+
+/// <summary>Odczyt zgłoszeń z API Tally (to, co nie doszło webhookiem).</summary>
+public class TallyApiTests
+{
+    private const string Page = """
+    {"page":1,"limit":100,"hasMore":false,
+     "questions":[
+       {"id":"q1","type":"INPUT_TEXT","title":"Imię "},
+       {"id":"q2","type":"INPUT_TEXT","title":"Nazwisko"},
+       {"id":"q3","type":"MULTIPLE_CHOICE","title":"Rok"},
+       {"id":"q4","type":"FILE_UPLOAD","title":"zdjęcie"},
+       {"id":"q5","type":"INPUT_TEXT","title":"Usunięte","isDeleted":true},
+       {"id":"q6","type":"HIDDEN_FIELDS","title":"utm"},
+       {"id":"q7","type":"INPUT_TEXT","title":"dzień imienin"},
+       {"title":"bez id"}
+     ],
+     "submissions":[
+       {"id":"s1","isCompleted":true,"submittedAt":"2026-11-03T22:17:46.000Z","responses":[
+         {"questionId":"q2","answer":"Szweda"},
+         {"questionId":"q1","answer":"Roma"},
+         {"questionId":"q3","answer":["opt1"],"formattedAnswer":"Rok II"},
+         {"questionId":"q4","answer":[{"id":"f","name":"ja.jpg","url":"https://storage.tally.so/private/ja.jpg","mimeType":"image/jpeg","size":5}],"formattedAnswer":"ja.jpg"},
+         {"questionId":"q5","answer":"x"},
+         {"questionId":"q6","answer":"y"},
+         {"questionId":"q7"},
+         {"answer":"bez pytania"}
+       ]},
+       {"id":"s2","isCompleted":false,"submittedAt":"2026-11-03T22:00:00Z","responses":[]},
+       {"isCompleted":true},
+       {"id":"s3","submittedAt":"zła data"}
+     ]}
+    """;
+
+    [Fact]
+    public void Answers_AreMappedToTheQuestions_InFormOrder()
+    {
+        var events = FormSubmissionParser.ParseTallyApi(Page, "LD12GG", "Dane do systemu");
+        Assert.Equal(new[] { "s1", "s3" }, events.Select(e => e.SubmissionId));
+        var s1 = events[0];
+        Assert.Equal(("LD12GG", "Dane do systemu", new DateTime(2026, 11, 3, 22, 17, 46, DateTimeKind.Utc)), (s1.FormId, s1.FormName, s1.SubmittedAtUtc));
+        Assert.Equal(new[] { "Imię", "Nazwisko", "Rok", "zdjęcie", "dzień imienin" }, s1.Fields.Select(f => f.Label));
+        Assert.Equal(new[] { "Roma", "Szweda", "Rok II", null, null }, s1.Fields.Select(f => f.Text));
+        Assert.Equal("https://storage.tally.so/private/ja.jpg", Assert.Single(s1.Fields[3].Files!).Url);
+        Assert.All(events[1].Fields, f => Assert.Null(f.Text));
+        Assert.Empty(FormSubmissionParser.ParseTallyApi("{}", "F", null));
+    }
+
+    private sealed class Handler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
+    {
+        public List<HttpRequestMessage> Requests { get; } = new();
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            return Task.FromResult(respond(request));
+        }
+    }
+
+    private static HttpResponseMessage Json(string json, HttpStatusCode status = HttpStatusCode.OK) =>
+        new(status) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") };
+
+    private static TallyApiClient Client(Handler handler, string? key = "klucz")
+    {
+        var configuration = new Microsoft.Extensions.Configuration.ConfigurationManager();
+        configuration["Tally:ApiKey"] = key;
+        return new(new HttpClient(handler), configuration);
+    }
+
+    [Fact]
+    public async Task TheClient_ReadsAllPagesWithTheKey()
+    {
+        var handler = new Handler(r => r.RequestUri!.AbsolutePath switch
+        {
+            "/forms/LD12GG" => Json("""{"id":"LD12GG","name":" Dane do systemu "}"""),
+            _ when r.RequestUri.Query.Contains("page=1") => Json(Page.Replace("\"hasMore\":false", "\"hasMore\":true")),
+            _ => Json("""{"hasMore":false,"questions":[],"submissions":[{"id":"s9","submittedAt":"2026-11-01T00:00:00Z"}]}""")
+        });
+        var events = await Client(handler).ListSubmissionsAsync("LD12GG", new DateTime(2026, 10, 4, 0, 0, 0, DateTimeKind.Utc), default);
+        Assert.Equal(new[] { "s1", "s3", "s9" }, events.Select(e => e.SubmissionId));
+        Assert.Equal("Dane do systemu", events[0].FormName);
+        Assert.All(handler.Requests, r => Assert.Equal("Bearer klucz", r.Headers.Authorization!.ToString()));
+        Assert.Contains("startDate=2026-10-04T00%3A00%3A00.000Z", handler.Requests[1].RequestUri!.Query);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized, "klucz API")]
+    [InlineData(HttpStatusCode.NotFound, "Tally__FormIds")]
+    [InlineData(HttpStatusCode.InternalServerError, "500")]
+    public async Task TheClient_ExplainsTallyErrors(HttpStatusCode status, string expected)
+    {
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            Client(new Handler(_ => Json("{}", status))).ListSubmissionsAsync("X", DateTime.UtcNow, default));
+        Assert.Contains(expected, error.Message);
+    }
+
+    [Fact]
+    public async Task WithoutAKey_NothingIsAsked()
+    {
+        var handler = new Handler(_ => Json("{}"));
+        var client = Client(handler, key: null);
+        Assert.False(client.IsConfigured);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.ListSubmissionsAsync("X", DateTime.UtcNow, default));
+        Assert.Empty(handler.Requests);
+        // Formularz bez nazwy w odpowiedzi – zgłoszenia i tak przychodzą.
+        var noName = new Handler(r => r.RequestUri!.AbsolutePath == "/forms/X" ? Json("{}") : Json("""{"submissions":[{"id":"a"}]}"""));
+        Assert.Null((await Client(noName).ListSubmissionsAsync("X", DateTime.UtcNow, default)).Single().FormName);
+    }
+}

@@ -133,6 +133,7 @@ builder.Services.AddScoped<DokPortal.Application.Documents.ILetterTemplateServic
 builder.Services.AddScoped<IPeopleImportService, PeopleImportService>();
 builder.Services.AddScoped<DokPortal.Application.FormSubmissions.IFormSubmissionService, FormSubmissionService>();
 builder.Services.AddHttpClient<DokPortal.Application.FormSubmissions.IFormFileFetcher, TallyFileFetcher>(http => http.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHttpClient<DokPortal.Application.FormSubmissions.ITallyClient, TallyApiClient>(http => http.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddScoped<ICalendarFeedService, CalendarFeedService>();
 builder.Services.AddScoped<IParishService, ParishService>();
 builder.Services.AddScoped<IParishImportService, ParishImportService>();

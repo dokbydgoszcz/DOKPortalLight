@@ -202,5 +202,10 @@ Odpowiedzi z formularzy Tally trafiają do kolejki **Zgłoszenia z formularzy** 
   2. w Azure App Service: *Configuration* → *Application settings* → `Tally__SigningSecret`.
   Bez ustawienia webhook odpowiada 503 i niczego nie zapisuje; przy złym podpisie odpowiada 401 (widać w logu webhooka w Tally).
 - Ponowne wysłanie tego samego zgłoszenia (retry w Tally) nie tworzy dubla, bo liczy się `submissionId`.
+- **Gdy webhook nie dojdzie.** Tally czeka na odpowiedź tylko 10 s, a uśpiona aplikacja F1 albo budząca się baza potrzebują więcej (np. formularz wysłany w nocy). Brakujące zgłoszenia z ostatnich 30 dni dociąga:
+  - przycisk **„Pobierz brakujące z Tally”** w „Zgłoszenia z formularzy”,
+  - codzienny krok `tally-sync` w `daily-jobs.yml`.
+
+  Oba potrzebują klucza API Tally: Tally → *Settings → API keys* → *Create API key*, potem w App Service `Tally__ApiKey`. Formularze: `Tally__FormIds` (np. `LD12GG`, kilka po przecinku). Bez tego ustawienia brane są formularze, z których już przyszły zgłoszenia. Bez klucza krok dzienny nic nie robi (bez błędu), a przycisk mówi, czego brakuje.
 - Zdjęcia i pliki zostają w Tally. Portal pobiera je przez serwer (tylko z domen `tally.so`) przy przeglądaniu zgłoszenia. Zdjęcie ustawione osobie zapisuje się w portalu (zmniejszone do 1600 px).
 - RODO: anonimizacja osoby usuwa też jej zapisane zgłoszenia. Odrzucone zgłoszenia zostają w zakładce „Odrzucone”, a w Tally trzeba je usunąć osobno.

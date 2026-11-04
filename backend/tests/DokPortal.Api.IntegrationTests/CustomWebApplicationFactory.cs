@@ -13,6 +13,7 @@ namespace DokPortal.Api.IntegrationTests;
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     public const string TallySecret = "test-tally-secret";
+    public FakeTallyClient Tally { get; } = new();
     private SqliteConnection? _connection;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -22,6 +23,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("RateLimiting:LoginPerMinute", "100000");
         builder.UseSetting("RateLimiting:HealthReadyPerMinute", "100000");
         builder.UseSetting("Tally:SigningSecret", TallySecret);
+        builder.UseSetting("Tally:FormIds", "LD12GG, INNY");
         builder.UseContentRoot(GetApiProjectContentRoot());
 
         builder.ConfigureServices(services =>
@@ -46,6 +48,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 services.Remove(fetcher);
             }
             services.AddSingleton<DokPortal.Application.FormSubmissions.IFormFileFetcher, FakeFormFileFetcher>();
+            foreach (var client in services.Where(d => d.ServiceType == typeof(DokPortal.Application.FormSubmissions.ITallyClient)).ToList())
+            {
+                services.Remove(client);
+            }
+            services.AddSingleton<DokPortal.Application.FormSubmissions.ITallyClient>(Tally);
 
             _connection = new SqliteConnection("DataSource=:memory:");
             _connection.Open();

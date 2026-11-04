@@ -338,4 +338,35 @@ describe('FormSubmissionsComponent', () => {
     await vi.waitFor(() => expect(ctx.success).toHaveBeenCalledWith('Zapisano: Jan Bez, ze zdjęciem.'));
     expect(ctx.component.pendingCount()).toBeNull();
   });
+
+  it('fetches submissions that Tally did not deliver', () => {
+    const ctx = boot([], 0);
+    clickByText(ctx.el, 'Pobierz brakujące z Tally');
+    ctx.fixture.detectChanges();
+    expect(text(ctx.el)).toContain('Pobieram…');
+    clickByText(ctx.el, 'Pobieram…');
+    const sync = ctx.http.expectOne(api('/api/form-submissions/sync-tally'));
+    sync.flush({ forms: 1, seen: 38, added: 1 });
+    expect(ctx.success).toHaveBeenCalledWith('Pobrano z Tally nowych zgłoszeń: 1.');
+    ctx.http.expectOne(api('/api/form-submissions/pending-count')).flush(1);
+    ctx.http.expectOne(api('/api/form-submissions?status=Pending')).flush([submission()]);
+    ctx.fixture.detectChanges();
+    expect(text(ctx.el)).toContain('Do przejrzenia (1)');
+
+    clickByText(ctx.el, 'Pobierz brakujące z Tally');
+    ctx.http.expectOne(api('/api/form-submissions/sync-tally')).flush({ forms: 1, seen: 38, added: 0 });
+    expect(ctx.success).toHaveBeenCalledWith('Wszystkie zgłoszenia z Tally już są w portalu.');
+    ctx.http.expectNone(api('/api/form-submissions/pending-count'));
+
+    clickByText(ctx.el, 'Zapisane');
+    ctx.http.expectOne(api('/api/form-submissions?status=Applied')).flush([]);
+    ctx.component.syncTally();
+    ctx.http.expectOne(api('/api/form-submissions/sync-tally')).flush({ forms: 1, seen: 39, added: 1 });
+    ctx.http.expectOne(api('/api/form-submissions/pending-count')).flush(2);
+    ctx.http.expectNone(api('/api/form-submissions?status=Applied'));
+
+    ctx.component.syncTally();
+    ctx.http.expectOne(api('/api/form-submissions/sync-tally')).flush({ message: 'Brak klucza API Tally – ustaw Tally__ApiKey.' }, { status: 400, statusText: 'x' });
+    expect(ctx.error).toHaveBeenCalledWith('Brak klucza API Tally – ustaw Tally__ApiKey.');
+  });
 });

@@ -46,7 +46,16 @@ public static partial class FormSubmissionParser
 
     private static FormSubmissionField ReadField(string label, string? type, JsonElement f)
     {
-        if (!f.TryGetProperty("value", out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        var options = new Dictionary<string, string>();
+        if (f.TryGetProperty("options", out var opts) && opts.ValueKind == JsonValueKind.Array)
+            foreach (var o in opts.EnumerateArray())
+                if (Str(o, "id") is { } id && Str(o, "text") is { } text) options[id] = text;
+        return f.TryGetProperty("value", out var value) ? ReadValue(label, type, value, options) : new FormSubmissionField(label, type, null);
+    }
+
+    private static FormSubmissionField ReadValue(string label, string? type, JsonElement value, IReadOnlyDictionary<string, string> options)
+    {
+        if (value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
             return new FormSubmissionField(label, type, null);
         switch (value.ValueKind)
         {
@@ -64,10 +73,6 @@ public static partial class FormSubmissionParser
             case JsonValueKind.Array:
                 var files = new List<FormSubmissionFile>();
                 var texts = new List<string>();
-                var options = new Dictionary<string, string>();
-                if (f.TryGetProperty("options", out var opts) && opts.ValueKind == JsonValueKind.Array)
-                    foreach (var o in opts.EnumerateArray())
-                        if (Str(o, "id") is { } id && Str(o, "text") is { } text) options[id] = text;
                 foreach (var item in value.EnumerateArray())
                 {
                     if (item.ValueKind == JsonValueKind.Object && Str(item, "url") is { } url)
@@ -81,6 +86,54 @@ public static partial class FormSubmissionParser
             default:
                 return new FormSubmissionField(label, type, value.GetRawText());
         }
+    }
+
+    /// <summary>
+    /// Odpowiedzi z API Tally (GET /forms/{id}/submissions): pytania mają tytuł i typ, odpowiedzi – answer
+    /// (tekst, liczba, tablica plików) i formattedAnswer (czytelny tekst, np. wybrane opcje).
+    /// </summary>
+    public static IReadOnlyList<TallyEvent> ParseTallyApi(string json, string formId, string? formName)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var questions = new List<(string Id, string Title, string? Type)>();
+        if (root.TryGetProperty("questions", out var qs) && qs.ValueKind == JsonValueKind.Array)
+            foreach (var q in qs.EnumerateArray())
+                if (Str(q, "id") is { } id && !(q.TryGetProperty("isDeleted", out var del) && del.ValueKind == JsonValueKind.True))
+                    questions.Add((id, (Str(q, "title") ?? "").Trim(), Str(q, "type")));
+
+        var events = new List<TallyEvent>();
+        if (!root.TryGetProperty("submissions", out var subs) || subs.ValueKind != JsonValueKind.Array) return events;
+        foreach (var s in subs.EnumerateArray())
+        {
+            if (Str(s, "id") is not { Length: > 0 } submissionId) continue;
+            if (s.TryGetProperty("isCompleted", out var done) && done.ValueKind == JsonValueKind.False) continue;
+            var answers = new Dictionary<string, JsonElement>();
+            if (s.TryGetProperty("responses", out var rs) && rs.ValueKind == JsonValueKind.Array)
+                foreach (var r in rs.EnumerateArray())
+                    if (Str(r, "questionId") is { } qid) answers[qid] = r;
+            var fields = new List<FormSubmissionField>();
+            foreach (var (id, title, type) in questions)
+            {
+                if (type is "HIDDEN_FIELDS" or "CALCULATED_FIELDS") continue;
+                if (!answers.TryGetValue(id, out var r))
+                {
+                    fields.Add(new FormSubmissionField(title, type, null));
+                    continue;
+                }
+                var field = r.TryGetProperty("answer", out var answer)
+                    ? ReadValue(title, type, answer, new Dictionary<string, string>())
+                    : new FormSubmissionField(title, type, null);
+                // Wybory (opcje) API oddaje jako identyfikatory – czytelny tekst jest w formattedAnswer.
+                if (field.Files is null && Str(r, "formattedAnswer") is { Length: > 0 } formatted && answer.ValueKind == JsonValueKind.Array)
+                    field = field with { Text = formatted.Trim() };
+                fields.Add(field);
+            }
+            var submitted = DateTime.TryParse(Str(s, "submittedAt"), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at)
+                ? at : DateTime.UtcNow;
+            events.Add(new TallyEvent("FORM_RESPONSE", submissionId, formId, formName, submitted, fields));
+        }
+        return events;
     }
 
     public static IReadOnlyList<FormSubmissionFile> AllFiles(IEnumerable<FormSubmissionField> fields) =>

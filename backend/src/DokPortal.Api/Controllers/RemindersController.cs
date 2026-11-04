@@ -14,8 +14,14 @@ public class RemindersController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly DokPortal.Application.Mailing.IMailingQueue? _mailingQueue;
 
-    public RemindersController(IReminderService reminderService, IConfiguration configuration, DokPortal.Application.Mailing.IMailingQueue? mailingQueue = null)
+    private readonly DokPortal.Application.FormSubmissions.IFormSubmissionService? _formSubmissions;
+    private readonly DokPortal.Application.FormSubmissions.ITallyClient? _tally;
+
+    public RemindersController(IReminderService reminderService, IConfiguration configuration, DokPortal.Application.Mailing.IMailingQueue? mailingQueue = null,
+        DokPortal.Application.FormSubmissions.IFormSubmissionService? formSubmissions = null, DokPortal.Application.FormSubmissions.ITallyClient? tally = null)
     {
+        _tally = tally;
+        _formSubmissions = formSubmissions;
         _mailingQueue = mailingQueue;
         _reminderService = reminderService;
         _configuration = configuration;
@@ -79,6 +85,20 @@ public class RemindersController : ControllerBase
 
         _mailingQueue?.Kick();
         return Accepted();
+    }
+
+    /// <summary>Codzienne uzupełnienie kolejki zgłoszeń o to, co nie doszło z Tally webhookiem.</summary>
+    [HttpPost("tally-sync/run")]
+    public async Task<IActionResult> RunTallySync(CancellationToken ct)
+    {
+        if (!IsRequestAuthorized())
+        {
+            return Unauthorized();
+        }
+
+        // Bez klucza API to nie błąd dnia – zadanie po prostu nic nie robi (webhook dalej działa).
+        if (_tally is not { IsConfigured: true }) return Ok(new { skipped = "Brak Tally__ApiKey – pobieranie z Tally wyłączone." });
+        return Ok(await _formSubmissions!.SyncTallyAsync(ct));
     }
 
     private bool IsRequestAuthorized()

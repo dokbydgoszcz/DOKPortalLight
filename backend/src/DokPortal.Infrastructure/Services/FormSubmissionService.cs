@@ -19,12 +19,20 @@ public class FormSubmissionService : IFormSubmissionService
     private readonly AppDbContext _db;
     private readonly IFormFileFetcher _files;
     private readonly TimeProvider _time;
+    private readonly ITallyClient? _tally;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration? _configuration;
 
-    public FormSubmissionService(AppDbContext db, IFormFileFetcher files, TimeProvider? time = null)
+    /// <summary>Ile dni wstecz sięga pobieranie z API Tally.</summary>
+    public const int SyncDays = 30;
+
+    public FormSubmissionService(AppDbContext db, IFormFileFetcher files, TimeProvider? time = null, ITallyClient? tally = null,
+        Microsoft.Extensions.Configuration.IConfiguration? configuration = null)
     {
         _db = db;
         _files = files;
         _time = time ?? TimeProvider.System;
+        _tally = tally;
+        _configuration = configuration;
     }
 
     public async Task<TallyReceiveResult> ReceiveTallyAsync(string json, CancellationToken ct)
@@ -39,10 +47,13 @@ public class FormSubmissionService : IFormSubmissionService
             throw new InvalidOperationException("Nieprawidłowe dane zgłoszenia (to nie jest JSON z Tally).");
         }
         if (tally is null || tally.EventType != "FORM_RESPONSE") return TallyReceiveResult.Ignored;
-        if (await _db.FormSubmissions.AnyAsync(s => s.Source == TallySource && s.ExternalId == tally.SubmissionId, ct))
-            return TallyReceiveResult.Duplicate;
+        return await AddIfMissingAsync(tally, ct) ? TallyReceiveResult.Created : TallyReceiveResult.Duplicate;
+    }
 
-        _db.FormSubmissions.Add(new FormSubmission
+    private async Task<bool> AddIfMissingAsync(TallyEvent tally, CancellationToken ct)
+    {
+        if (await _db.FormSubmissions.AnyAsync(s => s.Source == TallySource && s.ExternalId == tally.SubmissionId, ct)) return false;
+        var entity = new FormSubmission
         {
             Id = Guid.NewGuid(),
             Source = TallySource,
@@ -53,7 +64,8 @@ public class FormSubmissionService : IFormSubmissionService
             ReceivedAtUtc = _time.GetUtcNow().UtcDateTime,
             FieldsJson = JsonSerializer.Serialize(tally.Fields, FormSubmissionParser.Json),
             Status = FormSubmissionStatus.Pending
-        });
+        };
+        _db.FormSubmissions.Add(entity);
         try
         {
             await _db.SaveChangesAsync(ct);
@@ -61,9 +73,38 @@ public class FormSubmissionService : IFormSubmissionService
         catch (DbUpdateException)
         {
             // Tally ponowił wysyłkę równolegle – zgłoszenie już jest.
-            return TallyReceiveResult.Duplicate;
+            _db.Entry(entity).State = EntityState.Detached;
+            return false;
         }
-        return TallyReceiveResult.Created;
+        return true;
+    }
+
+    public async Task<TallySyncResultDto> SyncTallyAsync(CancellationToken ct)
+    {
+        if (_tally is not { IsConfigured: true })
+            throw new InvalidOperationException("Pobieranie z Tally nie jest skonfigurowane – administrator ustawia w Azure Tally__ApiKey (klucz API z ustawień Tally).");
+        var formIds = await FormIdsAsync(ct);
+        var since = _time.GetUtcNow().UtcDateTime.AddDays(-SyncDays);
+        int seen = 0, added = 0;
+        foreach (var formId in formIds)
+        {
+            foreach (var tally in await _tally.ListSubmissionsAsync(formId, since, ct))
+            {
+                seen++;
+                if (await AddIfMissingAsync(tally, ct)) added++;
+            }
+        }
+        return new TallySyncResultDto(formIds.Count, seen, added);
+    }
+
+    /// <summary>Formularze do pobierania: z ustawienia Tally:FormIds, a bez niego – te, z których już przyszły zgłoszenia.</summary>
+    private async Task<IReadOnlyList<string>> FormIdsAsync(CancellationToken ct)
+    {
+        var configured = (_configuration?["Tally:FormIds"] ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (configured.Length > 0) return configured;
+        var known = await _db.FormSubmissions.Where(s => s.Source == TallySource && s.FormId != null).Select(s => s.FormId!).Distinct().ToListAsync(ct);
+        if (known.Count == 0) throw new InvalidOperationException("Nie wiem, z których formularzy Tally pobierać – ustaw w Azure Tally__FormIds (np. LD12GG).");
+        return known;
     }
 
     public Task<int> PendingCountAsync(CancellationToken ct) =>

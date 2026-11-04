@@ -18,6 +18,7 @@ on:
           - missing-documents
           - upcoming-name-days
           - expiring-missions
+          - tally-sync
 
 jobs:
   run:
@@ -60,6 +61,7 @@ jobs:
               missing-documents) call "missing-documents/run" 200 ;;
               upcoming-name-days) call "upcoming-name-days/run" 200 ;;
               expiring-missions) call "expiring-missions/run" 200 ;;
+              tally-sync) call "tally-sync/run" 200 ;;
               *) echo "Nieznane zadanie: $1"; return 1 ;;
             esac
           }
@@ -67,7 +69,7 @@ jobs:
           if [ -n "$MANUAL_JOB" ]; then
             jobs="$MANUAL_JOB"
           else
-            jobs="upcoming-meetings mailing-queue"
+            jobs="upcoming-meetings mailing-queue tally-sync"
             if [ "$(date -u +%u)" = "1" ]; then
               jobs="$jobs missing-documents upcoming-name-days expiring-missions"
             fi

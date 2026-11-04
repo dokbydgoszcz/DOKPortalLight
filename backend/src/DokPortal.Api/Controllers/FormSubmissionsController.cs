@@ -27,6 +27,11 @@ public class FormSubmissionsController : ControllerBase
     [HttpGet("pending-count")]
     public async Task<ActionResult<int>> PendingCount(CancellationToken ct) => Ok(await _submissions.PendingCountAsync(ct));
 
+    /// <summary>Dociąga z Tally zgłoszenia, które nie doszły webhookiem (np. aplikacja albo baza spały).</summary>
+    [HttpPost("sync-tally")]
+    [Audit("SyncTallySubmissions")]
+    public async Task<ActionResult<TallySyncResultDto>> SyncTally(CancellationToken ct) => Ok(await _submissions.SyncTallyAsync(ct));
+
     [HttpPost("{id:guid}/apply")]
     [Audit("ApplyFormSubmission")]
     public async Task<ActionResult<FormSubmissionDto>> Apply(Guid id, ApplyFormSubmissionRequest request, CancellationToken ct) =>

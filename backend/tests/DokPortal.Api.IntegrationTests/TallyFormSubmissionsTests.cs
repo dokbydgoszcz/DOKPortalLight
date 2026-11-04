@@ -209,4 +209,70 @@ public class TallyFormSubmissionsTests : IntegrationTestBase
         Assert.Equal(HttpStatusCode.NotFound, (await admin.PostAsJsonAsync($"/api/form-submissions/{unknown}/apply", new ApplyFormSubmissionRequest())).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"/api/form-submissions/{unknown}/files/0")).StatusCode);
     }
+
+    private static TallyEvent Event(string id, string form, string last, DateTime at) => new("FORM_RESPONSE", id, form, "Dane do systemu", at, new[]
+    {
+        new FormSubmissionField("Imię", "INPUT_TEXT", "Roma"),
+        new FormSubmissionField("Nazwisko", "INPUT_TEXT", last),
+        new FormSubmissionField("Adres - kod pocztowy", "INPUT_TEXT", "86-032 Niemcz")
+    });
+
+    [Fact]
+    public async Task MissedWebhooks_AreFetchedFromTally_ByAButtonOrTheDailyJob_WithoutDoubles()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        var catechist = await CreateAuthenticatedClientAsync($"kat-{Guid.NewGuid():N}@example.org", "Sekret123!", "Katechista");
+        var last = "Pobrana" + Unique();
+        var other = "Druga" + Unique();
+        var id = "t" + Unique();
+        lock (Factory.Tally.Events)
+        {
+            Factory.Tally.Events.Add(Event(id, "LD12GG", last, DateTime.UtcNow.AddDays(-1)));
+            Factory.Tally.Events.Add(Event("t" + Unique(), "INNY", other, DateTime.UtcNow.AddHours(-2)));
+            Factory.Tally.Events.Add(Event("t" + Unique(), "LD12GG", "Stara" + Unique(), DateTime.UtcNow.AddDays(-40)));
+        }
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await catechist.PostAsync("/api/form-submissions/sync-tally", null)).StatusCode);
+        var response = await admin.PostAsync("/api/form-submissions/sync-tally", null);
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+        var result = await response.Content.ReadFromJsonAsync<TallySyncResultDto>();
+        Assert.Equal(2, result!.Forms);
+        Assert.True(result.Added >= 2);
+
+        var fetched = await Pending(admin, last);
+        Assert.Equal(("Roma", "86-032", "Niemcz"), (fetched.Draft.FirstName, fetched.Draft.AddressPostalCode, fetched.Draft.AddressCity));
+        await Pending(admin, other);
+
+        // Ten sam zgłoszony formularz przychodzi potem webhookiem – bez dubla.
+        Assert.Contains("Duplicate", await (await SendAsync(Payload(id, "Roma", last, $"{Unique()}@example.org"))).Content.ReadAsStringAsync());
+
+        var job = new HttpRequestMessage(HttpMethod.Post, "/api/reminders/tally-sync/run");
+        job.Headers.Add("X-Reminders-Key", "testing-only-reminders-key");
+        var daily = await Factory.CreateClient().SendAsync(job);
+        Assert.Equal(HttpStatusCode.OK, daily.StatusCode);
+        Assert.Contains("\"added\":0", await daily.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Factory.CreateClient().PostAsync("/api/reminders/tally-sync/run", null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task WithoutAnApiKey_FetchingExplainsWhatToSet()
+    {
+        var admin = await CreateAuthenticatedClientAsync($"admin-{Guid.NewGuid():N}@example.org", "Sekret123!", "Administrator");
+        Factory.Tally.IsConfigured = false;
+        try
+        {
+            var response = await admin.PostAsync("/api/form-submissions/sync-tally", null);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Contains("Tally__ApiKey", await response.Content.ReadAsStringAsync());
+            var job = new HttpRequestMessage(HttpMethod.Post, "/api/reminders/tally-sync/run");
+            job.Headers.Add("X-Reminders-Key", "testing-only-reminders-key");
+            var daily = await Factory.CreateClient().SendAsync(job);
+            Assert.Equal(HttpStatusCode.OK, daily.StatusCode);
+            Assert.Contains("skipped", await daily.Content.ReadAsStringAsync());
+        }
+        finally
+        {
+            Factory.Tally.IsConfigured = true;
+        }
+    }
 }

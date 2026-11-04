@@ -74,6 +74,7 @@ export class FormSubmissionsComponent implements OnInit, OnDestroy {
   readonly photoUrl = signal<string | null>(null);
   readonly photoError = signal<string | null>(null);
   readonly saving = signal(false);
+  readonly syncing = signal(false);
   value: EditValue = this.emptyValue();
   private photoBlob: Blob | null = null;
 
@@ -101,6 +102,26 @@ export class FormSubmissionsComponent implements OnInit, OnDestroy {
     this.service.list(this.tab()).subscribe({
       next: list => this.items.set(list),
       error: err => this.loadError.set(serverMessage(err, 'Nie udało się wczytać zgłoszeń.'))
+    });
+  }
+
+  /** Pobiera z Tally to, co nie doszło samo (np. formularz wysłany w nocy, gdy aplikacja spała). */
+  syncTally(): void {
+    if (this.syncing()) return;
+    this.syncing.set(true);
+    this.service.syncTally().subscribe({
+      next: result => {
+        this.syncing.set(false);
+        this.toast.success(result.added ? `Pobrano z Tally nowych zgłoszeń: ${result.added}.` : 'Wszystkie zgłoszenia z Tally już są w portalu.');
+        if (result.added) {
+          this.refreshCount();
+          if (this.tab() === 'Pending') this.load();
+        }
+      },
+      error: err => {
+        this.syncing.set(false);
+        this.toast.error(serverMessage(err, 'Nie udało się pobrać zgłoszeń z Tally.'));
+      }
     });
   }
 

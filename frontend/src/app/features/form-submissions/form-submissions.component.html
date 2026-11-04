@@ -3,6 +3,10 @@
     <h2>Zgłoszenia z formularzy</h2>
     <p>Odpowiedzi z Tally trafiają tu same. Do osób zapisują się dopiero, gdy je przejrzysz: poprawisz dane i wybierzesz nową albo istniejącą osobę.</p>
   </div>
+  <button class="btn ghost" type="button" [disabled]="syncing()" (click)="syncTally()"
+    title="Gdy aplikacja spała, Tally mógł nie dostarczyć zgłoszenia – pobiera brakujące z ostatnich 30 dni">
+    {{ syncing() ? 'Pobieram…' : 'Pobierz brakujące z Tally' }}
+  </button>
 </div>
 
 <div class="card">

@@ -13,6 +13,11 @@ export class FormSubmissionsService {
     return this.http.get<FormSubmission[]>(this.baseUrl, { params: { status } });
   }
 
+  /** Dociąga z Tally zgłoszenia, które nie doszły webhookiem. */
+  syncTally() {
+    return this.http.post<{ forms: number; seen: number; added: number }>(`${this.baseUrl}/sync-tally`, {});
+  }
+
   pendingCount() {
     return this.http.get<number>(`${this.baseUrl}/pending-count`);
   }

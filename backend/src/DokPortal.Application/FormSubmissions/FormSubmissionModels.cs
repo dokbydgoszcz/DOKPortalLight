@@ -95,6 +95,8 @@ public interface IFormSubmissionService
     Task<FormSubmissionDto?> ReopenAsync(Guid id, CancellationToken ct);
     /// <summary>Pobiera plik zgłoszenia (np. zdjęcie) z Tally; null = brak zgłoszenia lub pliku.</summary>
     Task<DownloadedFile?> GetFileAsync(Guid id, int index, CancellationToken ct);
+    /// <summary>Dociąga z API Tally zgłoszenia z ostatnich dni, których nie ma w kolejce (np. webhook nie doszedł, bo aplikacja spała).</summary>
+    Task<TallySyncResultDto> SyncTallyAsync(CancellationToken ct);
 }
 
 public sealed record DownloadedFile(byte[] Content, string ContentType, string Name);
@@ -103,4 +105,14 @@ public sealed record DownloadedFile(byte[] Content, string ContentType, string N
 public interface IFormFileFetcher
 {
     Task<DownloadedFile> FetchAsync(FormSubmissionFile file, CancellationToken ct);
+}
+
+/// <summary>Wynik pobrania zgłoszeń z API Tally (uzupełnienie tego, co nie doszło webhookiem).</summary>
+public sealed record TallySyncResultDto(int Forms, int Seen, int Added);
+
+/// <summary>Odczyt zgłoszeń z API Tally (klucz API w ustawieniu Tally:ApiKey).</summary>
+public interface ITallyClient
+{
+    bool IsConfigured { get; }
+    Task<IReadOnlyList<TallyEvent>> ListSubmissionsAsync(string formId, DateTime sinceUtc, CancellationToken ct);
 }
