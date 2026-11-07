@@ -13,18 +13,20 @@ const second: Attachment = { id: 'a2', fileName: 'zdjecie.jpg', contentType: 'im
 @Component({
   standalone: true,
   imports: [AttachmentsComponent],
-  template: `<app-attachments [attachments]="items()" [baseUrl]="url" managePermission="Supervisions.Manage" [showEmpty]="showEmpty" [showHint]="showHint" (changed)="changes = changes + 1" />`
+  template: `<app-attachments [attachments]="items()" [baseUrl]="url" managePermission="Supervisions.Manage" [showEmpty]="showEmpty" [showHint]="showHint" [deleteSound]="sound" (changed)="changes = changes + 1" />`
 })
 class HostComponent {
   readonly items = signal<Attachment[]>([first, second]);
   readonly url = base;
   showEmpty = false;
   showHint = true;
+  sound: string | null = null;
   changes = 0;
 }
 
-function boot(options: { items?: Attachment[]; granted?: string[]; showEmpty?: boolean; showHint?: boolean } = {}) {
+function boot(options: { items?: Attachment[]; granted?: string[]; showEmpty?: boolean; showHint?: boolean; sound?: string } = {}) {
   const ctx = setup(HostComponent, { granted: options.granted });
+  ctx.fixture.componentInstance.sound = options.sound ?? null;
   ctx.fixture.componentInstance.items.set(options.items ?? [first, second]);
   ctx.fixture.componentInstance.showEmpty = options.showEmpty ?? false;
   ctx.fixture.componentInstance.showHint = options.showHint ?? true;
@@ -115,13 +117,25 @@ describe('AttachmentsComponent', () => {
   describe('deleting', () => {
     it('deletes after confirmation, informs the user and asks the parent to reload', () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
       const ctx = boot();
 
       clickByText(ctx.el, 'Usuń');
+      expect(play).not.toHaveBeenCalled();
       ctx.http.expectOne(r => r.method === 'DELETE' && r.url === `${base}/a1`).flush(null, { status: 204, statusText: 'No Content' });
 
       expect(toastMessages()).toContain('Załącznik usunięty.');
       expect(ctx.fixture.componentInstance.changes).toBe(1);
+    });
+
+    it('plays the chosen sound once the deletion is confirmed', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+      const ctx = boot({ sound: '/sounds/usun-zasob.mp3' });
+
+      clickByText(ctx.el, 'Usuń');
+      expect((play.mock.contexts[0] as HTMLAudioElement).src).toContain('/sounds/usun-zasob.mp3');
+      ctx.http.expectOne(r => r.method === 'DELETE').flush(null, { status: 204, statusText: 'No Content' });
     });
 
     it('does nothing when the confirmation is declined', () => {

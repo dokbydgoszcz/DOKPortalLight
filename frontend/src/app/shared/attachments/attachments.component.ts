@@ -5,6 +5,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 import { Attachment } from './attachment.model';
 import { AttachmentsService } from './attachments.service';
 import { ACCEPT_ATTRIBUTE, RULES_HINT, formatFileSize, saveBlob } from './attachment-rules';
+import { playSound } from '../sound';
 
 /** Lista plików dołączonych do rekordu (notatki, superwizji) z pobieraniem, usuwaniem i dodawaniem wielu plików naraz. */
 @Component({
@@ -59,6 +60,8 @@ export class AttachmentsComponent {
   readonly showHint = input(true);
   /** Tylko pobieranie (np. pliki wysłanej kampanii). */
   readonly readOnly = input(false);
+  /** Dźwięk odtwarzany po potwierdzeniu usunięcia (np. w zasobach dla katechistów). */
+  readonly deleteSound = input<string | null>(null);
   /** Wywoływane po dodaniu lub usunięciu plików – właściciel odświeża swoją listę. */
   readonly changed = output<void>();
 
@@ -80,6 +83,8 @@ export class AttachmentsComponent {
 
   remove(attachment: Attachment): void {
     if (!confirm(`Usunąć załącznik „${attachment.fileName}”?`)) return;
+    const sound = this.deleteSound();
+    if (sound) playSound(sound);
     this.attachmentsService.remove(this.baseUrl(), attachment.id).subscribe({
       next: () => {
         this.toast.success('Załącznik usunięty.');

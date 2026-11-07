@@ -83,6 +83,8 @@ export class ResourcesComponent implements OnInit {
     this.isFormOpen.set(false);
   }
 
+  readonly deleteSound = SOUNDS.deleteResource;
+
   deleteResource(resource: Resource): void {
     if (!confirm(`Usunąć zasób „${resource.title}” razem z plikami?`)) return;
     playSound(SOUNDS.deleteResource);
