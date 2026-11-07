@@ -133,9 +133,12 @@ describe('ResourcesComponent', () => {
 
     it('deletes a resource after confirmation and reloads', () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
       const ctx = boot();
 
       ctx.el.querySelector<HTMLElement>('.resource .delete')!.click();
+      expect(play).toHaveBeenCalledTimes(1);
+      expect((play.mock.contexts[0] as HTMLAudioElement).src).toContain('/sounds/usun-zasob.mp3');
       ctx.http.expectOne(r => r.method === 'DELETE' && r.url === `${url}/r1`).flush(null);
 
       expect(toastMessages()).toContain('Zasób usunięty.');
@@ -144,9 +147,11 @@ describe('ResourcesComponent', () => {
 
     it('does nothing when the deletion is not confirmed', () => {
       vi.spyOn(window, 'confirm').mockReturnValue(false);
+      const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
       const ctx = boot();
 
       ctx.el.querySelector<HTMLElement>('.resource .delete')!.click();
+      expect(play).not.toHaveBeenCalled();
 
       ctx.http.expectNone(r => r.method === 'DELETE');
     });

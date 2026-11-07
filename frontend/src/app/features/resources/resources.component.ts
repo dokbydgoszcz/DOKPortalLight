@@ -5,6 +5,7 @@ import { AttachmentsComponent } from '../../shared/attachments/attachments.compo
 import { ToastService } from '../../core/notifications/toast.service';
 import { Resource, ResourceFormValue } from './resource.model';
 import { ResourcesService } from './resources.service';
+import { SOUNDS, playSound } from '../../shared/sound';
 
 /** Globalna biblioteka zasobów dla katechistów: wgrywa Superwizor i Dyrektorzy, przegląda każdy z uprawnieniem. */
 @Component({
@@ -84,6 +85,7 @@ export class ResourcesComponent implements OnInit {
 
   deleteResource(resource: Resource): void {
     if (!confirm(`Usunąć zasób „${resource.title}” razem z plikami?`)) return;
+    playSound(SOUNDS.deleteResource);
     this.resourcesService.delete(resource.id).subscribe({
       next: () => {
         this.toast.success('Zasób usunięty.');
