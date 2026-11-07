@@ -154,7 +154,7 @@
   <div class="card-head"><h3>Co nowego</h3></div>
   <div class="card-body">
     <div class="list">
-      @for (entry of changelog; track entry.date + entry.text) {
+      @for (entry of changelogVisible(); track entry.date + entry.text) {
         <div class="list-row">
           <div class="list-main">
             <div class="list-title">{{ entry.text }}</div>
@@ -163,5 +163,6 @@
         </div>
       }
     </div>
+    <app-pagination [page]="changelogPage()" [pageSize]="changelogPageSize" [totalCount]="changelog.length" (pageChange)="changelogPage.set($event)" />
   </div>
 </div>

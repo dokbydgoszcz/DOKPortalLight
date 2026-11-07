@@ -39,6 +39,22 @@ describe('DashboardComponent', () => {
     httpMock = TestBed.inject(HttpTestingController);
   });
 
+  it('shows what is new a few entries at a time, newest first', () => {
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const card = Array.from(el.querySelectorAll('.card')).find(c => c.querySelector('h3')?.textContent === 'Co nowego')!;
+    const entries = () => Array.from(card.querySelectorAll('.list-sub')).map(e => e.textContent!.trim());
+    const component = fixture.componentInstance;
+    expect(entries().length).toBe(component.changelogPageSize);
+    expect(entries()[0]).toBe(component.changelog[0].date);
+    expect(card.textContent).toContain(`Strona 1 z ${Math.ceil(component.changelog.length / component.changelogPageSize)}`);
+
+    (Array.from(card.querySelectorAll('button')).find(b => b.textContent!.includes('Następna')) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(entries()[0]).toBe(component.changelog[component.changelogPageSize].date);
+    expect(card.textContent).toContain('Strona 2 z');
+  });
+
   it('renders the people count returned by the API', () => {
     fixture.detectChanges();
     httpMock.expectOne(`${environment.apiBaseUrl}/api/dashboard/summary`).flush(summary);

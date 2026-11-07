@@ -1,5 +1,6 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { PaginationComponent } from '../../shared/pagination.component';
 import { RouterLink } from '@angular/router';
 import { DashboardService } from './dashboard.service';
 import { NameDaysService } from '../name-days/name-days.service';
@@ -20,7 +21,7 @@ const NAME_DAYS_WINDOW = 14;
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, RouterLink, PaginationComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -151,6 +152,12 @@ export class DashboardComponent implements OnInit {
     { date: '2026-10-01', text: 'Administrator może zresetować hasło użytkownika.' },
     { date: '2026-09-30', text: 'Nowy wygląd strony logowania i całej aplikacji.' }
   ];
+
+  /** „Co nowego” po kilka wpisów na stronę – najnowsze na pierwszej. */
+  readonly changelogPageSize = 6;
+  readonly changelogPage = signal(1);
+  readonly changelogVisible = computed(() =>
+    this.changelog.slice((this.changelogPage() - 1) * this.changelogPageSize, this.changelogPage() * this.changelogPageSize));
 
   constructor(
     private readonly dashboardService: DashboardService,
