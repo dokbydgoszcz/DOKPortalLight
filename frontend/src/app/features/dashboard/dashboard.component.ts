@@ -40,6 +40,7 @@ export class DashboardComponent implements OnInit {
 
   readonly timeRange = timeRange;
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-11-07', text: 'Logowanie — po zalogowaniu okno logowania odjeżdża w prawo, a portal wjeżdża na jego miejsce. Działa w nowych przeglądarkach (Chrome, Edge, Safari); gdzie animacji nie ma albo w systemie wyłączono ruch, strona po prostu się przełącza.' },
     { date: '2026-11-04', text: 'Zgłoszenia z formularzy — nowy przycisk „Pobierz brakujące z Tally” dociąga zgłoszenia z ostatnich 30 dni, które nie doszły same, np. wysłane w nocy, gdy portal spał. To samo dzieje się codziennie rano automatycznie. Dubli nie ma.' },
     { date: '2026-10-20', text: 'Zgłoszenia z formularzy — odpowiedzi z formularzy Tally (np. „Dane do systemu”) same trafiają do nowej zakładki „Zgłoszenia z formularzy”. Dane są od razu uporządkowane: kod pocztowy, „ul.”, numer mieszkania, telefon, imieniny słownie. Przy każdym zgłoszeniu portal podpowiada pasującą osobę (po e-mailu, telefonie, imieniu i nazwisku). Poprawiasz dane i zapisujesz jako nową osobę albo aktualizację istniejącej, razem ze zdjęciem z formularza (duże zdjęcia są zmniejszane), albo odrzucasz.' },
     { date: '2026-10-20', text: 'Imieniny — w formularzu osoby miesiąc imienin wybierasz z listy nazw (styczeń…grudzień), a dzień jest przed miesiącem. Na karcie osoby, w kalendarzu imienin i na pulpicie daty imienin są zapisane słownie, np. „26 lipca”.' },

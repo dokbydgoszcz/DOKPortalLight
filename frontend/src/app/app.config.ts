@@ -1,5 +1,6 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter, withInMemoryScrolling, withNavigationErrorHandler } from '@angular/router';
+import { provideRouter, withInMemoryScrolling, withNavigationErrorHandler, withViewTransitions } from '@angular/router';
+import { animateOnlyAfterLogin } from './core/login-transition';
 import { reloadOnStaleChunk } from './core/stale-chunks';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { routes } from './app.routes';
@@ -8,7 +9,8 @@ import { authInterceptor } from './core/auth/auth.interceptor';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes, withNavigationErrorHandler(error => reloadOnStaleChunk(error)), withInMemoryScrolling({ anchorScrolling: 'enabled' })),
+    provideRouter(routes, withNavigationErrorHandler(error => reloadOnStaleChunk(error)), withInMemoryScrolling({ anchorScrolling: 'enabled' }),
+      withViewTransitions({ onViewTransitionCreated: animateOnlyAfterLogin })),
     provideHttpClient(withInterceptors([authInterceptor]))
   ]
 };
