@@ -139,6 +139,13 @@ public class GdprService : IGdprService
         var person = await _db.People.IgnoreQueryFilters().Include(p => p.Functions).FirstOrDefaultAsync(p => p.Id == personId, ct);
         if (person is null) return false;
         if (person.AnonymizedAtUtc is not null) throw new InvalidOperationException("Dane tej osoby zostały już zanonimizowane.");
+        var isAdministrator = await (from u in _db.Users
+                                     join ur in _db.UserRoles on u.Id equals ur.UserId
+                                     join r in _db.Roles on ur.RoleId equals r.Id
+                                     where u.PersonId == personId && r.Name == DokPortal.Domain.Constants.AppRoles.Administrator
+                                     select u.Id).AnyAsync(ct);
+        if (isAdministrator)
+            throw new InvalidOperationException("Ta osoba ma konto administratora. Najpierw odbierz mu rolę Administrator (Użytkownicy i role) – anonimizacja wyłącza konto.");
         var openLed = await _db.DokCases.CountAsync(c => (c.CatechistPersonId == personId || c.MentorPersonId == personId)
             && c.PersonId != personId && c.CompletedAtUtc == null && c.InterruptedOn == null, ct);
         if (openLed > 0)

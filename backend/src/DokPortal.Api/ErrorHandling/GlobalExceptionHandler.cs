@@ -17,7 +17,7 @@ public class GlobalExceptionHandler : IExceptionHandler
             _ when IsTransientDatabaseFailure(exception) => (StatusCodes.Status503ServiceUnavailable,
                 "Baza danych chwilowo nie odpowiada (wybudza się po przerwie). Spróbuj ponownie za minutę."),
             DuplicatePersonException => (StatusCodes.Status409Conflict, exception.Message),
-            InvalidOperationException => (StatusCodes.Status400BadRequest, exception.Message),
+            InvalidOperationException when IsOwnMessage(exception) => (StatusCodes.Status400BadRequest, exception.Message),
             UnauthorizedAccessException => (StatusCodes.Status403Forbidden, "Brak uprawnień do wykonania tej operacji."),
             _ => (StatusCodes.Status500InternalServerError, "Wystąpił nieoczekiwany błąd serwera.")
         };
@@ -52,6 +52,15 @@ public class GlobalExceptionHandler : IExceptionHandler
 
         return true;
     }
+
+    /// <summary>
+    /// Treść wyjątku pokazujemy tylko wtedy, gdy zgłosił go kod portalu (komunikat napisany dla użytkownika).
+    /// InvalidOperationException z bibliotek (EF, LINQ, Identity) bywa pełen szczegółów technicznych – zapytań,
+    /// nazw tabel i typów – więc dostaje ogólną odpowiedź 500, a szczegóły idą tylko do logu.
+    /// </summary>
+    public static bool IsOwnMessage(Exception exception) =>
+        exception.TargetSite is not { } site // wyjątek jeszcze nie zgłoszony (testy)
+        || site.DeclaringType?.Assembly.GetName().Name?.StartsWith("DokPortal", StringComparison.Ordinal) == true;
 
     /// <summary>
     /// Przejściowy błąd bazy (budzenie darmowej bazy Azure SQL, limit czasu, wyczerpane ponowienia) – nie wina klienta.

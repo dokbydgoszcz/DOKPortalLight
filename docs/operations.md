@@ -178,6 +178,12 @@ Raz na kwartał warto sprawdzić, że odtworzenie działa: `earliestRestoreDate`
 - **Sesje**: przy każdym żądaniu API sprawdza (z pamięcią 60 s), czy konto istnieje, nie jest wyłączone i czy token pasuje do jego znacznika bezpieczeństwa. Wyłączenie konta, zmiana ról albo hasła kończy otwarte sesje tego konta.
 - **Odejście katechisty**: Użytkownicy i role → „Wyłącz konto”. Jego sprawy DOK przekaż innemu katechiście (Podopieczni DOK → Edytuj → Katechista prowadzący); nowy katechista dostanie e-mail.
 - **Dziennik zmian**: zapisuje m.in. tworzenie, zmiany i usuwanie osób, spraw, kandydatów, misji, parafii, zapotrzebowań, spotkań, formatorów, superwizji, zasobów; wgrywanie i pobieranie plików; generowanie i pobieranie pism; wysyłkę kampanii; zmiany kont. Opis wpisu to nazwa obiektu i jego identyfikatory, np. `Metryka [caseId=…, id=…]`.
+- **Konta administratorów** (przegląd bezpieczeństwa 2026-11-10): hasło, MFA, login, powiązaną osobę, role i wyłączenie konta administratora zmienia tylko inny administrator. Samo uprawnienie „Użytkownicy i role” na to nie pozwala. Osoby z kontem administratora nie da się zanonimizować, dopóki ma tę rolę.
+- **Hasło tymczasowe**: konto z hasłem nadanym przez administratora ma dostęp tylko do `/api/auth` (zmiana hasła, MFA); reszta API odpowiada 403, dopóki użytkownik nie ustawi własnego hasła.
+- **Nagłówki bezpieczeństwa**: API dodaje `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy: default-src 'none'`, `Strict-Transport-Security`, `Referrer-Policy` i `Cache-Control: no-store` dla `/api`. Frontend ma CSP w `frontend/public/staticwebapp.config.json`: skrypty tylko z własnej domeny, połączenia tylko z API. **Zmiana adresu API albo dodanie zewnętrznego skryptu/czcionki wymaga dopisania go do CSP**, inaczej przeglądarka go zablokuje (błąd „Refused to…” w konsoli).
+- **Błędy**: klient dostaje treść wyjątku tylko wtedy, gdy zgłosił go kod portalu; błędy bibliotek (EF, Identity) dają ogólne 500, a szczegóły są w logu.
+- **Wzory pism**: treść jest czyszczona przy zapisie (`LetterHtml.Sanitize`) – zostają akapity, nagłówki, listy, pogrubienia i wyrównanie.
+- **Znane, niezałatane**: edytor TipTap 2.x ma zgłoszenie o średniej wadze (GHSA-cp6q-959q-f8rh), poprawione dopiero w 3.x – to duża zmiana wersji. Ryzyko ogranicza czyszczenie treści po stronie serwera i CSP. Pozostałe ostrzeżenia `npm audit` dotyczą narzędzi deweloperskich (vitest, undici), nie wdrożonej aplikacji.
 
 ## RODO – żądania osób
 

@@ -62,7 +62,7 @@ public class LetterTemplateService : ILetterTemplateService
         var order = await _db.LetterTemplates.Select(t => (int?)t.SortOrder).MaxAsync(ct) ?? -1;
         var template = new LetterTemplate
         {
-            Id = Guid.NewGuid(), Name = request.Name.Trim(), Body = request.Body, UseLetterhead = request.UseLetterhead, IsActive = request.IsActive,
+            Id = Guid.NewGuid(), Name = request.Name.Trim(), Body = LetterHtml.Sanitize(request.Body), UseLetterhead = request.UseLetterhead, IsActive = request.IsActive,
             SortOrder = order + 1, CreatedAtUtc = Now, UpdatedAtUtc = Now, UpdatedByEmail = userEmail
         };
         _db.LetterTemplates.Add(template);
@@ -76,7 +76,7 @@ public class LetterTemplateService : ILetterTemplateService
         var template = await _db.LetterTemplates.FirstOrDefaultAsync(t => t.Id == id, ct);
         if (template is null) return null;
         template.Name = request.Name.Trim();
-        template.Body = request.Body;
+        template.Body = LetterHtml.Sanitize(request.Body);
         template.UseLetterhead = request.UseLetterhead;
         template.IsActive = request.IsActive;
         template.UpdatedAtUtc = Now;
@@ -187,6 +187,7 @@ public class LetterTemplateService : ILetterTemplateService
     public async Task<LetterFile> PreviewAsync(PreviewLetterRequest request, string userId, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Body)) throw new InvalidOperationException("Wzór nie ma treści.");
+        if (request.Body.Length > LetterHtml.MaxLength) throw new InvalidOperationException("Treść wzoru jest za długa.");
         var format = LetterRenderer.NormalizeFormat(request.Format);
         var head = await _renderer.LetterheadAsync(ct);
         var issuer = await _renderer.IssuerAsync(userId, ct);

@@ -34,6 +34,7 @@ using DokPortal.Infrastructure.Identity;
 using DokPortal.Infrastructure.Persistence;
 using DokPortal.Infrastructure.Seed;
 using DokPortal.Infrastructure.Services;
+using DokPortal.Api.Security;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -46,6 +47,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(kestrel => kestrel.AddServerHeader = false);
 
 if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
 {
@@ -132,8 +134,11 @@ builder.Services.AddScoped<IGdprService, GdprService>();
 builder.Services.AddScoped<DokPortal.Application.Documents.ILetterTemplateService, LetterTemplateService>();
 builder.Services.AddScoped<IPeopleImportService, PeopleImportService>();
 builder.Services.AddScoped<DokPortal.Application.FormSubmissions.IFormSubmissionService, FormSubmissionService>();
-builder.Services.AddHttpClient<DokPortal.Application.FormSubmissions.IFormFileFetcher, TallyFileFetcher>(http => http.Timeout = TimeSpan.FromSeconds(30));
-builder.Services.AddHttpClient<DokPortal.Application.FormSubmissions.ITallyClient, TallyApiClient>(http => http.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHttpClient<DokPortal.Application.FormSubmissions.IFormFileFetcher, TallyFileFetcher>(http => http.Timeout = TimeSpan.FromSeconds(30))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
+// ↑ Bez przekierowań: adres pliku pochodzi z danych zgłoszenia, a przekierowanie mogłoby wyprowadzić żądanie poza Tally (np. na adres wewnętrzny).
+builder.Services.AddHttpClient<DokPortal.Application.FormSubmissions.ITallyClient, TallyApiClient>(http => http.Timeout = TimeSpan.FromSeconds(30))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
 builder.Services.AddScoped<ICalendarFeedService, CalendarFeedService>();
 builder.Services.AddScoped<IParishService, ParishService>();
 builder.Services.AddScoped<IParishImportService, ParishImportService>();
@@ -270,11 +275,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseSecurityHeaders();
 app.UseExceptionHandler();
 app.UseRouting();
 app.UseCors("Frontend");
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMustChangePasswordGate();
 app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));

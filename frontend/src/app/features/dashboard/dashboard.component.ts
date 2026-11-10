@@ -41,6 +41,7 @@ export class DashboardComponent implements OnInit {
 
   readonly timeRange = timeRange;
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-11-10', text: 'Bezpieczeństwo — przegląd i poprawki: konto administratora (hasło, weryfikację dwuetapową, login, role) zmienia tylko inny administrator; konto z hasłem tymczasowym musi najpierw ustawić własne hasło, zanim zobaczy dane; eksport dziennika zmian do CSV jest bezpieczny dla Excela; przeglądarka dostała dodatkowe zabezpieczenia strony. Po zmianie loginu konta trzeba zalogować się ponownie.' },
     { date: '2026-11-07', text: 'Zasoby dla katechistów — po potwierdzeniu usunięcia zasobu odtwarza się krótki dźwięk. Pulpit: „Co nowego” jest teraz podzielone na strony.' },
     { date: '2026-11-07', text: 'Logowanie — po zalogowaniu okno logowania odjeżdża w prawo, a portal wjeżdża na jego miejsce. Działa w nowych przeglądarkach (Chrome, Edge, Safari); gdzie animacji nie ma albo w systemie wyłączono ruch, strona po prostu się przełącza.' },
     { date: '2026-11-04', text: 'Zgłoszenia z formularzy — nowy przycisk „Pobierz brakujące z Tally” dociąga zgłoszenia z ostatnich 30 dni, które nie doszły same, np. wysłane w nocy, gdy portal spał. To samo dzieje się codziennie rano automatycznie. Dubli nie ma.' },

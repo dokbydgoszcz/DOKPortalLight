@@ -74,7 +74,7 @@ public class UsersController : ControllerBase
     [HttpPut("{id}/person")]
     public async Task<ActionResult<UserDto>> SetPerson(string id, SetUserPersonRequest request, CancellationToken ct)
     {
-        var updated = await _userService.SetPersonAsync(id, request.PersonId, ct);
+        var updated = await _userService.SetPersonAsync(id, request.PersonId, ct, CurrentActor());
         if (updated is null) return NotFound();
 
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;
@@ -88,7 +88,7 @@ public class UsersController : ControllerBase
     [HttpPut("{id}/login")]
     public async Task<ActionResult<UserDto>> ChangeLogin(string id, ChangeLoginRequest request, CancellationToken ct)
     {
-        var updated = await _userService.ChangeLoginAsync(id, request.Email, ct);
+        var updated = await _userService.ChangeLoginAsync(id, request.Email, ct, CurrentActor());
         if (updated is null) return NotFound();
         await _auditLogService.LogAsync(CurrentActor().UserId, CurrentEmail(), "ChangeUserLogin", updated.Email, DokPortal.Domain.Enums.AuditResult.Allowed, ct);
         return Ok(updated);
@@ -98,7 +98,7 @@ public class UsersController : ControllerBase
     [HttpDelete("{id}/mfa")]
     public async Task<ActionResult<UserDto>> ResetMfa(string id, CancellationToken ct)
     {
-        var updated = await _userService.ResetMfaAsync(id, ct);
+        var updated = await _userService.ResetMfaAsync(id, ct, CurrentActor());
         if (updated is null) return NotFound();
         await _auditLogService.LogAsync(CurrentActor().UserId, CurrentEmail(), "ResetUserMfa", updated.Email, DokPortal.Domain.Enums.AuditResult.Allowed, ct);
         return Ok(updated);
@@ -107,7 +107,7 @@ public class UsersController : ControllerBase
     [HttpPut("{id}/reset-password")]
     public async Task<IActionResult> ResetPassword(string id, ResetPasswordRequest request, CancellationToken ct)
     {
-        var succeeded = await _userService.ResetPasswordAsync(id, request.NewPassword, ct);
+        var succeeded = await _userService.ResetPasswordAsync(id, request.NewPassword, ct, CurrentActor());
         if (!succeeded) return NotFound();
 
         var currentUserId = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value;

@@ -55,7 +55,13 @@ export class AuditLogComponent implements OnInit {
 
   exportCsv(): void {
     const header = 'Data,Uzytkownik,Akcja,Obiekt,Wynik';
-    const quote = (value: string) => (/[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
+    // Komórka zaczynająca się od = + - @ byłaby w Excelu formułą, a w dzienniku są teksty wpisane przez obcych
+    // (np. „e-mail” z nieudanego logowania) – apostrof na początku robi z niej zwykły tekst.
+    const plain = (value: string) => (/^[=+\-@\t\r]/.test(value) ? `'${value}` : value);
+    const quote = (raw: string | null | undefined) => {
+      const value = plain(raw ?? '');
+      return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+    };
     const rows = this.entries().map(e =>
       [e.timestampUtc, e.userEmail, e.action, e.objectDescription, e.result].map(quote).join(',')
     );

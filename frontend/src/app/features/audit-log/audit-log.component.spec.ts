@@ -70,6 +70,19 @@ describe('AuditLogComponent', () => {
     expect(lines[2]).toBe('2026-10-01T11:00:00Z,admin@example.org,UpdateRolePermissions,"Biskup: dodano [A, B]; odebrano []",Allowed');
   });
 
+  it('keeps spreadsheet formulas typed by strangers as plain text', async () => {
+    const { el } = boot([
+      { ...entries[0], userEmail: '=HYPERLINK("http://zly.example","klik")@x.pl', objectDescription: '+48 123' },
+      { ...entries[0], userEmail: '@SUM(1)', objectDescription: '-2+3', action: null as unknown as string }
+    ]);
+
+    const { text } = await exportedCsv(el);
+
+    const lines = text.split('\n');
+    expect(lines[1]).toBe(`2026-10-01T10:00:00Z,"'=HYPERLINK(""http://zly.example"",""klik"")@x.pl",Login,'+48 123,Allowed`);
+    expect(lines[2]).toBe(`2026-10-01T10:00:00Z,'@SUM(1),,'-2+3,Allowed`);
+  });
+
   it('escapes double quotes inside fields', async () => {
     const { el } = boot([{ ...entries[0], objectDescription: 'Rola „X” "test"' }]);
 

@@ -13,8 +13,10 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     public JwtTokenGenerator(JwtOptions options) => _options = options;
 
     public const string StampClaim = "stamp";
+    /// <summary>Konto z hasłem tymczasowym: do czasu ustawienia własnego hasła token działa tylko na /api/auth.</summary>
+    public const string MustChangePasswordClaim = "mcp";
 
-    public string GenerateToken(string userId, string email, Guid? personId, IEnumerable<string> roles, IEnumerable<string> permissions, string? securityStamp = null)
+    public string GenerateToken(string userId, string email, Guid? personId, IEnumerable<string> roles, IEnumerable<string> permissions, string? securityStamp = null, bool mustChangePassword = false)
     {
         var claims = new List<Claim>
         {
@@ -26,6 +28,11 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         if (securityStamp is not null)
         {
             claims.Add(new Claim(StampClaim, securityStamp));
+        }
+
+        if (mustChangePassword)
+        {
+            claims.Add(new Claim(MustChangePasswordClaim, "1"));
         }
 
         if (personId.HasValue)

@@ -32,6 +32,26 @@ public class UserService : IUserService
         }
     }
 
+    /// <summary>
+    /// Konto administratora zmienia tylko administrator. Bez tego osoba z samym „Użytkownicy i role” mogłaby
+    /// ustawić administratorowi hasło, wyłączyć mu MFA albo podmienić login i przejąć jego konto.
+    /// </summary>
+    private async Task EnsureMayManageAsync(AppUser target, UserActor? actor)
+    {
+        if (actor is { IsAdministrator: false } && await _userManager.IsInRoleAsync(target, AppRoles.Administrator))
+        {
+            throw new InvalidOperationException("Konto administratora może zmienić tylko administrator.");
+        }
+    }
+
+    private async Task EnsureRolesExistAsync(IEnumerable<string> roles, CancellationToken ct)
+    {
+        var wanted = roles.Select(r => r.ToUpperInvariant()).Distinct().ToList();
+        var known = await _db.Roles.Where(r => wanted.Contains(r.NormalizedName!)).Select(r => r.NormalizedName!).ToListAsync(ct);
+        var unknown = roles.FirstOrDefault(r => !known.Contains(r.ToUpperInvariant()));
+        if (unknown is not null) throw new InvalidOperationException($"Nieznana rola: {unknown}.");
+    }
+
     /// <summary>Czy poza wskazanym kontem zostaje jakiś aktywny administrator.</summary>
     private async Task<bool> OtherActiveAdministratorExistsAsync(string exceptUserId)
     {
@@ -50,6 +70,7 @@ public class UserService : IUserService
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null) return null;
+        await EnsureMayManageAsync(user, actor);
         if (!isActive)
         {
             if (user.Id == actor.UserId) throw new InvalidOperationException("Nie możesz wyłączyć własnego konta.");
@@ -83,6 +104,7 @@ public class UserService : IUserService
     public async Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken ct, UserActor? actor = null)
     {
         EnsureMayGrant(request.Roles, actor);
+        await EnsureRolesExistAsync(request.Roles, ct);
         if (request.PersonId is { } personId)
         {
             await EnsurePersonCanBeLinkedAsync(personId, null, ct);
@@ -106,10 +128,11 @@ public class UserService : IUserService
         return ToDto(user, await _userManager.GetRolesAsync(user), await PersonNameAsync(user.PersonId, ct));
     }
 
-    public async Task<UserDto?> SetPersonAsync(string userId, Guid? personId, CancellationToken ct)
+    public async Task<UserDto?> SetPersonAsync(string userId, Guid? personId, CancellationToken ct, UserActor? actor = null)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null) return null;
+        await EnsureMayManageAsync(user, actor);
 
         if (personId is { } id)
         {
@@ -181,6 +204,7 @@ public class UserService : IUserService
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null) return null;
 
+        await EnsureRolesExistAsync(roles, ct);
         var currentRoles = await _userManager.GetRolesAsync(user);
         if (!currentRoles.Contains(AppRoles.Administrator)) EnsureMayGrant(roles, actor);
         if (actor is { IsAdministrator: false } && currentRoles.Contains(AppRoles.Administrator))
@@ -202,10 +226,11 @@ public class UserService : IUserService
         return ToDto(user, await _userManager.GetRolesAsync(user), await PersonNameAsync(user.PersonId, ct));
     }
 
-    public async Task<bool> ResetPasswordAsync(string userId, string newPassword, CancellationToken ct)
+    public async Task<bool> ResetPasswordAsync(string userId, string newPassword, CancellationToken ct, UserActor? actor = null)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null) return false;
+        await EnsureMayManageAsync(user, actor);
 
         var removeResult = await _userManager.RemovePasswordAsync(user);
         if (!removeResult.Succeeded)
@@ -239,10 +264,11 @@ public class UserService : IUserService
         MfaEnabled = user.TwoFactorEnabled
     };
 
-    public async Task<UserDto?> ChangeLoginAsync(string userId, string email, CancellationToken ct)
+    public async Task<UserDto?> ChangeLoginAsync(string userId, string email, CancellationToken ct, UserActor? actor = null)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null) return null;
+        await EnsureMayManageAsync(user, actor);
         var login = email.Trim();
         var normalized = login.ToUpperInvariant();
         if (await _db.Users.AnyAsync(u => u.Id != userId && (u.NormalizedEmail == normalized || u.NormalizedUserName == normalized), ct))
@@ -263,15 +289,18 @@ public class UserService : IUserService
             }
         }
         await _db.SaveChangesAsync(ct);
+        // Nowy login = nowa sesja: stare tokeny (ze starym adresem) przestają działać.
+        await EndSessionsAsync(user);
         return ToDto(user, await _userManager.GetRolesAsync(user), await PersonNameAsync(user.PersonId, ct));
     }
 
-    public async Task<UserDto?> ResetMfaAsync(string userId, CancellationToken ct)
+    public async Task<UserDto?> ResetMfaAsync(string userId, CancellationToken ct, UserActor? actor = null)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null) return null;
+        await EnsureMayManageAsync(user, actor);
         await AccountService.TurnOffMfaAsync(_userManager, user);
-        _sessions?.Invalidate(user.Id);
+        await EndSessionsAsync(user);
         return ToDto(user, await _userManager.GetRolesAsync(user), await PersonNameAsync(user.PersonId, ct));
     }
 }

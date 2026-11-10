@@ -32,6 +32,10 @@ public class UserPersonLinkTests : IntegrationTestBase
         var token = (await login.Content.ReadFromJsonAsync<LoginResponse>())!.Token;
         var client = Factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        // Konto założone przez administratora ma hasło tymczasowe – najpierw własne hasło, potem reszta portalu.
+        var changed = await client.PostAsJsonAsync("/api/auth/change-password", new { CurrentPassword = "Sekret123!", NewPassword = "Wlasne-Haslo-456!" });
+        changed.EnsureSuccessStatusCode();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", (await changed.Content.ReadFromJsonAsync<LoginResponse>())!.Token);
         return client;
     }
 

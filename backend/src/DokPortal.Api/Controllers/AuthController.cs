@@ -38,6 +38,9 @@ public class AuthController : ControllerBase
         _accountService = accountService;
     }
 
+    private static readonly AppUser DummyUser = new();
+    private static readonly Lazy<string> DummyPasswordHash = new(() => new PasswordHasher<AppUser>().HashPassword(DummyUser, Guid.NewGuid().ToString()));
+
     [HttpPost("login")]
     [AllowAnonymous]
     [EnableRateLimiting("login")]
@@ -52,6 +55,12 @@ public class AuthController : ControllerBase
         }
 
         var passwordValid = user is not null && await _userManager.CheckPasswordAsync(user, request.Password);
+        if (user is null)
+        {
+            // Nieznany adres: liczymy skrót hasła tak samo jak dla istniejącego konta, żeby po czasie odpowiedzi
+            // nie dało się sprawdzić, czy ktoś ma konto w portalu.
+            _userManager.PasswordHasher.VerifyHashedPassword(DummyUser, DummyPasswordHash.Value, request.Password);
+        }
         if (user is null || !passwordValid)
         {
             if (user is not null)
@@ -147,7 +156,7 @@ public class AuthController : ControllerBase
     {
         var roles = await _userManager.GetRolesAsync(user);
         var permissions = await _permissionService.GetPermissionsForRolesAsync(roles, ct);
-        var token = _tokenGenerator.GenerateToken(user.Id, user.Email!, user.PersonId, roles, permissions, user.SecurityStamp);
+        var token = _tokenGenerator.GenerateToken(user.Id, user.Email!, user.PersonId, roles, permissions, user.SecurityStamp, user.MustChangePassword);
         return new LoginResponse
         {
             Token = token,

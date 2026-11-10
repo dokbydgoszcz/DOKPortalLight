@@ -53,7 +53,9 @@ public class FormSubmissionsController : ControllerBase
         var file = await _submissions.GetFileAsync(id, index, ct);
         if (file is null) return NotFound();
         Response.Headers.CacheControl = "private, max-age=300";
-        return File(file.Content, file.ContentType, file.Name);
+        // Typ pliku podaje formularz zewnętrzny – przeglądarce oddajemy tylko znane, bezpieczne typy.
+        var contentType = file.ContentType is "image/jpeg" or "image/png" or "image/webp" or "application/pdf" ? file.ContentType : "application/octet-stream";
+        return File(file.Content, contentType, file.Name);
     }
 
     private string ReviewerEmail() => User.FindFirst(JwtRegisteredClaimNames.Email)?.Value ?? "";

@@ -5,7 +5,7 @@ public interface IUserService
     Task<IReadOnlyList<UserDto>> ListAsync(CancellationToken ct);
     /// <exception cref="InvalidOperationException">Rolę Administrator nadaje tylko administrator.</exception>
     Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken ct, UserActor? actor = null);
-    Task<UserDto?> SetPersonAsync(string userId, Guid? personId, CancellationToken ct);
+    Task<UserDto?> SetPersonAsync(string userId, Guid? personId, CancellationToken ct, UserActor? actor = null);
     /// <summary>Zastępuje role konta i kończy jego otwarte sesje (nowe role działają od razu).</summary>
     /// <exception cref="InvalidOperationException">Nadanie roli Administrator przez nie-administratora albo odebranie jej ostatniemu aktywnemu administratorowi.</exception>
     Task<UserDto?> AssignRolesAsync(string userId, IReadOnlyList<string> roles, CancellationToken ct, UserActor? actor = null);
@@ -15,7 +15,8 @@ public interface IUserService
     /// <summary>Wyłącza weryfikację dwuetapową (np. zgubiony telefon); użytkownik może ją potem włączyć od nowa.</summary>
     /// <summary>Zmienia login (e-mail) konta; e-mail powiązanej osoby zmienia się razem z nim.</summary>
     /// <exception cref="InvalidOperationException">Adres jest loginem innego konta.</exception>
-    Task<UserDto?> ChangeLoginAsync(string userId, string email, CancellationToken ct);
-    Task<UserDto?> ResetMfaAsync(string userId, CancellationToken ct);
-    Task<bool> ResetPasswordAsync(string userId, string newPassword, CancellationToken ct);
+    Task<UserDto?> ChangeLoginAsync(string userId, string email, CancellationToken ct, UserActor? actor = null);
+    Task<UserDto?> ResetMfaAsync(string userId, CancellationToken ct, UserActor? actor = null);
+    /// <summary>Konto administratora (hasło, MFA, login, osoba, role, wyłączenie) zmienia tylko administrator.</summary>
+    Task<bool> ResetPasswordAsync(string userId, string newPassword, CancellationToken ct, UserActor? actor = null);
 }
