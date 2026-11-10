@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -9,6 +9,7 @@ import { Person } from '../people/person.model';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
 import { ROLE_LABELS } from '../../shared/role-labels';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 
 @Component({
@@ -19,6 +20,7 @@ import { ROLE_LABELS } from '../../shared/role-labels';
   styleUrl: './users-list.component.scss'
 })
 export class UsersListComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly users = signal<AppUserAccount[]>([]);
   readonly allRoles = signal<string[]>([]);
 
@@ -302,14 +304,16 @@ export class UsersListComponent implements OnInit {
 
   resetMfa(): void {
     const user = this.editing();
-    if (!user || !confirm(`Wyłączyć weryfikację dwuetapową dla ${user.email}? Użytkownik zaloguje się samym hasłem i może ją potem włączyć od nowa (np. na nowym telefonie).`)) return;
-    this.usersService.resetMfa(user.id).subscribe({
-      next: updated => {
-        this.editing.set({ ...user, mfaEnabled: updated?.mfaEnabled ?? false });
-        this.toast.success('Weryfikacja dwuetapowa wyłączona.');
-        this.load();
-      },
-      error: err => this.editError.set(serverMessage(err, 'Nie udało się wyłączyć weryfikacji dwuetapowej.'))
+    if (!user) return;
+    this.confirm.ask(`Wyłączyć weryfikację dwuetapową dla ${user.email}? Użytkownik zaloguje się samym hasłem i może ją potem włączyć od nowa (np. na nowym telefonie).`, () => {
+      this.usersService.resetMfa(user.id).subscribe({
+        next: updated => {
+          this.editing.set({ ...user, mfaEnabled: updated?.mfaEnabled ?? false });
+          this.toast.success('Weryfikacja dwuetapowa wyłączona.');
+          this.load();
+        },
+        error: err => this.editError.set(serverMessage(err, 'Nie udało się wyłączyć weryfikacji dwuetapowej.'))
+      });
     });
   }
 
@@ -317,8 +321,7 @@ export class UsersListComponent implements OnInit {
   setActive(isActive: boolean): void {
     const user = this.editing();
     if (!user) return;
-    if (!isActive && !confirm(`Wyłączyć konto ${user.email}? Osoba nie zaloguje się, a jej otwarte sesje wygasną.`)) return;
-    this.usersService.setActive(user.id, isActive).subscribe({
+    const apply = () => this.usersService.setActive(user.id, isActive).subscribe({
       next: () => {
         this.editing.set({ ...user, isActive });
         this.toast.success(isActive ? 'Konto włączone.' : 'Konto wyłączone.');
@@ -326,5 +329,7 @@ export class UsersListComponent implements OnInit {
       },
       error: err => this.editError.set(serverMessage(err, 'Nie udało się zmienić stanu konta.'))
     });
+    if (isActive) apply();
+    else this.confirm.ask(`Wyłączyć konto ${user.email}? Osoba nie zaloguje się, a jej otwarte sesje wygasną.`, apply);
   }
 }

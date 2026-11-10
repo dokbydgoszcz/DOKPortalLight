@@ -21,6 +21,7 @@ import { AttachmentsService } from '../../shared/attachments/attachments.service
 import { ACCEPT_ATTRIBUTE, RULES_HINT, formatFileSize, saveBlob, validateFile } from '../../shared/attachments/attachment-rules';
 import { serverMessage } from '../../shared/http-error';
 import { environment } from '../../../environments/environment';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 const PATH_LABELS: Record<string, string> = DOK_PATH_LABELS;
 
@@ -34,6 +35,7 @@ const PAGE_SIZE = 20;
   styleUrl: './dok-cases-list.component.scss'
 })
 export class DokCasesListComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly cases = signal<DokCase[]>([]);
 
   attendanceLabel(dokCase: DokCase): string {
@@ -164,14 +166,15 @@ export class DokCasesListComponent implements OnInit {
   }
 
   resumeCase(dokCase: DokCase): void {
-    if (!confirm(`Wznowić formację: ${dokCase.personFullName} (etap: ${this.stageLabel(dokCase.stage)})?`)) return;
-    this.dokCasesService.resume(dokCase.id).subscribe({
-      next: () => {
-        this.toast.success(`Wznowiono formację: ${dokCase.personFullName}.`);
-        this.load();
-        this.loadStats();
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się wznowić sprawy.'))
+    this.confirm.ask(`Wznowić formację: ${dokCase.personFullName} (etap: ${this.stageLabel(dokCase.stage)})?`, () => {
+      this.dokCasesService.resume(dokCase.id).subscribe({
+        next: () => {
+          this.toast.success(`Wznowiono formację: ${dokCase.personFullName}.`);
+          this.load();
+          this.loadStats();
+        },
+        error: err => this.toast.error(serverMessage(err, 'Nie udało się wznowić sprawy.'))
+      });
     });
   }
 
@@ -240,14 +243,15 @@ export class DokCasesListComponent implements OnInit {
   }
 
   deleteCase(dokCase: DokCase): void {
-    if (!confirm(`Usunąć sprawę „${dokCase.personFullName}” razem z historią, notatkami i frekwencją? Jeśli podopieczny zrezygnował, użyj raczej „Przerwij”.`)) return;
-    this.dokCasesService.delete(dokCase.id).subscribe({
-      next: () => {
-        this.toast.success('Podopieczny usunięty.');
-        this.load();
-        this.loadStats();
-      },
-      error: () => this.toast.error('Nie udało się usunąć podopiecznego.')
+    this.confirm.ask(`Usunąć sprawę „${dokCase.personFullName}” razem z historią, notatkami i frekwencją? Jeśli podopieczny zrezygnował, użyj raczej „Przerwij”.`, () => {
+      this.dokCasesService.delete(dokCase.id).subscribe({
+        next: () => {
+          this.toast.success('Podopieczny usunięty.');
+          this.load();
+          this.loadStats();
+        },
+        error: () => this.toast.error('Nie udało się usunąć podopiecznego.')
+      });
     });
   }
 
@@ -266,25 +270,28 @@ export class DokCasesListComponent implements OnInit {
     const dokCase = this.notesCase();
     const sharing = this.noteSharing();
     if (!dokCase || !sharing) return;
-    if (!confirm(`Udostępnić wszystkie Twoje notatki z tej sprawy (także przyszłe) katechiście: ${sharing.currentCatechistFullName}?`)) return;
-    this.pastoralNotesService.share(dokCase.id).subscribe({
-      next: s => {
-        this.noteSharing.set(s);
-        this.toast.success(`Udostępniono Twoje notatki: ${sharing.currentCatechistFullName}.`);
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się udostępnić notatek.'))
+    this.confirm.ask(`Udostępnić wszystkie Twoje notatki z tej sprawy (także przyszłe) katechiście: ${sharing.currentCatechistFullName}?`, () => {
+      this.pastoralNotesService.share(dokCase.id).subscribe({
+        next: s => {
+          this.noteSharing.set(s);
+          this.toast.success(`Udostępniono Twoje notatki: ${sharing.currentCatechistFullName}.`);
+        },
+        error: err => this.toast.error(serverMessage(err, 'Nie udało się udostępnić notatek.'))
+      });
     });
   }
 
   unshareNotes(personId: string): void {
     const dokCase = this.notesCase();
-    if (!dokCase || !confirm('Cofnąć udostępnienie Twoich notatek tej osobie?')) return;
-    this.pastoralNotesService.unshare(dokCase.id, personId).subscribe({
-      next: s => {
-        this.noteSharing.set(s);
-        this.toast.success('Cofnięto udostępnienie notatek.');
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się cofnąć udostępnienia.'))
+    if (!dokCase) return;
+    this.confirm.ask('Cofnąć udostępnienie Twoich notatek tej osobie?', () => {
+      this.pastoralNotesService.unshare(dokCase.id, personId).subscribe({
+        next: s => {
+          this.noteSharing.set(s);
+          this.toast.success('Cofnięto udostępnienie notatek.');
+        },
+        error: err => this.toast.error(serverMessage(err, 'Nie udało się cofnąć udostępnienia.'))
+      });
     });
   }
 
@@ -321,13 +328,15 @@ export class DokCasesListComponent implements OnInit {
 
   deleteNote(note: PastoralNote): void {
     const dokCase = this.notesCase();
-    if (!dokCase || !confirm('Usunąć tę notatkę na stałe (razem z załącznikami)?')) return;
-    this.pastoralNotesService.delete(dokCase.id, note.id).subscribe({
-      next: () => {
-        this.toast.success('Notatka usunięta.');
-        this.loadNotes(dokCase.id);
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć notatki.'))
+    if (!dokCase) return;
+    this.confirm.ask('Usunąć tę notatkę na stałe (razem z załącznikami)?', () => {
+      this.pastoralNotesService.delete(dokCase.id, note.id).subscribe({
+        next: () => {
+          this.toast.success('Notatka usunięta.');
+          this.loadNotes(dokCase.id);
+        },
+        error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć notatki.'))
+      });
     });
   }
 
@@ -456,13 +465,15 @@ export class DokCasesListComponent implements OnInit {
 
   deleteDocument(caseDocument: CaseDocument): void {
     const dokCase = this.documentsCase();
-    if (!dokCase || !confirm(`Usunąć dokument „${caseDocument.name}” razem z plikiem?`)) return;
-    this.caseDocumentsService.delete(dokCase.id, caseDocument.id).subscribe({
-      next: () => {
-        this.toast.success('Dokument usunięty.');
-        this.loadDocuments(dokCase.id);
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć dokumentu.'))
+    if (!dokCase) return;
+    this.confirm.ask(`Usunąć dokument „${caseDocument.name}” razem z plikiem?`, () => {
+      this.caseDocumentsService.delete(dokCase.id, caseDocument.id).subscribe({
+        next: () => {
+          this.toast.success('Dokument usunięty.');
+          this.loadDocuments(dokCase.id);
+        },
+        error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć dokumentu.'))
+      });
     });
   }
 

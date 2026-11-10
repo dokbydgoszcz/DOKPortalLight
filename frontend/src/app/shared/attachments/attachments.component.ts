@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { HasPermissionDirective } from '../permissions/has-permission.directive';
 import { ToastService } from '../../core/notifications/toast.service';
@@ -6,6 +6,7 @@ import { Attachment } from './attachment.model';
 import { AttachmentsService } from './attachments.service';
 import { ACCEPT_ATTRIBUTE, RULES_HINT, formatFileSize, saveBlob } from './attachment-rules';
 import { playSound } from '../sound';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 /** Lista plików dołączonych do rekordu (notatki, superwizji) z pobieraniem, usuwaniem i dodawaniem wielu plików naraz. */
 @Component({
@@ -51,6 +52,7 @@ import { playSound } from '../sound';
   `
 })
 export class AttachmentsComponent {
+  private readonly confirm = inject(ConfirmService);
   readonly attachments = input.required<Attachment[]>();
   /** Adres bazowy załączników właściciela, np. …/api/supervisions/{id}/attachments. */
   readonly baseUrl = input.required<string>();
@@ -82,15 +84,16 @@ export class AttachmentsComponent {
   }
 
   remove(attachment: Attachment): void {
-    if (!confirm(`Usunąć załącznik „${attachment.fileName}”?`)) return;
-    const sound = this.deleteSound();
-    if (sound) playSound(sound);
-    this.attachmentsService.remove(this.baseUrl(), attachment.id).subscribe({
-      next: () => {
-        this.toast.success('Załącznik usunięty.');
-        this.changed.emit();
-      },
-      error: () => this.toast.error('Nie udało się usunąć załącznika.')
+    this.confirm.ask(`Usunąć załącznik „${attachment.fileName}”?`, () => {
+      const sound = this.deleteSound();
+      if (sound) playSound(sound);
+      this.attachmentsService.remove(this.baseUrl(), attachment.id).subscribe({
+        next: () => {
+          this.toast.success('Załącznik usunięty.');
+          this.changed.emit();
+        },
+        error: () => this.toast.error('Nie udało się usunąć załącznika.')
+      });
     });
   }
 

@@ -1,6 +1,6 @@
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ParishFormValue, ParishesService } from './parishes.service';
 import { RouterLink } from '@angular/router';
@@ -8,6 +8,7 @@ import { PeopleService } from '../people/people.service';
 import { Parish, ParishImportResult } from './parish-need.model';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 @Component({
   selector: 'app-parishes-list',
@@ -17,6 +18,7 @@ import { serverMessage } from '../../shared/http-error';
   styleUrl: './parishes-list.component.scss'
 })
 export class ParishesListComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly parishes = signal<Parish[]>([]);
   readonly query = signal('');
   readonly isFormOpen = signal(false);
@@ -155,13 +157,14 @@ export class ParishesListComponent implements OnInit {
   }
 
   deleteParish(parish: Parish): void {
-    if (!confirm(`Usunąć parafię „${parish.name}” (${parish.city})?`)) return;
-    this.parishesService.delete(parish.id).subscribe({
-      next: () => {
-        this.toast.success('Parafia usunięta.');
-        this.load();
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć parafii.'))
+    this.confirm.ask(`Usunąć parafię „${parish.name}” (${parish.city})?`, () => {
+      this.parishesService.delete(parish.id).subscribe({
+        next: () => {
+          this.toast.success('Parafia usunięta.');
+          this.load();
+        },
+        error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć parafii.'))
+      });
     });
   }
 }

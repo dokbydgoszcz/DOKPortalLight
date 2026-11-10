@@ -1,6 +1,6 @@
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MissionsService } from './missions.service';
 import { Mission, MissionFormValue, PendingCatechist } from './mission.model';
@@ -10,6 +10,7 @@ import { PaginationComponent } from '../../shared/pagination.component';
 import { AttachmentsComponent } from '../../shared/attachments/attachments.component';
 import { serverMessage } from '../../shared/http-error';
 import { environment } from '../../../environments/environment';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 const PAGE_SIZE = 20;
 
@@ -21,6 +22,7 @@ const PAGE_SIZE = 20;
   styleUrl: './missions-list.component.scss'
 })
 export class MissionsListComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly missions = signal<Mission[]>([]);
   /** Osoby, które ukończyły formację i czekają na udzielenie posługi. */
   readonly pending = signal<PendingCatechist[]>([]);
@@ -148,13 +150,14 @@ export class MissionsListComponent implements OnInit {
   }
 
   deleteMission(mission: Mission): void {
-    if (!confirm(`Usunąć misję „${mission.personFullName}”?`)) return;
-    this.missionsService.delete(mission.id).subscribe({
-      next: () => {
-        this.toast.success('Misja usunięta.');
-        this.load();
-      },
-      error: () => this.toast.error('Nie udało się usunąć misji.')
+    this.confirm.ask(`Usunąć misję „${mission.personFullName}”?`, () => {
+      this.missionsService.delete(mission.id).subscribe({
+        next: () => {
+          this.toast.success('Misja usunięta.');
+          this.load();
+        },
+        error: () => this.toast.error('Nie udało się usunąć misji.')
+      });
     });
   }
 

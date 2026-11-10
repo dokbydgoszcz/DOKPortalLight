@@ -4,6 +4,7 @@ import * as QRCode from 'qrcode';
 import { AuthService, MfaSetup, MfaStatus } from '../../core/auth/auth.service';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 /** Weryfikacja dwuetapowa aplikacją uwierzytelniającą (Microsoft/Google Authenticator): włączenie z kodem QR, kody zapasowe, wyłączenie. */
 @Component({
@@ -85,6 +86,7 @@ import { serverMessage } from '../../shared/http-error';
   `]
 })
 export class MfaSettingsComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
 
@@ -149,20 +151,22 @@ export class MfaSettingsComponent implements OnInit {
     }
   }
 
-  async disable(): Promise<void> {
-    if (!confirm('Wyłączyć weryfikację dwuetapową? Do logowania wystarczy wtedy samo hasło.')) return;
-    this.error.set(null);
-    this.busy.set(true);
-    try {
-      await this.auth.disableMfa(this.code.trim());
-      this.code = '';
-      this.toast.success('Weryfikacja dwuetapowa wyłączona.');
-      await this.loadStatus();
-    } catch (err) {
-      this.error.set(serverMessage(err, 'Nieprawidłowy kod.'));
-    } finally {
-      this.busy.set(false);
-    }
+  disable(): Promise<void> {
+    return new Promise<void>(resolve => this.confirm.ask('Wyłączyć weryfikację dwuetapową? Do logowania wystarczy wtedy samo hasło.', async () => {
+      this.error.set(null);
+      this.busy.set(true);
+      try {
+        await this.auth.disableMfa(this.code.trim());
+        this.code = '';
+        this.toast.success('Weryfikacja dwuetapowa wyłączona.');
+        await this.loadStatus();
+      } catch (err) {
+        this.error.set(serverMessage(err, 'Nieprawidłowy kod.'));
+      } finally {
+        this.busy.set(false);
+        resolve();
+      }
+    }, { onCancel: resolve }));
   }
 
   async copyCodes(codes: string[]): Promise<void> {

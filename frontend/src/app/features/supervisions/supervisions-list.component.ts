@@ -1,6 +1,6 @@
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupervisionsService } from './supervisions.service';
@@ -8,6 +8,7 @@ import { CreateSupervisionValue, Institution, Supervision, SupervisionAttendee, 
 import { ToastService } from '../../core/notifications/toast.service';
 import { AttachmentsComponent } from '../../shared/attachments/attachments.component';
 import { environment } from '../../../environments/environment';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 export type SupervisionSort = 'dateDesc' | 'dateAsc' | 'institution';
 
@@ -19,6 +20,7 @@ export type SupervisionSort = 'dateDesc' | 'dateAsc' | 'institution';
   styleUrl: './supervisions-list.component.scss'
 })
 export class SupervisionsListComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly supervisions = signal<Supervision[]>([]);
   readonly institutionFilter = signal<Institution | ''>('');
   readonly sortBy = signal<SupervisionSort>('dateDesc');
@@ -173,13 +175,14 @@ export class SupervisionsListComponent implements OnInit {
   }
 
   deleteSupervision(supervision: Supervision): void {
-    if (!confirm(`Usunąć superwizję „${supervision.groupLabel}”?`)) return;
-    this.supervisionsService.delete(supervision.id).subscribe({
-      next: () => {
-        this.toast.success('Superwizja usunięta.');
-        this.load();
-      },
-      error: () => this.toast.error('Nie udało się usunąć superwizji.')
+    this.confirm.ask(`Usunąć superwizję „${supervision.groupLabel}”?`, () => {
+      this.supervisionsService.delete(supervision.id).subscribe({
+        next: () => {
+          this.toast.success('Superwizja usunięta.');
+          this.load();
+        },
+        error: () => this.toast.error('Nie udało się usunąć superwizji.')
+      });
     });
   }
 }

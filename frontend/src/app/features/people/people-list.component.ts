@@ -1,7 +1,7 @@
 import { RouterLink } from '@angular/router';
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PeopleService } from './people.service';
 import { FUNCTION_LABELS, FUNCTION_TYPES, FunctionType, Person, PersonFormValue, functionText } from './person.model';
@@ -12,6 +12,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
 import { PaginationComponent } from '../../shared/pagination.component';
 import { PeopleImportComponent } from './people-import.component';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 const PAGE_SIZE = 20;
 
@@ -23,6 +24,7 @@ const PAGE_SIZE = 20;
   styleUrl: './people-list.component.scss'
 })
 export class PeopleListComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   /** Okno importu wklejonej listy osób. */
   readonly importOpen = signal(false);
   readonly people = signal<Person[]>([]);
@@ -130,9 +132,7 @@ export class PeopleListComponent implements OnInit {
     if (problem?.code === 'EmailTaken') {
       this.toast.error(problem.title);
     } else if (problem?.code === 'PhoneDuplicate') {
-      if (confirm(`${problem.title} Zapisać mimo to?`)) {
-        this.onSave(value, true);
-      }
+      this.confirm.ask(`${problem.title} Zapisać mimo to?`, () => this.onSave(value, true), { confirmLabel: 'Zapisz mimo to' });
     } else if (error.status === 400) {
       this.toast.error(serverMessage(error, 'Nie udało się zapisać osoby.'));
     } else {
@@ -145,14 +145,15 @@ export class PeopleListComponent implements OnInit {
   }
 
   deletePerson(person: Person): void {
-    if (!confirm(`Usunąć osobę „${person.fullName}”?`)) return;
-    this.peopleService.delete(person.id).subscribe({
-      next: () => {
-        this.toast.success('Osoba usunięta.');
-        this.load();
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć osoby.')
-        + (err?.status === 400 ? ' Powiązania zobaczysz na karcie osoby (kliknij nazwisko).' : ''))
+    this.confirm.ask(`Usunąć osobę „${person.fullName}”?`, () => {
+      this.peopleService.delete(person.id).subscribe({
+        next: () => {
+          this.toast.success('Osoba usunięta.');
+          this.load();
+        },
+        error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć osoby.')
+          + (err?.status === 400 ? ' Powiązania zobaczysz na karcie osoby (kliknij nazwisko).' : ''))
+      });
     });
   }
 }

@@ -11,6 +11,7 @@ import { CreateMeetingValue, DEFAULT_END, DEFAULT_START, Meeting, MeetingAttende
 import { ToastService } from '../../core/notifications/toast.service';
 import { DokCasesService } from '../dok-cases/dok-cases.service';
 import { DokCase } from '../dok-cases/dok-case.model';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 const VIEW_KEY = 'dokportal.meetingsView';
 
@@ -30,6 +31,7 @@ function readView(): 'list' | 'calendar' {
   styleUrl: './meetings-list.component.scss'
 })
 export class MeetingsListComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly meetings = signal<Meeting[]>([]);
   readonly dokCases = signal<DokCase[]>([]);
   readonly isFormOpen = signal(false);
@@ -239,17 +241,27 @@ export class MeetingsListComponent implements OnInit {
   }
 
   deleteMeeting(meeting: Meeting): void {
-    if (!confirm(`Usunąć spotkanie „${meeting.caseLabel ?? meeting.groupLabel}” z dnia ${meeting.meetingDate}?`)) return;
-    const following = meeting.seriesId
-      ? this.meetings().filter(m => m.seriesId === meeting.seriesId && m.meetingDate > meeting.meetingDate).length
-      : 0;
-    const withFollowing = following > 0 && confirm(`To spotkanie należy do serii. Usunąć też ${following} kolejnych spotkań z tej serii?`);
-    this.meetingsService.delete(meeting.id, withFollowing).subscribe({
-      next: () => {
-        this.toast.success(withFollowing ? `Usunięto ${following + 1} spotkań z serii.` : 'Spotkanie usunięte.');
-        this.load();
-      },
-      error: () => this.toast.error('Nie udało się usunąć spotkania.')
+    this.confirm.ask(`Usunąć spotkanie „${meeting.caseLabel ?? meeting.groupLabel}” z dnia ${meeting.meetingDate}?`, () => {
+      const following = meeting.seriesId
+        ? this.meetings().filter(m => m.seriesId === meeting.seriesId && m.meetingDate > meeting.meetingDate).length
+        : 0;
+      const remove = (withFollowing: boolean) =>
+        this.meetingsService.delete(meeting.id, withFollowing).subscribe({
+          next: () => {
+            this.toast.success(withFollowing ? `Usunięto ${following + 1} spotkań z serii.` : 'Spotkanie usunięte.');
+            this.load();
+          },
+          error: () => this.toast.error('Nie udało się usunąć spotkania.')
+        });
+      if (following === 0) {
+        remove(false);
+        return;
+      }
+      this.confirm.ask(`To spotkanie należy do serii. Usunąć też ${following} kolejnych spotkań z tej serii?`, () => remove(true), {
+        confirmLabel: 'Usuń całą resztę serii',
+        cancelLabel: 'Tylko to jedno',
+        onCancel: () => remove(false)
+      });
     });
   }
 }

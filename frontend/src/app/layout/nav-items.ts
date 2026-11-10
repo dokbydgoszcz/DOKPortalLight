@@ -29,5 +29,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Budżet DOK', icon: '◈', path: '/budget/dok', permission: Permissions.BudgetDokView },
   { label: 'Użytkownicy i role', icon: '⚙', path: '/admin/users', permission: Permissions.UsersManage },
   { label: 'Uprawnienia ról', icon: '⚖', path: '/admin/permissions', permission: Permissions.PermissionsManage },
-  { label: 'Audit log', icon: '⛨', path: '/audit-log', permission: Permissions.AuditLogView }
+  { label: 'Audit log', icon: '⛨', path: '/audit-log', permission: Permissions.AuditLogView },
+  { label: 'Pomoc', icon: '?', path: '/pomoc' }
 ];

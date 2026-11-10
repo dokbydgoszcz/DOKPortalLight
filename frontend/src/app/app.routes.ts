@@ -28,6 +28,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/account/change-password.component').then(m => m.ChangePasswordComponent)
       },
       {
+        path: 'pomoc',
+        title: 'Pomoc',
+        loadComponent: () => import('./features/help/help.component').then(m => m.HelpComponent)
+      },
+      {
         path: 'dashboard',
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
       },

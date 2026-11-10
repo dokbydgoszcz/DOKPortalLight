@@ -1,5 +1,5 @@
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ParishNeedsService } from './parish-needs.service';
 import { ParishesService } from './parishes.service';
@@ -7,6 +7,7 @@ import { AssignedPerson, CreateParishNeedValue, Parish, ParishNeed } from './par
 import { PersonPickerComponent } from '../../shared/person-picker/person-picker.component';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 @Component({
   selector: 'app-parish-board',
@@ -16,6 +17,7 @@ import { serverMessage } from '../../shared/http-error';
   styleUrl: './parish-board.component.scss'
 })
 export class ParishBoardComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly needs = signal<ParishNeed[]>([]);
   readonly isAddFormOpen = signal(false);
   readonly editingNeedId = signal<string | null>(null);
@@ -99,13 +101,14 @@ export class ParishBoardComponent implements OnInit {
   }
 
   unassign(need: ParishNeed, person: AssignedPerson): void {
-    if (!confirm(`Odpiąć „${person.fullName}” od zapotrzebowania?`)) return;
-    this.parishNeedsService.unassign(need.id, person.personId).subscribe({
-      next: () => {
-        this.toast.success('Odpięto osobę.');
-        this.load();
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się odpiąć osoby.'))
+    this.confirm.ask(`Odpiąć „${person.fullName}” od zapotrzebowania?`, () => {
+      this.parishNeedsService.unassign(need.id, person.personId).subscribe({
+        next: () => {
+          this.toast.success('Odpięto osobę.');
+          this.load();
+        },
+        error: err => this.toast.error(serverMessage(err, 'Nie udało się odpiąć osoby.'))
+      });
     });
   }
 
@@ -126,13 +129,14 @@ export class ParishBoardComponent implements OnInit {
   }
 
   deleteNeed(need: ParishNeed): void {
-    if (!confirm(`Usunąć zapotrzebowanie „${need.description}”?`)) return;
-    this.parishNeedsService.delete(need.id).subscribe({
-      next: () => {
-        this.toast.success('Zapotrzebowanie usunięte.');
-        this.load();
-      },
-      error: () => this.toast.error('Nie udało się usunąć zapotrzebowania.')
+    this.confirm.ask(`Usunąć zapotrzebowanie „${need.description}”?`, () => {
+      this.parishNeedsService.delete(need.id).subscribe({
+        next: () => {
+          this.toast.success('Zapotrzebowanie usunięte.');
+          this.load();
+        },
+        error: () => this.toast.error('Nie udało się usunąć zapotrzebowania.')
+      });
     });
   }
 }

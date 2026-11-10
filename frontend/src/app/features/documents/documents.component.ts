@@ -1,5 +1,5 @@
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DocumentsService } from './documents.service';
@@ -13,6 +13,7 @@ import { saveBlob } from '../../shared/attachments/attachment-rules';
 import { PdfPreviewComponent } from './pdf-preview.component';
 import { LetterTemplatesComponent } from './letter-templates.component';
 import { LetterheadSettingsComponent } from './letterhead-settings.component';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 type Tab = 'generate' | 'templates' | 'letterhead';
 
@@ -24,6 +25,7 @@ type Tab = 'generate' | 'templates' | 'letterhead';
   styleUrl: './documents.component.scss'
 })
 export class DocumentsComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly history = signal<GeneratedDocument[]>([]);
   readonly templates = signal<LetterTemplate[]>([]);
   readonly tab = signal<Tab>('generate');
@@ -136,13 +138,14 @@ export class DocumentsComponent implements OnInit {
   }
 
   remove(doc: GeneratedDocument): void {
-    if (!confirm(`Usunąć dokument „${doc.title}” dla ${doc.personFullName}?`)) return;
-    this.documentsService.delete(doc.id).subscribe({
-      next: () => {
-        this.toast.success('Dokument usunięty.');
-        this.load();
-      },
-      error: () => this.toast.error('Nie udało się usunąć dokumentu.')
+    this.confirm.ask(`Usunąć dokument „${doc.title}” dla ${doc.personFullName}?`, () => {
+      this.documentsService.delete(doc.id).subscribe({
+        next: () => {
+          this.toast.success('Dokument usunięty.');
+          this.load();
+        },
+        error: () => this.toast.error('Nie udało się usunąć dokumentu.')
+      });
     });
   }
 }

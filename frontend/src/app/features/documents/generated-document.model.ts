@@ -115,22 +115,30 @@ export function inputsOf(body: string): string[] {
   return [...seen.values()];
 }
 
-/** Pola, których portal nie zna (np. literówka w {{osoba.imie}}). */
-export function unknownFieldsOf(body: string, fields: LetterField[]): string[] {
+export type LetterFieldKind = 'known' | 'input' | 'gender' | 'unknown';
+
+/** Rozpoznaje zawartość pola {{…}} tak samo jak serwer: znane, do wpisania, forma zależna od płci albo nieznane. */
+export function fieldClassifier(fields: LetterField[]): (token: string) => LetterFieldKind {
   const known = new Map(fields.map(f => [f.key.toLowerCase(), f]));
   const cases = new Set(GRAMMATICAL_CASES.map(c => c.name));
+  return (raw: string) => {
+    const token = raw.trim();
+    const lower = token.toLowerCase();
+    if (lower.startsWith(INPUT_PREFIX)) return 'input';
+    if (lower.startsWith(GENDER_PREFIX)) return token.includes('|') ? 'gender' : 'unknown';
+    const [key, caseName] = lower.split('|').map(p => p.trim());
+    const field = known.get(key);
+    return !field || (caseName !== undefined && (!field.declinable || !cases.has(caseName))) ? 'unknown' : 'known';
+  };
+}
+
+/** Pola, których portal nie zna (np. literówka w {{osoba.imie}}). */
+export function unknownFieldsOf(body: string, fields: LetterField[]): string[] {
+  const classify = fieldClassifier(fields);
   const unknown = new Set<string>();
   for (const match of plainText(body).matchAll(TOKEN)) {
     const token = match[1].trim();
-    const lower = token.toLowerCase();
-    if (lower.startsWith(INPUT_PREFIX)) continue;
-    if (lower.startsWith(GENDER_PREFIX)) {
-      if (!token.includes('|')) unknown.add(token);
-      continue;
-    }
-    const [key, caseName] = lower.split('|').map(p => p.trim());
-    const field = known.get(key);
-    if (!field || (caseName !== undefined && (!field.declinable || !cases.has(caseName)))) unknown.add(token);
+    if (classify(token) === 'unknown') unknown.add(token);
   }
   return [...unknown];
 }

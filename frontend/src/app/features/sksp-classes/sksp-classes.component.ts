@@ -9,6 +9,7 @@ import { DEFAULT_END, DEFAULT_START, hhmm, timeRange } from '../meetings/meeting
 import { romanYear } from '../candidates/candidate.model';
 import { SkspClass, SkspClassAttendee, SkspClassFormValue, presenceSummary } from './sksp-class.model';
 import { SkspClassesService } from './sksp-classes.service';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 /** Zajęcia SKŚP z imienną listą obecności – z nich liczy się frekwencja kandydatów. */
 @Component({
@@ -19,6 +20,7 @@ import { SkspClassesService } from './sksp-classes.service';
   styleUrl: './sksp-classes.component.scss'
 })
 export class SkspClassesComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly classes = signal<SkspClass[]>([]);
   /** 0 = wszystkie lata. */
   readonly yearFilter = signal(0);
@@ -133,13 +135,14 @@ export class SkspClassesComponent implements OnInit {
   }
 
   remove(skspClass: SkspClass): void {
-    if (!confirm(`Usunąć zajęcia „${skspClass.topic}” z dnia ${skspClass.classDate}? Obecność z tych zajęć przestanie się liczyć do frekwencji.`)) return;
-    this.service.delete(skspClass.id).subscribe({
-      next: () => {
-        this.toast.success('Zajęcia usunięte.');
-        this.load();
-      },
-      error: () => this.toast.error('Nie udało się usunąć zajęć.')
+    this.confirm.ask(`Usunąć zajęcia „${skspClass.topic}” z dnia ${skspClass.classDate}? Obecność z tych zajęć przestanie się liczyć do frekwencji.`, () => {
+      this.service.delete(skspClass.id).subscribe({
+        next: () => {
+          this.toast.success('Zajęcia usunięte.');
+          this.load();
+        },
+        error: () => this.toast.error('Nie udało się usunąć zajęć.')
+      });
     });
   }
 }

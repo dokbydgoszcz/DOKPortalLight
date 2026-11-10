@@ -1,14 +1,15 @@
-import { Component, OnInit, ViewChild, computed, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DocumentsService } from './documents.service';
-import { DownloadedFile, GENDER_PREFIX, GRAMMATICAL_CASES, INPUT_PREFIX, LetterField, LetterTemplate, SaveLetterTemplate, inputsOf, unknownFieldsOf } from './generated-document.model';
+import { DownloadedFile, GENDER_PREFIX, GRAMMATICAL_CASES, INPUT_PREFIX, LetterField, LetterTemplate, SaveLetterTemplate, fieldClassifier, inputsOf, unknownFieldsOf } from './generated-document.model';
 import { RichTextEditorComponent } from '../../shared/rich-text/rich-text-editor.component';
 import { PersonPickerComponent } from '../../shared/person-picker/person-picker.component';
 import { PdfPreviewComponent } from './pdf-preview.component';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
 import { saveBlob } from '../../shared/attachments/attachment-rules';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 const NEW_BODY =
   '<p style="text-align: right">{{pismo.miejscowość}}, dnia {{pismo.data słownie}}</p><p></p>' +
@@ -23,6 +24,7 @@ const NEW_BODY =
   styleUrl: './letter-templates.component.scss'
 })
 export class LetterTemplatesComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   @ViewChild(RichTextEditorComponent) private editor?: RichTextEditorComponent;
 
   readonly templates = signal<LetterTemplate[]>([]);
@@ -44,6 +46,8 @@ export class LetterTemplatesComponent implements OnInit {
   readonly cases = GRAMMATICAL_CASES;
 
   readonly inputs = computed(() => inputsOf(this.draft()?.body ?? ''));
+  /** Do podświetlania pól w edytorze; nowa funkcja po wczytaniu listy pól odświeża kolory. */
+  readonly classifyField = computed(() => fieldClassifier(this.fields()));
   readonly unknown = computed(() => unknownFieldsOf(this.draft()?.body ?? '', this.fields()));
   readonly selected = computed(() => this.templates().find(t => t.id === this.selectedId()) ?? null);
 
@@ -65,8 +69,10 @@ export class LetterTemplatesComponent implements OnInit {
     });
   }
 
-  private confirmLeave(): boolean {
-    return !this.dirty() || confirm('Masz niezapisane zmiany we wzorze. Porzucić je?');
+  /** Niezapisane zmiany: zanim je porzucimy, pytamy. */
+  private whenSafeToLeave(action: () => void): void {
+    if (!this.dirty()) action();
+    else this.confirm.ask('Masz niezapisane zmiany we wzorze. Porzucić je?', action, { confirmLabel: 'Porzuć zmiany', danger: true });
   }
 
   private clear(): void {
@@ -76,19 +82,23 @@ export class LetterTemplatesComponent implements OnInit {
   }
 
   open(template: LetterTemplate, force = false): void {
-    if (!force && template.id !== this.selectedId() && !this.confirmLeave()) return;
-    this.selectedId.set(template.id);
-    this.draft.set({ name: template.name, body: template.body, useLetterhead: template.useLetterhead, isActive: template.isActive });
-    this.dirty.set(false);
+    const show = () => {
+      this.selectedId.set(template.id);
+      this.draft.set({ name: template.name, body: template.body, useLetterhead: template.useLetterhead, isActive: template.isActive });
+      this.dirty.set(false);
+    };
+    if (force || template.id === this.selectedId()) show();
+    else this.whenSafeToLeave(show);
   }
 
   startNew(copyOf?: LetterTemplate): void {
-    if (!this.confirmLeave()) return;
-    this.selectedId.set(null);
-    this.draft.set(copyOf
-      ? { name: `${copyOf.name} (kopia)`, body: copyOf.body, useLetterhead: copyOf.useLetterhead, isActive: true }
-      : { name: 'Nowy wzór', body: NEW_BODY, useLetterhead: true, isActive: true });
-    this.dirty.set(true);
+    this.whenSafeToLeave(() => {
+      this.selectedId.set(null);
+      this.draft.set(copyOf
+        ? { name: `${copyOf.name} (kopia)`, body: copyOf.body, useLetterhead: copyOf.useLetterhead, isActive: true }
+        : { name: 'Nowy wzór', body: NEW_BODY, useLetterhead: true, isActive: true });
+      this.dirty.set(true);
+    });
   }
 
   update(patch: Partial<SaveLetterTemplate>): void {
@@ -155,14 +165,15 @@ export class LetterTemplatesComponent implements OnInit {
       this.load();
       return;
     }
-    if (!confirm(`Usunąć wzór „${template.name}”?`)) return;
-    this.documents.deleteTemplate(template.id).subscribe({
-      next: () => {
-        this.toast.success('Usunięto wzór.');
-        this.clear();
-        this.load();
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć wzoru.'))
+    this.confirm.ask(`Usunąć wzór „${template.name}”?`, () => {
+      this.documents.deleteTemplate(template.id).subscribe({
+        next: () => {
+          this.toast.success('Usunięto wzór.');
+          this.clear();
+          this.load();
+        },
+        error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć wzoru.'))
+      });
     });
   }
 

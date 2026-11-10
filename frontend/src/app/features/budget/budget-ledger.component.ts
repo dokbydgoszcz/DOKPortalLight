@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, input, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { AttachmentsComponent } from '../../shared/attachments/attachments.component';
@@ -7,6 +7,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
 import { BudgetService } from './budget.service';
 import { BudgetEntry, BudgetEntryType, BudgetFund, BudgetPeriod, BudgetSummary } from './budget-entry.model';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 type PeriodMode = 'all' | 'year' | 'month';
 
@@ -28,6 +29,7 @@ export const MONTHS = ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwi
   templateUrl: './budget-ledger.component.html'
 })
 export class BudgetLedgerComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly fund = input.required<BudgetFund>();
   readonly heading = input.required<string>();
   readonly subtitle = input('');
@@ -155,13 +157,14 @@ export class BudgetLedgerComponent implements OnInit {
   }
 
   deleteEntry(entry: BudgetEntry): void {
-    if (!confirm(`Usunąć operację „${entry.description}”?`)) return;
-    this.budgetService.delete(entry.id).subscribe({
-      next: () => {
-        this.toast.success('Operacja usunięta.');
-        this.load();
-      },
-      error: () => this.toast.error('Nie udało się usunąć operacji.')
+    this.confirm.ask(`Usunąć operację „${entry.description}”?`, () => {
+      this.budgetService.delete(entry.id).subscribe({
+        next: () => {
+          this.toast.success('Operacja usunięta.');
+          this.load();
+        },
+        error: () => this.toast.error('Nie udało się usunąć operacji.')
+      });
     });
   }
 

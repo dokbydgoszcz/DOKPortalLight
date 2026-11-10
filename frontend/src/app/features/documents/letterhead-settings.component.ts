@@ -1,10 +1,11 @@
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DocumentsService } from './documents.service';
 import { DownloadedFile, Letterhead } from './generated-document.model';
 import { PdfPreviewComponent } from './pdf-preview.component';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 const SAMPLE = '<p style="text-align: right">{{pismo.miejscowość}}, dnia {{pismo.data słownie}}</p><p></p>' +
   '<h2 style="text-align: center">Przykładowe pismo</h2><p></p><p>Tak wygląda nagłówek i stopka na każdym piśmie z zaznaczonym „Papier firmowy”.</p>';
@@ -65,6 +66,7 @@ const SAMPLE = '<p style="text-align: right">{{pismo.miejscowość}}, dnia {{pis
   `]
 })
 export class LetterheadSettingsComponent implements OnInit, OnDestroy {
+  private readonly confirm = inject(ConfirmService);
   readonly headerText = signal('');
   readonly footerText = signal('');
   readonly place = signal('');
@@ -137,13 +139,14 @@ export class LetterheadSettingsComponent implements OnInit, OnDestroy {
   }
 
   removeLogo(): void {
-    if (!confirm('Usunąć logo z nagłówka pism?')) return;
-    this.documents.deleteLogo().subscribe({
-      next: () => {
-        this.setLogo(null);
-        this.toast.success('Usunięto logo.');
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć logo.'))
+    this.confirm.ask('Usunąć logo z nagłówka pism?', () => {
+      this.documents.deleteLogo().subscribe({
+        next: () => {
+          this.setLogo(null);
+          this.toast.success('Usunięto logo.');
+        },
+        error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć logo.'))
+      });
     });
   }
 

@@ -3,6 +3,7 @@ import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
+import { FieldClassifier, FieldHighlight, fieldHighlightKey } from './field-highlight';
 
 type Align = 'left' | 'center' | 'right' | 'justify';
 
@@ -51,11 +52,18 @@ type Align = 'left' | 'center' | 'right' | 'justify';
     :host ::ng-deep .ProseMirror h3 { font-size: 16px; margin: 8px 0 6px; }
     :host ::ng-deep .ProseMirror ul, :host ::ng-deep .ProseMirror ol { padding-left: 24px; margin: 0 0 6px; }
     :host ::ng-deep .ProseMirror hr { border: 0; border-top: 1px solid #999; margin: 10px 0; }
+    :host ::ng-deep .letter-field { border-radius: 4px; padding: 1px 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+    :host ::ng-deep .letter-field-known { background: #DDEFE9; color: #14463E; }
+    :host ::ng-deep .letter-field-input { background: #FFF1CC; color: #6B4B00; }
+    :host ::ng-deep .letter-field-gender { background: #E6E4F7; color: #3A3378; }
+    :host ::ng-deep .letter-field-unknown { background: #FDE3E6; color: #A1182B; text-decoration: underline wavy #cb4455; text-underline-offset: 3px; }
     @media (max-width: 700px) { :host ::ng-deep .ProseMirror { padding: 20px; } }
   `]
 })
 export class RichTextEditorComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() value = '';
+  /** Rozpoznaje pola {{…}} do podświetlenia (znane / do wpisania / zależne od płci / nieznane). Bez niego pól nie podświetlamy. */
+  @Input() classifyField: FieldClassifier | null = null;
   @Output() readonly valueChange = new EventEmitter<string>();
   @ViewChild('host', { static: true }) private readonly host!: ElementRef<HTMLElement>;
 
@@ -67,7 +75,8 @@ export class RichTextEditorComponent implements AfterViewInit, OnChanges, OnDest
     this.editor = new Editor({
       element: this.host.nativeElement,
       extensions: [StarterKit.configure({ heading: { levels: [2, 3] }, code: false, codeBlock: false, blockquote: false, strike: false }), Underline,
-        TextAlign.configure({ types: ['heading', 'paragraph'] })],
+        TextAlign.configure({ types: ['heading', 'paragraph'] }),
+        ...(this.classifyField ? [FieldHighlight.configure({ classify: () => this.classifyField ?? (() => 'known') })] : [])],
       content: this.value || '<p></p>',
       onUpdate: ({ editor }) => {
         this.value = editor.getHTML();
@@ -81,6 +90,10 @@ export class RichTextEditorComponent implements AfterViewInit, OnChanges, OnDest
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['value'] && this.editor && this.value !== this.editor.getHTML()) {
       this.editor.commands.setContent(this.value || '<p></p>', false);
+    }
+    // Lista znanych pól dochodzi z serwera po chwili – przelicz podświetlenie.
+    if (changes['classifyField'] && this.editor && this.classifyField) {
+      this.editor.view.dispatch(this.editor.state.tr.setMeta(fieldHighlightKey, true));
     }
   }
 

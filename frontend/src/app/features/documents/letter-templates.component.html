@@ -62,7 +62,13 @@
           <div class="small-muted">Przy generowaniu portal zapyta o: <b>{{ inputs().join(', ') }}</b>.</div>
         }
 
-        <app-rich-text-editor [value]="d.body" (valueChange)="update({ body: $event })" />
+        <app-rich-text-editor [value]="d.body" [classifyField]="classifyField()" (valueChange)="update({ body: $event })" />
+        <div class="field-legend small-muted" aria-label="Kolory pól w treści">
+          <span class="swatch known">pole z danymi</span>
+          <span class="swatch input">do wpisania przy generowaniu</span>
+          <span class="swatch gender">forma zależna od płci</span>
+          <span class="swatch unknown">nieznane – literówka</span>
+        </div>
 
         <div class="editor-foot">
           <div class="field preview-person">

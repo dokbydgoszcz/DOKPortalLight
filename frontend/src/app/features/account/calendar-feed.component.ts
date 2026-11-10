@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import { ToastService } from '../../core/notifications/toast.service';
 import { serverMessage } from '../../shared/http-error';
 import { CalendarHowtoComponent } from '../../shared/calendar-howto/calendar-howto.component';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 /** Prywatny adres kalendarza (iCal): spotkania z harmonogramu w Google Calendar / Outlooku / iPhonie. */
 @Component({
@@ -55,6 +56,7 @@ import { CalendarHowtoComponent } from '../../shared/calendar-howto/calendar-how
   `]
 })
 export class CalendarFeedComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   private readonly http = inject(HttpClient);
   private readonly toast = inject(ToastService);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/calendar/feed`;
@@ -91,20 +93,23 @@ export class CalendarFeedComponent implements OnInit {
   }
 
   regenerate(): Promise<void> {
-    if (!confirm('Utworzyć nowy adres? Stary przestanie działać – trzeba będzie dodać kalendarz w Google od nowa.')) return Promise.resolve();
-    return this.run(async () => {
+    return this.confirmed('Utworzyć nowy adres? Stary przestanie działać – trzeba będzie dodać kalendarz w Google od nowa.', () => this.run(async () => {
       this.url.set((await firstValueFrom(this.http.post<{ url: string }>(this.baseUrl, null))).url);
       this.toast.success('Utworzono nowy adres – dodaj go ponownie w Kalendarzu Google.');
-    }, 'Nie udało się utworzyć adresu kalendarza.');
+    }, 'Nie udało się utworzyć adresu kalendarza.'));
   }
 
   disable(): Promise<void> {
-    if (!confirm('Wyłączyć adres kalendarza? Spotkania znikną z Kalendarza Google przy najbliższym odświeżeniu.')) return Promise.resolve();
-    return this.run(async () => {
+    return this.confirmed('Wyłączyć adres kalendarza? Spotkania znikną z Kalendarza Google przy najbliższym odświeżeniu.', () => this.run(async () => {
       await firstValueFrom(this.http.delete(this.baseUrl));
       this.url.set(null);
       this.toast.success('Adres kalendarza wyłączony.');
-    }, 'Nie udało się wyłączyć adresu kalendarza.');
+    }, 'Nie udało się wyłączyć adresu kalendarza.'));
+  }
+
+  /** Wykonuje działanie po potwierdzeniu; obietnica kończy się także po rezygnacji. */
+  private confirmed(question: string, action: () => Promise<void>): Promise<void> {
+    return new Promise<void>(resolve => this.confirm.ask(question, () => resolve(action()), { onCancel: resolve }));
   }
 
   async copy(address: string): Promise<void> {

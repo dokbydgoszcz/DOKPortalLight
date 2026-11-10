@@ -1,5 +1,5 @@
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MailingService } from './mailing.service';
 import { CreateMailingCampaignValue, MAILING_GROUP_LABELS, MailingCampaign, MailingGroup, MailingRecipient } from './mailing-campaign.model';
@@ -8,6 +8,7 @@ import { serverMessage } from '../../shared/http-error';
 import { PeopleService } from '../people/people.service';
 import { AttachmentsComponent } from '../../shared/attachments/attachments.component';
 import { Permissions } from '../../core/auth/permissions';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 @Component({
   selector: 'app-mailing',
@@ -17,6 +18,7 @@ import { Permissions } from '../../core/auth/permissions';
   styleUrl: './mailing.component.scss'
 })
 export class MailingComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly campaigns = signal<MailingCampaign[]>([]);
   readonly isFormOpen = signal(false);
   readonly isSendingTest = signal(false);
@@ -210,13 +212,14 @@ export class MailingComponent implements OnInit {
   }
 
   deleteDraft(campaign: MailingCampaign): void {
-    if (!confirm(`Usunąć szkic kampanii „${campaign.subject}”?`)) return;
-    this.mailingService.deleteDraft(campaign.id).subscribe({
-      next: () => {
-        this.toast.success('Szkic usunięty.');
-        this.load();
-      },
-      error: err => this.toast.error(err?.error?.title ?? 'Nie udało się usunąć szkicu.')
+    this.confirm.ask(`Usunąć szkic kampanii „${campaign.subject}”?`, () => {
+      this.mailingService.deleteDraft(campaign.id).subscribe({
+        next: () => {
+          this.toast.success('Szkic usunięty.');
+          this.load();
+        },
+        error: err => this.toast.error(err?.error?.title ?? 'Nie udało się usunąć szkicu.')
+      });
     });
   }
 

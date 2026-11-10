@@ -1,11 +1,12 @@
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FormatorsService } from './formators.service';
 import { Formator, FormatorFormValue } from './formator.model';
 import { PersonPickerComponent } from '../../shared/person-picker/person-picker.component';
 import { ToastService } from '../../core/notifications/toast.service';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 @Component({
   selector: 'app-formators-list',
@@ -15,6 +16,7 @@ import { ToastService } from '../../core/notifications/toast.service';
   styleUrl: './formators-list.component.scss'
 })
 export class FormatorsListComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly formators = signal<Formator[]>([]);
   readonly isFormOpen = signal(false);
   readonly editingId = signal<string | null>(null);
@@ -66,13 +68,14 @@ export class FormatorsListComponent implements OnInit {
   }
 
   deleteFormator(formator: Formator): void {
-    if (!confirm(`Usunąć formatora „${formator.personFullName}”?`)) return;
-    this.formatorsService.delete(formator.id).subscribe({
-      next: () => {
-        this.toast.success('Formator usunięty.');
-        this.load();
-      },
-      error: () => this.toast.error('Nie udało się usunąć formatora.')
+    this.confirm.ask(`Usunąć formatora „${formator.personFullName}”?`, () => {
+      this.formatorsService.delete(formator.id).subscribe({
+        next: () => {
+          this.toast.success('Formator usunięty.');
+          this.load();
+        },
+        error: () => this.toast.error('Nie udało się usunąć formatora.')
+      });
     });
   }
 }

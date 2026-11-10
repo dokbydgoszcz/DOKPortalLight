@@ -11,6 +11,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
 import { ToastService } from '../../core/notifications/toast.service';
 import { saveBlob } from '../../shared/attachments/attachment-rules';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
@@ -30,6 +31,7 @@ export const BACK_TARGETS: Record<string, { url: string; label: string }> = {
   styleUrl: './person-card.component.scss'
 })
 export class PersonCardComponent implements OnInit, OnDestroy {
+  private readonly confirm = inject(ConfirmService);
   private readonly route = inject(ActivatedRoute);
   private readonly peopleService = inject(PeopleService);
   private readonly title = inject(Title);
@@ -113,14 +115,16 @@ export class PersonCardComponent implements OnInit, OnDestroy {
 
   removePhoto(): void {
     const o = this.overview();
-    if (!o || !confirm('Usunąć zdjęcie?')) return;
-    this.peopleService.deletePhoto(o.person.id).subscribe({
-      next: () => {
-        this.setPhoto(null);
-        this.overview.set({ ...o, person: { ...o.person, photoUpdatedAtUtc: null } });
-        this.toast.success('Usunięto zdjęcie.');
-      },
-      error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć zdjęcia.'))
+    if (!o) return;
+    this.confirm.ask('Usunąć zdjęcie?', () => {
+      this.peopleService.deletePhoto(o.person.id).subscribe({
+        next: () => {
+          this.setPhoto(null);
+          this.overview.set({ ...o, person: { ...o.person, photoUpdatedAtUtc: null } });
+          this.toast.success('Usunięto zdjęcie.');
+        },
+        error: err => this.toast.error(serverMessage(err, 'Nie udało się usunąć zdjęcia.'))
+      });
     });
   }
 

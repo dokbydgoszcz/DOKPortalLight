@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { PaginationComponent } from '../../shared/pagination.component';
 import { RouterLink } from '@angular/router';
@@ -15,6 +15,7 @@ import { Permissions } from '../../core/auth/permissions';
 import { DashboardSummary } from './dashboard.model';
 import { timeRange } from '../meetings/meeting.model';
 import { DOK_PATH_LABELS, DOK_STAGE_LABELS } from '../dok-cases/dok-stages';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 const NAME_DAYS_WINDOW = 14;
 
@@ -26,6 +27,7 @@ const NAME_DAYS_WINDOW = 14;
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly monthsGenitive = MONTH_NAMES_GENITIVE;
   readonly summary = signal<DashboardSummary | null>(null);
   /** Imieniny w najbliższych dniach; null, gdy się nie wczytały (reszta pulpitu działa bez nich). */
@@ -41,6 +43,8 @@ export class DashboardComponent implements OnInit {
 
   readonly timeRange = timeRange;
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-11-10', text: 'Pomoc — nowa pozycja „Pomoc” na dole menu: krótka instrukcja, co gdzie kliknąć, osobno dla katechisty prowadzącego, dla dyrektora i o koncie (hasło, weryfikacja dwuetapowa, kalendarz w telefonie). Można ją wydrukować.' },
+    { date: '2026-11-10', text: 'Wzory pism — pola w podwójnych klamrach są w edytorze podświetlone: zielone to pola z danymi, żółte to pola do wpisania przy generowaniu, fioletowe to formy zależne od płci, a czerwone z falką to literówka albo niezamknięte pole. Pytania „czy na pewno?” (np. przy usuwaniu) pokazują się teraz w oknie portalu zamiast w okienku przeglądarki.' },
     { date: '2026-11-10', text: 'Bezpieczeństwo — przegląd i poprawki: konto administratora (hasło, weryfikację dwuetapową, login, role) zmienia tylko inny administrator; konto z hasłem tymczasowym musi najpierw ustawić własne hasło, zanim zobaczy dane; eksport dziennika zmian do CSV jest bezpieczny dla Excela; przeglądarka dostała dodatkowe zabezpieczenia strony. Po zmianie loginu konta trzeba zalogować się ponownie.' },
     { date: '2026-11-07', text: 'Zasoby dla katechistów — po potwierdzeniu usunięcia zasobu odtwarza się krótki dźwięk. Pulpit: „Co nowego” jest teraz podzielone na strony.' },
     { date: '2026-11-07', text: 'Logowanie — po zalogowaniu okno logowania odjeżdża w prawo, a portal wjeżdża na jego miejsce. Działa w nowych przeglądarkach (Chrome, Edge, Safari); gdzie animacji nie ma albo w systemie wyłączono ruch, strona po prostu się przełącza.' },
@@ -175,13 +179,15 @@ export class DashboardComponent implements OnInit {
   }
 
   shareNotes(item: HandedOverCase): void {
-    if (!confirm(`Udostępnić Twoje notatki ze sprawy „${item.personFullName}” (także przyszłe) katechiście: ${item.currentCatechistFullName}?`)) return;
-    this.pastoralNotesService.share(item.caseId).subscribe({ next: () => this.loadHandedOver(), error: () => {} });
+    this.confirm.ask(`Udostępnić Twoje notatki ze sprawy „${item.personFullName}” (także przyszłe) katechiście: ${item.currentCatechistFullName}?`, () => {
+      this.pastoralNotesService.share(item.caseId).subscribe({ next: () => this.loadHandedOver(), error: () => {} });
+    });
   }
 
   unshareNotes(item: HandedOverCase): void {
-    if (!confirm(`Cofnąć udostępnienie Twoich notatek katechiście: ${item.currentCatechistFullName}?`)) return;
-    this.pastoralNotesService.unshare(item.caseId, item.currentCatechistPersonId).subscribe({ next: () => this.loadHandedOver(), error: () => {} });
+    this.confirm.ask(`Cofnąć udostępnienie Twoich notatek katechiście: ${item.currentCatechistFullName}?`, () => {
+      this.pastoralNotesService.unshare(item.caseId, item.currentCatechistPersonId).subscribe({ next: () => this.loadHandedOver(), error: () => {} });
+    });
   }
 
   notesLabel(count: number): string {

@@ -1,6 +1,6 @@
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { ExportButtonComponent } from '../../shared/export/export-button.component';
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { CandidatesService } from './candidates.service';
 import { Candidate, CandidateFormValue, CandidateFormationEvent, nextYearLabel, romanYear } from './candidate.model';
@@ -9,6 +9,7 @@ import { CandidateFormComponent, ClassAttendance } from './candidate-form.compon
 import { RouterLink } from '@angular/router';
 import { ToastService } from '../../core/notifications/toast.service';
 import { PaginationComponent } from '../../shared/pagination.component';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 const PAGE_SIZE = 20;
 
@@ -20,6 +21,7 @@ const PAGE_SIZE = 20;
   styleUrl: './candidates-list.component.scss'
 })
 export class CandidatesListComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly candidates = signal<Candidate[]>([]);
   readonly page = signal(1);
   readonly totalCount = signal(0);
@@ -143,15 +145,17 @@ export class CandidatesListComponent implements OnInit {
     const question = candidate.year >= 3
       ? `Zakończyć formację kandydata „${candidate.personFullName}”?`
       : `Przenieść „${candidate.personFullName}” do ${romanYear(candidate.year + 1)} roku?`;
-    if (!confirm(question)) return;
-    this.advance([candidate.id]);
+    this.confirm.ask(question, () => {
+      this.advance([candidate.id]);
+    });
   }
 
   advanceSelected(): void {
     const ids = [...this.selectedIds()];
     if (ids.length === 0) return;
-    if (!confirm(`Przenieść zaznaczonych kandydatów (${ids.length}) do następnego roku? Kandydaci z III roku zakończą formację.`)) return;
-    this.advance(ids);
+    this.confirm.ask(`Przenieść zaznaczonych kandydatów (${ids.length}) do następnego roku? Kandydaci z III roku zakończą formację.`, () => {
+      this.advance(ids);
+    });
   }
 
   private advance(ids: string[], confirmIncomplete = false): void {
@@ -164,11 +168,17 @@ export class CandidatesListComponent implements OnInit {
         this.selectedIds.set(new Set());
         if (withGaps.length > 0) {
           const list = withGaps.map(s => `• ${s.personFullName ?? 'Kandydat'} – ${s.reason.replace('Braki do ukończenia: ', '')}`).join('\n');
-          if (confirm(`Nie zakończono formacji – kandydaci mają braki:\n${list}\n\nMimo to zakończyć ich formację?`)) {
-            this.advance(withGaps.map(s => s.candidateId), true);
-            return;
-          }
-          withGaps.forEach(s => this.toast.error(`${s.personFullName ?? 'Kandydat'}: ${s.reason}`));
+          this.confirm.ask(`Nie zakończono formacji – kandydaci mają braki:\n${list}\n\nMimo to zakończyć ich formację?`,
+            () => this.advance(withGaps.map(s => s.candidateId), true),
+            {
+              confirmLabel: 'Zakończ mimo braków',
+              onCancel: () => {
+                withGaps.forEach(s => this.toast.error(`${s.personFullName ?? 'Kandydat'}: ${s.reason}`));
+                this.load();
+                this.loadStats();
+              }
+            });
+          return;
         }
         this.load();
         this.loadStats();
@@ -182,14 +192,15 @@ export class CandidatesListComponent implements OnInit {
   }
 
   deleteCandidate(candidate: Candidate): void {
-    if (!confirm(`Usunąć kandydata „${candidate.personFullName}”?`)) return;
-    this.candidatesService.delete(candidate.id).subscribe({
-      next: () => {
-        this.toast.success('Kandydat usunięty.');
-        this.load();
-        this.loadStats();
-      },
-      error: () => this.toast.error('Nie udało się usunąć kandydata.')
+    this.confirm.ask(`Usunąć kandydata „${candidate.personFullName}”?`, () => {
+      this.candidatesService.delete(candidate.id).subscribe({
+        next: () => {
+          this.toast.success('Kandydat usunięty.');
+          this.load();
+          this.loadStats();
+        },
+        error: () => this.toast.error('Nie udało się usunąć kandydata.')
+      });
     });
   }
 }

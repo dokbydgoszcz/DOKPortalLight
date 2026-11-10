@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HasPermissionDirective } from '../../shared/permissions/has-permission.directive';
 import { AttachmentsComponent } from '../../shared/attachments/attachments.component';
@@ -6,6 +6,7 @@ import { ToastService } from '../../core/notifications/toast.service';
 import { Resource, ResourceFormValue } from './resource.model';
 import { ResourcesService } from './resources.service';
 import { SOUNDS, playSound } from '../../shared/sound';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 /** Globalna biblioteka zasobów dla katechistów: wgrywa Superwizor i Dyrektorzy, przegląda każdy z uprawnieniem. */
 @Component({
@@ -16,6 +17,7 @@ import { SOUNDS, playSound } from '../../shared/sound';
   styleUrl: './resources.component.scss'
 })
 export class ResourcesComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly resources = signal<Resource[]>([]);
   readonly query = signal('');
   readonly isFormOpen = signal(false);
@@ -86,14 +88,15 @@ export class ResourcesComponent implements OnInit {
   readonly deleteSound = SOUNDS.deleteResource;
 
   deleteResource(resource: Resource): void {
-    if (!confirm(`Usunąć zasób „${resource.title}” razem z plikami?`)) return;
-    playSound(SOUNDS.deleteResource);
-    this.resourcesService.delete(resource.id).subscribe({
-      next: () => {
-        this.toast.success('Zasób usunięty.');
-        this.load();
-      },
-      error: () => this.toast.error('Nie udało się usunąć zasobu.')
+    this.confirm.ask(`Usunąć zasób „${resource.title}” razem z plikami?`, () => {
+      playSound(SOUNDS.deleteResource);
+      this.resourcesService.delete(resource.id).subscribe({
+        next: () => {
+          this.toast.success('Zasób usunięty.');
+          this.load();
+        },
+        error: () => this.toast.error('Nie udało się usunąć zasobu.')
+      });
     });
   }
 }

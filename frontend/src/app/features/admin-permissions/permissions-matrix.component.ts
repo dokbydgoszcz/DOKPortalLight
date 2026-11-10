@@ -1,9 +1,10 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { ToastService } from '../../core/notifications/toast.service';
 import { PermissionInfo, PermissionMatrix } from './permissions.model';
 import { PermissionsService } from './permissions.service';
+import { ConfirmService } from '../../core/confirm/confirm.service';
 
 interface ModuleGroup {
   module: string;
@@ -30,6 +31,7 @@ function cloneGrants(matrix: PermissionMatrix): Record<string, string[]> {
   styleUrl: './permissions-matrix.component.scss'
 })
 export class PermissionsMatrixComponent implements OnInit {
+  private readonly confirm = inject(ConfirmService);
   readonly matrix = signal<PermissionMatrix | null>(null);
   readonly draft = signal<Record<string, string[]>>({});
   readonly saving = signal(false);
@@ -127,13 +129,14 @@ export class PermissionsMatrixComponent implements OnInit {
   }
 
   deleteRole(role: string): void {
-    if (!confirm(`Usunąć rolę „${role}”?`)) return;
-    this.permissionsService.deleteRole(role).subscribe({
-      next: () => {
-        this.toast.success(`Usunięto rolę „${role}”.`);
-        this.load();
-      },
-      error: err => this.toast.error(err?.error?.title ?? 'Nie udało się usunąć roli.')
+    this.confirm.ask(`Usunąć rolę „${role}”?`, () => {
+      this.permissionsService.deleteRole(role).subscribe({
+        next: () => {
+          this.toast.success(`Usunięto rolę „${role}”.`);
+          this.load();
+        },
+        error: err => this.toast.error(err?.error?.title ?? 'Nie udało się usunąć roli.')
+      });
     });
   }
 }
