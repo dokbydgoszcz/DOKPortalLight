@@ -211,6 +211,16 @@ export const HELP_TOPICS: Readonly<Record<HelpAudience, ReadonlyArray<HelpTopic>
       tip: 'Adres działa jak hasło – nikomu go nie wysyłaj. Gdy trafi w niepowołane ręce, kliknij „Utwórz nowy adres”.'
     },
     {
+      title: 'Portal jako aplikacja w telefonie',
+      where: 'Chrome na Androidzie (iPhone: Safari)',
+      steps: [
+        'Otwórz portal w Chrome i zaloguj się.',
+        'Menu ⋮ → „Zainstaluj aplikację” (albo „Dodaj do ekranu głównego” → „Zainstaluj”). Na iPhonie: „Udostępnij” → „Do ekranu początkowego”.',
+        'Na ekranie pojawi się ikonka z krzyżem – portal otwiera się z niej na pełnym ekranie, bez paska przeglądarki.'
+      ],
+      tip: 'Masz starą ikonkę, która pokazuje u góry pasek z nazwą strony? Usuń ją i zainstaluj portal jeszcze raz.'
+    },
+    {
       title: 'Wylogowanie',
       where: 'Prawy górny róg → Wyloguj',
       steps: [

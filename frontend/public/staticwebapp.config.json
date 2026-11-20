@@ -13,5 +13,8 @@
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
     "Cross-Origin-Opener-Policy": "same-origin"
+  },
+  "mimeTypes": {
+    ".webmanifest": "application/manifest+json"
   }
 }
