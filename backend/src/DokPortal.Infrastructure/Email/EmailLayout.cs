@@ -45,7 +45,9 @@ public static partial class EmailLayout
         // Nagłówek: zielony pasek z krzyżem i nazwą, cienka złota linia pod spodem.
         html.Append($"<tr><td style=\"background:{Green};background-image:linear-gradient(135deg,{Green} 0%,{GreenDark} 100%);border-radius:16px 16px 0 0;padding:22px 28px;\">")
             .Append("<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\"><tr>")
-            .Append($"<td width=\"40\" height=\"40\" align=\"center\" valign=\"middle\" style=\"width:40px;height:40px;border-radius:11px;background:{Gold};color:{GreenDark};font:700 22px/40px Georgia,'Times New Roman',serif;\">&#10013;</td>")
+            .Append($"<td width=\"40\" height=\"40\" align=\"center\" valign=\"middle\" bgcolor=\"{Gold}\" style=\"width:40px;height:40px;border-radius:11px;background:{Gold};\">")
+            .Append(Cross())
+            .Append("</td>")
             .Append($"<td style=\"padding-left:14px;font-family:{Font};\">")
             .Append("<div style=\"color:#F6F5F1;font-size:17px;font-weight:700;line-height:1.2;\">DOK Portal</div>")
             .Append("<div style=\"color:rgba(246,245,241,.7);color:#B9C7C2;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;line-height:1.6;\">Diecezjalny Ośrodek Katechumenalny</div>")
@@ -76,6 +78,21 @@ public static partial class EmailLayout
         }
         html.Append("</td></tr></table></td></tr></table></body></html>");
         return html.ToString();
+    }
+
+    /// <summary>
+    /// Krzyż narysowany komórkami tabeli, nie znakiem „✝”: programy pocztowe (Gmail, Outlook) zamieniają ten znak
+    /// na kolorowe emoji. Ramiona 4 px, belka poprzeczna na 1/3 wysokości.
+    /// </summary>
+    private static string Cross()
+    {
+        static string Cell(int w, int h, bool ink) =>
+            $"<td width=\"{w}\" height=\"{h}\" {(ink ? $"bgcolor=\"{GreenDark}\" " : "")}style=\"width:{w}px;height:{h}px;line-height:{h}px;font-size:0;{(ink ? $"background:{GreenDark};" : "")}\">&nbsp;</td>";
+        return "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" align=\"center\" style=\"margin:0 auto;border-collapse:collapse;\">" +
+               "<tr>" + Cell(6, 6, false) + Cell(4, 6, true) + Cell(6, 6, false) + "</tr>" +
+               "<tr>" + Cell(6, 4, true) + Cell(4, 4, true) + Cell(6, 4, true) + "</tr>" +
+               "<tr>" + Cell(6, 12, false) + Cell(4, 12, true) + Cell(6, 12, false) + "</tr>" +
+               "</table>";
     }
 
     private static IEnumerable<string[]> Blocks(string text) =>

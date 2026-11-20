@@ -22,6 +22,10 @@ public class EmailLayoutTests
         Assert.Contains("Ustaw nowe hasło &rarr;</a>", html);
         Assert.Contains($"href=\"{Portal}/reset-hasla?uid=1&amp;token=a%2Bb\"", html);
         Assert.Contains("Jeśli przycisk nie działa", html);
+        // Krzyż w logo jest narysowany, nie znakiem – Gmail/Outlook robią z „✝” fioletowe emoji.
+        Assert.DoesNotContain("&#10013;", html);
+        Assert.DoesNotContain("✝", html);
+        Assert.Contains("bgcolor=\"#10302D\"", html);
         Assert.Contains("DOK Portal", html);
         Assert.Contains($"href=\"{Portal}\"", html);
         // Podgląd w skrzynce pomija powitanie.
