@@ -53,6 +53,7 @@ public class EmailLayoutTests
 
     [Theory]
     [InlineData("https://portal.example.org/reset-hasla?x=1", "Ustaw nowe hasło")]
+    [InlineData("https://portal.example.org/reset-hasla?uid=1&token=x&zaproszenie=1", "Ustaw hasło i wejdź")]
     [InlineData("https://portal.example.org/wypisz/abc", "Wypisz się z wiadomości")]
     [InlineData("https://portal.example.org/dok-cases", "Otwórz w DOK Portal")]
     [InlineData("https://inna.example.org/x", "Otwórz link")]

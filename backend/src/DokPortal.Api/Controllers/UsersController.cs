@@ -1,6 +1,7 @@
 using DokPortal.Api.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using DokPortal.Application.AuditLog;
+using DokPortal.Application.Auth;
 using DokPortal.Application.Permissions;
 using DokPortal.Application.Users;
 using DokPortal.Domain.Constants;
@@ -17,9 +18,11 @@ public class UsersController : ControllerBase
     private readonly IUserService _userService;
     private readonly IAuditLogService _auditLogService;
     private readonly IPermissionService _permissionService;
+    private readonly IAccountService _accountService;
 
-    public UsersController(IUserService userService, IAuditLogService auditLogService, IPermissionService permissionService)
+    public UsersController(IUserService userService, IAuditLogService auditLogService, IPermissionService permissionService, IAccountService accountService)
     {
+        _accountService = accountService;
         _userService = userService;
         _auditLogService = auditLogService;
         _permissionService = permissionService;
@@ -114,6 +117,17 @@ public class UsersController : ControllerBase
         var currentUserEmail = User.Claims.First(c => c.Type == JwtRegisteredClaimNames.Email).Value;
         await _auditLogService.LogAsync(currentUserId, currentUserEmail, "ResetUserPassword", id, DokPortal.Domain.Enums.AuditResult.Allowed, ct);
 
+        return NoContent();
+    }
+
+    /// <summary>E-mail z loginem i linkiem do ustawienia hasła (nowe konto albo ktoś zapomniał hasła).</summary>
+    [HttpPost("{id}/invitation")]
+    public async Task<IActionResult> SendInvitation(string id, CancellationToken ct)
+    {
+        var user = await _userService.GetForManageAsync(id, CurrentActor(), ct);
+        if (user is null) return NotFound();
+        await _accountService.SendInvitationAsync(id, ct);
+        await _auditLogService.LogAsync(CurrentActor().UserId, CurrentEmail(), "SendUserInvitation", user.Email, DokPortal.Domain.Enums.AuditResult.Allowed, ct);
         return NoContent();
     }
 }

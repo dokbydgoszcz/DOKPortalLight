@@ -173,6 +173,18 @@ export const HELP_TOPICS: Readonly<Record<HelpAudience, ReadonlyArray<HelpTopic>
         'Budżet → „＋ Dodaj operację”; do operacji można dołączyć fakturę. „Eksportuj do Excela” pobiera zestawienie za wybrany okres.',
         'Większość list ma przycisk eksportu do Excela w prawym górnym rogu.'
       ]
+    },
+    {
+      title: 'Konto dla nowej osoby',
+      where: 'Menu → Użytkownicy i role (administrator)',
+      link: '/admin/users',
+      steps: [
+        '„＋ Nowe konto” → wybierz osobę (login to jej e-mail) i zaznacz role.',
+        'Zostaw „Wyślij zaproszenie e-mailem” i kliknij „Utwórz i wyślij zaproszenie” – osoba dostanie link do ustawienia hasła, ważny 7 dni.',
+        'Dopóki nie ustawi hasła, przy koncie widać „czeka na hasło”. Link wygasł albo zginął? „Edytuj” → „Wyślij zaproszenie ponownie”.',
+        'Ktoś zapomniał hasła? „Edytuj” → „Wyślij link do ustawienia hasła” – sam ustawi nowe, nie musisz go znać.'
+      ],
+      tip: 'Hasło tymczasowe ustawiaj tylko, gdy osoba nie ma dostępu do poczty – trzeba je wtedy przekazać osobiście.'
     }
   ],
   account: [
@@ -181,7 +193,8 @@ export const HELP_TOPICS: Readonly<Record<HelpAudience, ReadonlyArray<HelpTopic>
       where: 'Prawy górny róg → Moje konto',
       link: '/konto/haslo',
       steps: [
-        'Konto zakłada administrator i podaje hasło tymczasowe. Przy pierwszym logowaniu portal poprosi o ustawienie własnego hasła – dopiero potem zobaczysz dane.',
+        'Konto zakłada administrator. Dostaniesz e-mail „Zaproszenie do DOK Portal” z loginem i przyciskiem „Ustaw hasło i wejdź” (link ważny 7 dni) – ustaw hasło i zaloguj się.',
+        'Jeśli administrator podał Ci hasło tymczasowe, przy pierwszym logowaniu portal poprosi o ustawienie własnego – dopiero potem zobaczysz dane.',
         'Hasło zmienisz w dowolnej chwili w „Moje konto” → „Zmiana hasła”.',
         'Nie pamiętasz hasła? Na stronie logowania kliknij „Nie pamiętam hasła” – dostaniesz e-mail z linkiem ważnym 2 godziny.'
       ],

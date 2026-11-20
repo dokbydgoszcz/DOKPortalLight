@@ -113,7 +113,9 @@ builder.Services
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddErrorDescriber<PolishIdentityErrorDescriber>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddTokenProvider<DokPortal.Api.Security.InvitationTokenProvider>(InvitationTokens.ProviderName);
+builder.Services.Configure<DokPortal.Api.Security.InvitationTokenProviderOptions>(_ => { });
 // Link „Nie pamiętam hasła” jest ważny 2 godziny (i jednorazowy – zmiana hasła zmienia znacznik bezpieczeństwa).
 builder.Services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(2));
 builder.Services.AddDataProtection();

@@ -8,11 +8,14 @@ export interface AppUserAccount {
   isActive?: boolean;
   /** Weryfikacja dwuetapowa (aplikacja uwierzytelniająca) włączona. */
   mfaEnabled?: boolean;
+  /** false = konto zaproszone, użytkownik jeszcze nie ustawił hasła. Brak = ma hasło (starsze odpowiedzi). */
+  hasPassword?: boolean;
 }
 
 export interface CreateUserValue {
   email: string;
-  password: string;
+  /** Hasło tymczasowe; bez niego konto dostaje zaproszenie e-mailem. */
+  password?: string;
   roles: string[];
   personId?: string;
 }

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { describe, expect, it, vi } from 'vitest';
+import { Title } from '@angular/platform-browser';
 import { ResetPasswordComponent } from './reset-password.component';
 import { AuthService } from '../../core/auth/auth.service';
 
@@ -29,6 +30,21 @@ describe('ResetPasswordComponent', () => {
     fixture.detectChanges();
 
     expect(resetPassword).toHaveBeenCalledWith('u1', 'kod', 'Nowe12345!');
+    expect(el.textContent).toContain('Hasło zostało ustawione');
+  });
+
+  it('welcomes a new user coming from an invitation', async () => {
+    const { component, resetPassword, fixture, el } = setup({ uid: 'u1', token: 'kod', zaproszenie: '1' });
+    expect(el.querySelector('h2')!.textContent).toContain('Witaj w DOK Portal');
+    expect(el.textContent).toContain('Ustaw hasło do swojego konta');
+    expect(el.querySelector('label[for="reset-new"]')!.textContent).toContain('Hasło');
+    expect(TestBed.inject(Title).getTitle()).toBe('Ustaw hasło | DOK Portal');
+
+    component.next = component.repeat = 'Moje12345!';
+    await component.submit();
+    fixture.detectChanges();
+    expect(resetPassword).toHaveBeenCalledWith('u1', 'kod', 'Moje12345!');
+    expect(el.textContent).not.toContain('Ustaw hasło do swojego konta');
     expect(el.textContent).toContain('Hasło zostało ustawione');
   });
 

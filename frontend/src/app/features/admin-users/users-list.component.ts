@@ -31,6 +31,8 @@ export class UsersListComponent implements OnInit {
 
   newUser: Omit<CreateUserValue, 'personId'> = { email: '', password: '', roles: [] };
   confirmPassword = '';
+  /** Jak nowa osoba dostanie dostęp: zaproszenie e-mailem (zalecane) albo hasło tymczasowe przekazane przez administratora. */
+  readonly accessMode = signal<'invite' | 'password'>('invite');
   readonly createError = signal<string | null>(null);
 
   personQuery = '';
@@ -121,7 +123,11 @@ export class UsersListComponent implements OnInit {
       return;
     }
 
-    if (this.newUser.password !== this.confirmPassword) {
+    if (this.accessMode() === 'password' && !this.newUser.password) {
+      this.createError.set('Wpisz hasło tymczasowe albo wybierz zaproszenie e-mailem.');
+      return;
+    }
+    if (this.accessMode() === 'password' && this.newUser.password !== this.confirmPassword) {
       this.createError.set('Podane hasła różnią się od siebie.');
       return;
     }
@@ -145,9 +151,12 @@ export class UsersListComponent implements OnInit {
   }
 
   private submitCreateUser(personId: string | undefined): void {
-    const value: CreateUserValue = { ...this.newUser, personId };
+    const invite = this.accessMode() === 'invite';
+    const value: CreateUserValue = invite
+      ? { email: this.newUser.email, roles: this.newUser.roles, personId }
+      : { ...this.newUser, personId };
     this.usersService.create(value).subscribe({
-      next: () => {
+      next: created => {
         this.newUser = { email: '', password: '', roles: [] };
         this.confirmPassword = '';
         this.selectedPerson.set(null);
@@ -155,8 +164,15 @@ export class UsersListComponent implements OnInit {
         this.newPersonFirstName = '';
         this.newPersonLastName = '';
         this.isCreateOpen.set(false);
-        this.toast.success('Konto użytkownika utworzone.');
         this.load();
+        if (!invite) {
+          this.toast.success('Konto użytkownika utworzone.');
+          return;
+        }
+        this.usersService.sendInvitation(created.id).subscribe({
+          next: () => this.toast.success(`Konto utworzone – zaproszenie wysłane na ${created.email}.`),
+          error: err => this.toast.error(`Konto utworzone, ale zaproszenie nie wyszło: ${serverMessage(err, 'błąd poczty')} Wyślij je ponownie w „Edytuj”.`)
+        });
       },
       error: err => this.createError.set(serverMessage(err, 'Nie udało się utworzyć konta użytkownika.'))
     });
@@ -169,6 +185,7 @@ export class UsersListComponent implements OnInit {
   openCreate(): void {
     this.newUser = { email: '', password: '', roles: [] };
     this.confirmPassword = '';
+    this.accessMode.set('invite');
     this.createError.set(null);
     this.selectedPerson.set(null);
     this.addingNewPerson.set(false);
@@ -299,6 +316,17 @@ export class UsersListComponent implements OnInit {
         this.toast.success('Hasło zresetowane – przy logowaniu użytkownik ustawi własne.');
       },
       error: err => this.editError.set(serverMessage(err, 'Nie udało się zresetować hasła.'))
+    });
+  }
+
+  /** Zaproszenie (konto bez hasła) albo link do ustawienia nowego hasła – użytkownik ustawia je sam. */
+  sendInvitation(): void {
+    const user = this.editing();
+    if (!user) return;
+    this.editError.set(null);
+    this.usersService.sendInvitation(user.id).subscribe({
+      next: () => this.toast.success(`Wysłano e-mail z linkiem do ustawienia hasła na ${user.email}.`),
+      error: err => this.editError.set(serverMessage(err, 'Nie udało się wysłać e-maila.'))
     });
   }
 

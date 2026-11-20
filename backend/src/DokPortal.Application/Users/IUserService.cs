@@ -19,4 +19,7 @@ public interface IUserService
     Task<UserDto?> ResetMfaAsync(string userId, CancellationToken ct, UserActor? actor = null);
     /// <summary>Konto administratora (hasło, MFA, login, osoba, role, wyłączenie) zmienia tylko administrator.</summary>
     Task<bool> ResetPasswordAsync(string userId, string newPassword, CancellationToken ct, UserActor? actor = null);
+    /// <summary>Konto do zmiany przez <paramref name="actor"/> (konto administratora – tylko administrator); null = nie ma.</summary>
+    /// <exception cref="InvalidOperationException">Brak prawa do zmiany tego konta.</exception>
+    Task<UserDto?> GetForManageAsync(string userId, UserActor actor, CancellationToken ct);
 }

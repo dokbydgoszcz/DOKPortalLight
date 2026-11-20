@@ -192,11 +192,46 @@ public class AccountService : IAccountService
         return user.Id;
     }
 
+    public async Task SendInvitationAsync(string userId, CancellationToken ct)
+    {
+        var user = await _userManager.FindByIdAsync(userId) ?? throw new InvalidOperationException("Nie znaleziono konta.");
+        if (user.IsDeactivated) throw new InvalidOperationException("Konto jest wyłączone – najpierw je włącz.");
+        if (string.IsNullOrWhiteSpace(user.Email)) throw new InvalidOperationException("Konto nie ma adresu e-mail.");
+
+        var token = await _userManager.GenerateUserTokenAsync(user, InvitationTokens.ProviderName, InvitationTokens.Purpose);
+        var link = _portalUrl.Link($"reset-hasla?uid={Uri.EscapeDataString(user.Id)}&token={Uri.EscapeDataString(token)}&zaproszenie=1");
+        var body =
+            "Dzień dobry,\n\n" +
+            "zapraszamy do DOK Portal – systemu Diecezjalnego Ośrodka Katechumenalnego i Szkoły Katechistów św. Pawła " +
+            "Diecezji Bydgoskiej.\n\n" +
+            "Twój login: " + user.Email + "\n\n" +
+            "Aby ustawić hasło i zalogować się, otwórz link (ważny 7 dni, działa jeden raz):\n" +
+            link + "\n\n" +
+            "Gdy link wygaśnie, na stronie logowania kliknij „Nie pamiętam hasła” albo poproś administratora o nowe zaproszenie.\n\n" +
+            "DOK Portal";
+        try
+        {
+            await _emailSender.SendAsync(user.Email, "Zaproszenie do DOK Portal", body, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Nie udało się wysłać zaproszenia dla konta {UserId}", user.Id);
+            throw new InvalidOperationException("Nie udało się wysłać e-maila z zaproszeniem. Sprawdź adres i spróbuj ponownie za chwilę.");
+        }
+    }
+
     public async Task ResetPasswordWithTokenAsync(string userId, string token, string newPassword, CancellationToken ct)
     {
         const string invalid = "Link do zmiany hasła jest nieprawidłowy albo wygasł. Poproś o nowy („Nie pamiętam hasła”).";
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null || user.IsDeactivated) throw new InvalidOperationException(invalid);
+
+        // Link z zaproszenia (7 dni) zamieniamy na zwykły kod resetu: ResetPasswordAsync sprawdzi hasło i dopiero
+        // udane ustawienie zmieni znacznik bezpieczeństwa – słabe hasło nie zużywa zaproszenia.
+        if (await _userManager.VerifyUserTokenAsync(user, InvitationTokens.ProviderName, InvitationTokens.Purpose, token))
+        {
+            token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        }
 
         var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
         if (!result.Succeeded)

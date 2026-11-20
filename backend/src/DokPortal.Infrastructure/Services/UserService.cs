@@ -111,9 +111,11 @@ public class UserService : IUserService
         }
         var email = await ResolveLoginAsync(request, ct);
 
-        var user = new AppUser { UserName = email, Email = email, PersonId = request.PersonId, MustChangePassword = true };
+        var invited = string.IsNullOrEmpty(request.Password);
+        // Bez hasła: użytkownik ustawi własne z linku w zaproszeniu, więc nie ma czego zmieniać po pierwszym logowaniu.
+        var user = new AppUser { UserName = email, Email = email, PersonId = request.PersonId, MustChangePassword = !invited };
 
-        var createResult = await _userManager.CreateAsync(user, request.Password);
+        var createResult = invited ? await _userManager.CreateAsync(user) : await _userManager.CreateAsync(user, request.Password!);
         if (!createResult.Succeeded)
         {
             var errors = string.Join("; ", createResult.Errors.Select(e => e.Description));
@@ -261,8 +263,17 @@ public class UserService : IUserService
         PersonFullName = personFullName,
         Roles = roles.ToList(),
         IsActive = !user.IsDeactivated,
-        MfaEnabled = user.TwoFactorEnabled
+        MfaEnabled = user.TwoFactorEnabled,
+        HasPassword = user.PasswordHash != null
     };
+
+    public async Task<UserDto?> GetForManageAsync(string userId, UserActor actor, CancellationToken ct)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return null;
+        await EnsureMayManageAsync(user, actor);
+        return ToDto(user, await _userManager.GetRolesAsync(user), await PersonNameAsync(user.PersonId, ct));
+    }
 
     public async Task<UserDto?> ChangeLoginAsync(string userId, string email, CancellationToken ct, UserActor? actor = null)
     {

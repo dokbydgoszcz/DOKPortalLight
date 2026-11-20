@@ -43,6 +43,7 @@ export class DashboardComponent implements OnInit {
 
   readonly timeRange = timeRange;
   readonly changelog: ReadonlyArray<{ date: string; text: string }> = [
+    { date: '2026-11-20', text: 'Konta — nowe konto nie wymaga już wymyślania hasła: portal wysyła zaproszenie e-mailem z loginem i przyciskiem „Ustaw hasło i wejdź” (link ważny 7 dni, działa raz). Na liście kont widać „czeka na hasło”, a w „Edytuj” są „Wyślij zaproszenie ponownie” i „Wyślij link do ustawienia hasła” (gdy ktoś zapomniał hasła). Hasło tymczasowe można nadal ustawić ręcznie.' },
     { date: '2026-11-20', text: 'Telefon — portal można zainstalować jak aplikację (Chrome → ⋮ → „Zainstaluj aplikację”): ma własną ikonkę z krzyżem i otwiera się na pełnym ekranie, bez paska z nazwą strony. Starą ikonkę dodaną wcześniej trzeba usunąć i zainstalować portal ponownie. Opis w „Pomocy” → „Konto i logowanie”.' },
     { date: '2026-11-20', text: 'E-maile — wszystkie wiadomości z portalu (reset hasła, przypomnienia, powiadomienia, mailing) mają teraz szatę portalu: zielony nagłówek z krzyżem, złoty pasek, czytelną kartę z tytułem i stopkę ośrodka. Linki do kliknięcia są przyciskami (np. „Ustaw nowe hasło”), a pod nimi zostaje adres do skopiowania. Programy pocztowe bez HTML dalej pokazują zwykły tekst.' },
     { date: '2026-11-20', text: 'Logowanie — strona logowania ożyła: przez zielony panel powoli płyną cienkie, półprzezroczyste wstążki w złocie, a po krawędzi karty wędruje delikatne światło. Przy wyłączonych animacjach w systemie wszystko stoi w miejscu.' },

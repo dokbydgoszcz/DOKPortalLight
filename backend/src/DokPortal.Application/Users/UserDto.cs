@@ -10,4 +10,6 @@ public class UserDto
     public bool IsActive { get; init; } = true;
     /// <summary>Konto ma włączoną weryfikację dwuetapową (aplikacja uwierzytelniająca).</summary>
     public bool MfaEnabled { get; init; }
+    /// <summary>Konto ma hasło. Brak = zaproszone, czeka na ustawienie hasła z linku.</summary>
+    public bool HasPassword { get; init; } = true;
 }

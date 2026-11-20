@@ -43,6 +43,11 @@ export class UsersService {
     return this.http.delete<AppUserAccount>(`${this.baseUrl}/${id}/mfa`);
   }
 
+  /** E-mail z loginem i linkiem do ustawienia hasła (ważny 7 dni). */
+  sendInvitation(id: string) {
+    return this.http.post<void>(`${this.baseUrl}/${id}/invitation`, {});
+  }
+
   resetPassword(id: string, newPassword: string) {
     return this.http.put<void>(`${this.baseUrl}/${id}/reset-password`, { newPassword });
   }

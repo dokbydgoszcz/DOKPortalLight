@@ -164,7 +164,8 @@ public static partial class EmailLayout
     /// <summary>Napis na przycisku z adresu: znane strony portalu mają własne nazwy.</summary>
     public static string ButtonLabel(string url, string? portalBaseUrl)
     {
-        if (url.Contains("/reset-hasla", StringComparison.OrdinalIgnoreCase)) return "Ustaw nowe hasło";
+        if (url.Contains("/reset-hasla", StringComparison.OrdinalIgnoreCase))
+            return url.Contains("zaproszenie=1", StringComparison.OrdinalIgnoreCase) ? "Ustaw hasło i wejdź" : "Ustaw nowe hasło";
         if (url.Contains("/wypisz/", StringComparison.OrdinalIgnoreCase)) return "Wypisz się z wiadomości";
         if (!string.IsNullOrWhiteSpace(portalBaseUrl) && url.StartsWith(portalBaseUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase)) return "Otwórz w DOK Portal";
         return "Otwórz link";

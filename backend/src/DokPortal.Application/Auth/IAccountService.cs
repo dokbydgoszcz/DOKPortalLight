@@ -14,6 +14,13 @@ public interface IAccountService
     /// <exception cref="InvalidOperationException">Kod zły, użyty albo wygasł; hasło nie spełnia zasad.</exception>
     Task ResetPasswordWithTokenAsync(string userId, string token, string newPassword, CancellationToken ct);
 
+    /// <summary>
+    /// Wysyła zaproszenie: login i link do ustawienia hasła (ważny 7 dni, działa raz). Dla konta z hasłem działa
+    /// jak link do zmiany hasła wysłany przez administratora.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Konto wyłączone albo e-mail nie wyszedł.</exception>
+    Task SendInvitationAsync(string userId, CancellationToken ct);
+
     Task<MfaStatusResponse> GetMfaStatusAsync(string userId, CancellationToken ct);
     /// <summary>Nowy klucz dla aplikacji (MFA zaczyna działać dopiero po <see cref="EnableMfaAsync"/>).</summary>
     Task<MfaSetupResponse> SetupMfaAsync(string userId, CancellationToken ct);

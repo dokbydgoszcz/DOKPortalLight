@@ -29,6 +29,7 @@
             <td>
               <span class="role-list">
                 @if (user.isActive === false) { <span class="pill red">wyłączone</span> } @else { <span class="pill green">aktywne</span> }
+                @if (user.hasPassword === false) { <span class="pill gold" title="Zaproszenie wysłane – użytkownik jeszcze nie ustawił hasła">czeka na hasło</span> }
                 @if (user.mfaEnabled) { <span class="pill green" title="Weryfikacja dwuetapowa włączona">MFA</span> }
               </span>
             </td>
@@ -115,8 +116,20 @@
           <div class="small-muted">Adres będzie loginem i e-mailem nowej osoby.</div>
         }
       </div>
-      <div class="field full"><label>Hasło</label><input type="password" [(ngModel)]="newUser.password" name="password" /></div>
-      <div class="field full"><label>Powtórz hasło</label><input type="password" [(ngModel)]="confirmPassword" name="confirmPassword" /><span class="form-hint">Hasło tymczasowe – po pierwszym logowaniu użytkownik musi ustawić własne.</span></div>
+      <div class="field full">
+        <label>Dostęp</label>
+        <div class="access-choice" role="radiogroup" aria-label="Jak przekazać dostęp">
+          <label class="checkbox-label"><input type="radio" name="accessMode" value="invite" [checked]="accessMode() === 'invite'" (change)="accessMode.set('invite')" /> Wyślij zaproszenie e-mailem <span class="small-muted">(zalecane)</span></label>
+          <label class="checkbox-label"><input type="radio" name="accessMode" value="password" [checked]="accessMode() === 'password'" (change)="accessMode.set('password')" /> Ustaw hasło tymczasowe</label>
+        </div>
+        @if (accessMode() === 'invite') {
+          <span class="form-hint">Na adres z loginem pójdzie e-mail z linkiem „Ustaw hasło” (ważnym 7 dni). Nie musisz nikomu przekazywać hasła.</span>
+        }
+      </div>
+      @if (accessMode() === 'password') {
+        <div class="field full"><label>Hasło</label><input type="password" [(ngModel)]="newUser.password" name="password" /></div>
+        <div class="field full"><label>Powtórz hasło</label><input type="password" [(ngModel)]="confirmPassword" name="confirmPassword" /><span class="form-hint">Hasło tymczasowe – przekaż je osobiście; po pierwszym logowaniu użytkownik musi ustawić własne.</span></div>
+      }
       <div class="field full">
         <label>Role</label>
         <div class="role-checks">
@@ -132,7 +145,7 @@
         </div>
       <div class="modal-foot">
         <button class="btn ghost" type="button" (click)="closeCreate()">Anuluj</button>
-        <button class="btn primary" type="button" (click)="createUser()">Utwórz konto</button>
+        <button class="btn primary" type="button" (click)="createUser()">{{ accessMode() === 'invite' ? 'Utwórz i wyślij zaproszenie' : 'Utwórz konto' }}</button>
       </div>
     </div>
   </div>
@@ -201,7 +214,8 @@
             <div class="small-muted">Hasło tymczasowe – przy logowaniu użytkownik ustawi własne.</div>
           } @else {
             <div class="security-actions">
-              <button class="btn ghost small" type="button" (click)="openReset()">Resetuj hasło</button>
+              <button class="btn ghost small" type="button" [disabled]="user.isActive === false" [title]="user.isActive === false ? 'Najpierw włącz konto' : 'Użytkownik dostanie e-mail z linkiem i sam ustawi hasło'" (click)="sendInvitation()">{{ user.hasPassword === false ? 'Wyślij zaproszenie ponownie' : 'Wyślij link do ustawienia hasła' }}</button>
+              <button class="btn ghost small" type="button" (click)="openReset()">Ustaw hasło tymczasowe</button>
               @if (user.mfaEnabled) {
                 <button class="btn ghost small" type="button" title="Np. gdy użytkownik zgubił telefon" (click)="resetMfa()">Wyłącz MFA</button>
               }

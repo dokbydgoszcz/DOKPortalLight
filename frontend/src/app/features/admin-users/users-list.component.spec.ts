@@ -14,6 +14,7 @@ const unlinkedCatechist = { id: 'u3', email: 'kat@example.org', personId: null, 
 
 function boot(users: object[] = [user]) {
   const ctx = setup(UsersListComponent);
+  currentView = ctx.fixture;
   ctx.fixture.detectChanges();
   flushAll(ctx.http, api('/api/users'), users);
   flushAll(ctx.http, api('/api/users/roles'), ['Administrator', 'Biskup']);
@@ -35,7 +36,17 @@ function openEdit(ctx: ReturnType<typeof boot>, index = 0) {
 
 const save = (el: HTMLElement) => clickByText(el, 'Zapisz', '.modal-foot button');
 
+/** Przełącza okno na „Ustaw hasło tymczasowe” (domyślnie jest zaproszenie e-mailem). */
+function usePassword(el: HTMLElement) {
+  el.querySelector<HTMLInputElement>('input[name="accessMode"][value="password"]')!.dispatchEvent(new Event('change'));
+  currentView?.detectChanges();
+}
+
+/** Widok ostatnio uruchomionego ekranu (pomocnicze funkcje bez dostępu do fixture). */
+let currentView: { detectChanges(): void } | null = null;
+
 function fillAccount(el: HTMLElement, email: string, password: string, confirm: string) {
+  usePassword(el);
   setInput(el, 'input[name="email"]', email);
   setInput(el, 'input[name="password"]', password);
   setInput(el, 'input[name="confirmPassword"]', confirm);
@@ -100,6 +111,80 @@ describe('UsersListComponent', () => {
     });
   });
 
+  describe('inviting by e-mail', () => {
+    it('sends an invitation by default instead of asking for a password', () => {
+      const { fixture, http, el } = bootCreate();
+      expect(el.querySelector('input[name="password"]')).toBeNull();
+      expect(textOf(el)).toContain('ważnym 7 dni');
+      setInput(el, 'input[name="email"]', 'nowy@example.org');
+      clickByText(el, 'Utwórz i wyślij zaproszenie');
+
+      const create = http.expectOne(r => r.method === 'POST' && r.url === api('/api/users'));
+      expect(create.request.body).toEqual({ email: 'nowy@example.org', roles: [], personId: undefined });
+      create.flush({ id: 'u9', email: 'nowy@example.org', personId: null, roles: [], hasPassword: false });
+      http.expectOne(r => r.method === 'POST' && r.url === api('/api/users/u9/invitation')).flush(null);
+      flushAll(http, api('/api/users'), [user]);
+      flushAll(http, api('/api/users/roles'), ['Administrator']);
+      fixture.detectChanges();
+
+      expect(toasts().map(t => t.message)).toContain('Konto utworzone – zaproszenie wysłane na nowy@example.org.');
+      expect(fixture.componentInstance.isCreateOpen()).toBe(false);
+    });
+
+    it('keeps the account and says how to resend when the invitation cannot be sent', () => {
+      const { http, el } = bootCreate();
+      setInput(el, 'input[name="email"]', 'nowy@example.org');
+      clickByText(el, 'Utwórz i wyślij zaproszenie');
+      http.expectOne(r => r.method === 'POST' && r.url === api('/api/users')).flush({ id: 'u9', email: 'nowy@example.org', personId: null, roles: [] });
+      http.expectOne(api('/api/users/u9/invitation')).flush({ title: 'Nie udało się wysłać e-maila z zaproszeniem.' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(toasts().map(t => t.message).join(' ')).toContain('Konto utworzone, ale zaproszenie nie wyszło: Nie udało się wysłać e-maila z zaproszeniem. Wyślij je ponownie w „Edytuj”.');
+    });
+
+    it('asks for a temporary password when that option is chosen and left empty', () => {
+      const { fixture, http, el } = bootCreate();
+      usePassword(el);
+      setInput(el, 'input[name="email"]', 'nowy@example.org');
+      clickByText(el, 'Utwórz konto');
+      fixture.detectChanges();
+
+      expect(textOf(el)).toContain('Wpisz hasło tymczasowe albo wybierz zaproszenie e-mailem.');
+      http.expectNone(r => r.method === 'POST');
+      (el.querySelector<HTMLInputElement>('input[name="accessMode"][value="invite"]')!).dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      expect(el.querySelector('input[name="password"]')).toBeNull();
+    });
+
+    it('marks accounts still waiting for a password and resends the invitation from the edit window', () => {
+      const ctx = boot([{ ...linkedUser, hasPassword: false }]);
+      expect(textOf(ctx.el)).toContain('czeka na hasło');
+      openEdit(ctx);
+
+      clickByText(ctx.el, 'Wyślij zaproszenie ponownie', 'button');
+      ctx.http.expectOne(r => r.method === 'POST' && r.url === api('/api/users/u2/invitation')).flush(null);
+      expect(toasts().map(t => t.message)).toContain('Wysłano e-mail z linkiem do ustawienia hasła na anna@example.org.');
+
+      clickByText(ctx.el, 'Wyślij zaproszenie ponownie', 'button');
+      ctx.http.expectOne(api('/api/users/u2/invitation')).flush({ title: 'Konto jest wyłączone – najpierw je włącz.' }, { status: 400, statusText: 'Bad Request' });
+      ctx.fixture.detectChanges();
+      expect(textOf(ctx.el)).toContain('Konto jest wyłączone – najpierw je włącz.');
+    });
+
+    it('offers a set-password link for accounts that already have a password, but not for disabled ones', () => {
+      const ctx = boot([linkedUser, { ...unlinkedCatechist, isActive: false }]);
+      openEdit(ctx);
+      expect(textOf(ctx.el)).toContain('Wyślij link do ustawienia hasła');
+      clickByText(ctx.el, 'Anuluj', '.modal-foot button');
+      ctx.fixture.detectChanges();
+      openEdit(ctx, 1);
+      const button = Array.from(ctx.el.querySelectorAll<HTMLButtonElement>('.security-actions button')).find(b => b.textContent!.includes('Wyślij link'))!;
+      expect(button.disabled).toBe(true);
+      ctx.fixture.componentInstance.editing.set(null);
+      ctx.fixture.componentInstance.sendInvitation();
+      ctx.http.expectNone(r => r.url.includes('/invitation'));
+    });
+  });
+
   describe('creating an account', () => {
     it('rejects mismatched passwords without calling the API', () => {
       const { fixture, http, el } = bootCreate();
@@ -161,6 +246,8 @@ describe('UsersListComponent', () => {
       expect(email.disabled).toBe(true);
       expect(email.value).toBe('jan@example.org');
       expect(textOf(el)).toContain('Login = e-mail osoby');
+      usePassword(el);
+      fixture.detectChanges();
       setInput(el, 'input[name="password"]', 'Sekret123!');
       setInput(el, 'input[name="confirmPassword"]', 'Sekret123!');
       clickByText(el, 'Utwórz konto');
@@ -174,6 +261,8 @@ describe('UsersListComponent', () => {
 
       expect(el.querySelector<HTMLInputElement>('input[name="email"]')!.disabled).toBe(false);
       expect(textOf(el)).toContain('zapiszemy też przy osobie');
+      usePassword(el);
+      fixture.detectChanges();
       setInput(el, 'input[name="password"]', 'Sekret123!');
       setInput(el, 'input[name="confirmPassword"]', 'Sekret123!');
       clickByText(el, 'Utwórz konto');
@@ -403,7 +492,7 @@ describe('UsersListComponent', () => {
     it('resets the password from the window', () => {
       const ctx = boot([user]);
       openEdit(ctx);
-      clickByText(ctx.el, 'Resetuj hasło', 'button');
+      clickByText(ctx.el, 'Ustaw hasło tymczasowe', 'button');
       ctx.fixture.detectChanges();
       setInput(ctx.el, 'input[name="resetPasswordValue"]', 'Tymczas123!');
       setInput(ctx.el, 'input[name="resetPasswordConfirm"]', 'Inne');
@@ -419,7 +508,7 @@ describe('UsersListComponent', () => {
       expect(toasts().map(t => t.message)).toContain('Hasło zresetowane – przy logowaniu użytkownik ustawi własne.');
       ctx.fixture.detectChanges();
 
-      clickByText(ctx.el, 'Resetuj hasło', 'button');
+      clickByText(ctx.el, 'Ustaw hasło tymczasowe', 'button');
       ctx.fixture.detectChanges();
       setInput(ctx.el, 'input[name="resetPasswordValue"]', 'a');
       setInput(ctx.el, 'input[name="resetPasswordConfirm"]', 'a');

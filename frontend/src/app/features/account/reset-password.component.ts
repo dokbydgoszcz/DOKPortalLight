@@ -13,7 +13,12 @@ import { serverMessage } from '../../shared/http-error';
   template: `
     <main class="reset-page">
       <div class="card reset-card">
-        <h2>Nowe hasło</h2>
+        @if (invited) {
+          <h2>Witaj w DOK Portal</h2>
+          @if (!done()) { <p class="lead">Ustaw hasło do swojego konta – potem zalogujesz się nim razem z adresem e-mail.</p> }
+        } @else {
+          <h2>Nowe hasło</h2>
+        }
         @if (done()) {
           <p role="status">Hasło zostało ustawione. Możesz się zalogować.</p>
           <a class="btn primary" routerLink="/login">Przejdź do logowania</a>
@@ -23,12 +28,12 @@ import { serverMessage } from '../../shared/http-error';
         } @else {
           <form (ngSubmit)="submit()" novalidate>
             <div class="field">
-              <label for="reset-new">Nowe hasło <span class="required">*</span></label>
+              <label for="reset-new">{{ invited ? 'Hasło' : 'Nowe hasło' }} <span class="required">*</span></label>
               <input id="reset-new" name="new" type="password" autocomplete="new-password" [(ngModel)]="next" />
               <span class="form-hint">Co najmniej 8 znaków.</span>
             </div>
             <div class="field">
-              <label for="reset-repeat">Powtórz nowe hasło <span class="required">*</span></label>
+              <label for="reset-repeat">{{ invited ? 'Powtórz hasło' : 'Powtórz nowe hasło' }} <span class="required">*</span></label>
               <input id="reset-repeat" name="repeat" type="password" autocomplete="new-password" [(ngModel)]="repeat" />
             </div>
             @if (problem) {
@@ -50,11 +55,14 @@ import { serverMessage } from '../../shared/http-error';
     form { display: grid; gap: 12px; }
     .form-error { color: var(--danger); }
     h2 { margin: 0; }
+    .lead { margin: -6px 0 0; color: var(--muted); }
   `]
 })
 export class ResetPasswordComponent implements OnInit {
   userId = '';
   token = '';
+  /** Link z e-maila „Zaproszenie do DOK Portal” (pierwsze hasło nowego konta). */
+  invited = false;
   next = '';
   repeat = '';
   readonly isSaving = signal(false);
@@ -69,8 +77,9 @@ export class ResetPasswordComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.title.setTitle('Nowe hasło | DOK Portal');
     const params = this.route.snapshot.queryParamMap;
+    this.invited = params.get('zaproszenie') === '1';
+    this.title.setTitle(this.invited ? 'Ustaw hasło | DOK Portal' : 'Nowe hasło | DOK Portal');
     this.userId = params.get('uid') ?? '';
     this.token = params.get('token') ?? '';
     // Kod nie powinien zostawać w historii przeglądarki ani w pasku adresu.
