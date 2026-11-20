@@ -4,11 +4,13 @@ import { Router } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { AuthService } from '../../core/auth/auth.service';
 import { serverMessage } from '../../shared/http-error';
+import { GlowFrameComponent } from './decor/glow-frame.component';
+import { LoginRibbonsComponent } from './decor/login-ribbons.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, GlowFrameComponent, LoginRibbonsComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
 })

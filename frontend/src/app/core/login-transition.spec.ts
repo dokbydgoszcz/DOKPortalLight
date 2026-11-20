@@ -25,4 +25,12 @@ describe('animateOnlyAfterLogin', () => {
     expect(run(route('login'), route('login'))).toHaveBeenCalled();
     expect(run({ routeConfig: null, firstChild: null } as unknown as ActivatedRouteSnapshot, route('', 'dashboard'))).toHaveBeenCalled();
   });
+
+  it('keeps a skipped transition out of the console', async () => {
+    const ready = Promise.reject(new Error('skipped'));
+    const skipTransition = vi.fn();
+    animateOnlyAfterLogin({ transition: { skipTransition, ready } as unknown as ViewTransition, from: route('', 'people'), to: route('login') } as ViewTransitionInfo);
+    expect(skipTransition).toHaveBeenCalled();
+    await expect(ready.catch(() => 'handled')).resolves.toBe('handled');
+  });
 });

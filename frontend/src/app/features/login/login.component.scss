@@ -11,9 +11,12 @@
   padding:24px;
 }
 
-.login-card{
+.login-frame{
   width:100%;
   max-width:1100px;
+}
+.login-card{
+  width:100%;
   display:grid;
   grid-template-columns:52% 48%;
   border-radius:22px;
