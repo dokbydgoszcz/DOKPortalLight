@@ -117,10 +117,11 @@ builder.Services
 // Link „Nie pamiętam hasła” jest ważny 2 godziny (i jednorazowy – zmiana hasła zmienia znacznik bezpieczeństwa).
 builder.Services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(2));
 builder.Services.AddDataProtection();
-builder.Services.AddSingleton(new PortalUrl(
+var portalUrl = new PortalUrl(
     builder.Configuration["App:PublicUrl"]
     ?? builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()?.FirstOrDefault()
-    ?? ""));
+    ?? "");
+builder.Services.AddSingleton(portalUrl);
 builder.Services.AddScoped<IAccountService, AccountService>();
 
 var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
@@ -200,7 +201,8 @@ if (!string.IsNullOrWhiteSpace(smtpHost))
     var smtpFromName = builder.Configuration["Smtp:FromName"] ?? "DOK Portal";
     var smtpEnableSsl = builder.Configuration.GetValue<bool?>("Smtp:EnableSsl") ?? true;
     builder.Services.AddSingleton<IEmailSender>(
-        new SmtpEmailSender(smtpHost, smtpPort, smtpUsername, smtpPassword, smtpFromEmail, smtpFromName, smtpEnableSsl));
+        new SmtpEmailSender(smtpHost, smtpPort, smtpUsername, smtpPassword, smtpFromEmail, smtpFromName, smtpEnableSsl,
+            portalUrl.BaseUrl));
 }
 else
 {

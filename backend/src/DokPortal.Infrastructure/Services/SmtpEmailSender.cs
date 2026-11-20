@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Mail;
+using System.Net.Mime;
 using DokPortal.Application.Common;
+using DokPortal.Infrastructure.Email;
 
 namespace DokPortal.Infrastructure.Services;
 
@@ -13,9 +15,11 @@ public class SmtpEmailSender : IEmailSender
     private readonly string _fromEmail;
     private readonly string _fromName;
     private readonly bool _enableSsl;
+    private readonly string? _portalBaseUrl;
 
-    public SmtpEmailSender(string host, int port, string username, string password, string fromEmail, string fromName, bool enableSsl)
+    public SmtpEmailSender(string host, int port, string username, string password, string fromEmail, string fromName, bool enableSsl, string? portalBaseUrl = null)
     {
+        _portalBaseUrl = portalBaseUrl;
         _host = host;
         _port = port;
         _username = username;
@@ -44,10 +48,20 @@ public class SmtpEmailSender : IEmailSender
             BodyEncoding = System.Text.Encoding.UTF8
         };
         message.To.Add(toEmail);
+        // Ta sama treść w barwach portalu; programy bez HTML pokażą zwykły tekst.
+        message.AlternateViews.Add(BuildHtmlView(subject, body, _portalBaseUrl));
         foreach (var file in attachments)
         {
             message.Attachments.Add(new System.Net.Mail.Attachment(new MemoryStream(file.Content), file.FileName, file.ContentType.Split(';')[0]));
         }
         await client.SendMailAsync(message, ct);
+    }
+
+    /// <summary>Część HTML wiadomości (do testów i podglądu).</summary>
+    public static AlternateView BuildHtmlView(string subject, string body, string? portalBaseUrl)
+    {
+        var view = AlternateView.CreateAlternateViewFromString(EmailLayout.Render(subject, body, portalBaseUrl), System.Text.Encoding.UTF8, MediaTypeNames.Text.Html);
+        view.TransferEncoding = TransferEncoding.QuotedPrintable;
+        return view;
     }
 }
